@@ -1,6 +1,6 @@
 /* The book sprite: preloads your animation frames and plays them on a canvas. */
 const Book = (() => {
-  const W = 85, H = 99, VIEW_TOP = 28; // the top of each frame is empty sky, so we crop it
+  const W = 85, H = 99, VIEW_TOP = 30; // the top of each frame is empty sky, so we crop it (page curls peak at row 31)
   const SEQ = {
     intro: [0, 6], next: [1, 8], nextgloss: [1, 5], glossary: [1, 13],
     recipe: [1, 8], nextrecipe: [1, 17], markfold: [1, 9], end: [1, 8],

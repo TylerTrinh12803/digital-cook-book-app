@@ -14,8 +14,9 @@
     const vw = innerWidth, vh = innerHeight;
     const compact = vw < 640 || vw / vh < 0.75;
     document.body.classList.toggle("compact", compact);
-    let s = compact ? (vw - 8) / Book.W : Math.min((vw - 16) / Book.W, (vh - 8) / Book.VIEW_H);
-    if (s >= 5) s = Math.floor(s);
+    // Fill the window: the view is cropped to just the book plus room for the page-flip curls above it.
+    let s = compact ? (vw - 8) / Book.W : Math.min((vw - 16) / Book.W, (vh - 4) / Book.VIEW_H);
+    s = Math.floor(s * 4) / 4; // quarter-pixel steps keep the pixel art even without wasting space
     S.scale = s;
     document.documentElement.style.setProperty("--s", s + "px");
     const w = Book.W * s, h = Book.VIEW_H * s;

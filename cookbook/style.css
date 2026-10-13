@@ -179,7 +179,7 @@ dialog::backdrop { background: rgba(20, 10, 8, .55); }
 /* ---------- phones / narrow windows: book on top, pages below ---------- */
 body.compact { overflow-y: auto; }
 body.compact #stage { position: absolute; }
-body.compact #pages { position: relative; margin-top: calc(var(--s) * 71 + 52px); font-size: 15px; pointer-events: auto; padding: 0 10px 24px; display: flex; flex-direction: column; gap: 12px; }
+body.compact #pages { position: relative; margin-top: calc(var(--s) * 69 + 52px); font-size: 15px; pointer-events: auto; padding: 0 10px 24px; display: flex; flex-direction: column; gap: 12px; }
 body.compact .page { position: relative; inset: auto; width: auto; height: auto; max-height: none; background: var(--paper); border: 2px solid var(--ink); box-shadow: 0 4px 0 rgba(0, 0, 0, .3); padding: 12px; }
 body.compact .page.on-red { background: var(--red); }
 body.compact .scroll { overflow: visible; }
