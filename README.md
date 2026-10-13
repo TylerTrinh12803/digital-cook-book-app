@@ -60,11 +60,10 @@ Each step's `action` picks its tutorial animation: `chop mix whisk stir boil fry
 
 ## Putting it online (GitHub Pages)
 
-1. Push this repo to GitHub (see the next section if pushing fails).
-2. Go to **Settings → Pages → Source → GitHub Actions**.
-3. Every push to `main` publishes the site to `https://YOUR-NAME.github.io/REPO-NAME/`.
+The site is published straight from this repo: **Settings → Pages → Deploy from a branch → `main` / `(root)`**. Every change pushed to `main` goes live in about a minute.
 
-`js/config.js` already points to this repo's website. If you move the repo, update `siteUrl` and `zipUrl` there.
+- `index.html` at the top of the repo just forwards visitors to `cookbook/`, where the app lives.
+- `js/config.js` → `siteUrl` must stay `https://tylertrinh12803.github.io/digital-cook-book-app/cookbook` (update it if the repo is renamed or moved).
 
 ## Old version
 
