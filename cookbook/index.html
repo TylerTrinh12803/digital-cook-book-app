@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Digital Cookbook</title>
+  <meta name="description" content="A pixel-art digital cookbook with animated step-by-step tutorials and timers." />
+  <meta name="theme-color" content="#2a1d19" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/favicon.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="topbar">
+    <div id="timers"></div>
+    <div class="spacer"></div>
+    <button id="btn-add" class="btn small">+ Add recipe</button>
+    <button id="btn-install" class="btn small btn-red" hidden title="Put the cookbook on your desktop">⬇ Install app</button>
+  </div>
+
+  <main id="stage">
+    <canvas id="book" aria-hidden="true"></canvas>
+  </main>
+  <div id="pages">
+    <section id="pageL" class="page"></section>
+    <section id="pageR" class="page"></section>
+  </div>
+
+  <dialog id="add-dialog">
+    <form id="add-form" method="dialog" novalidate>
+      <header><h2>Add a recipe</h2><button type="button" class="btn small" data-close>✕</button></header>
+      <p class="note">Recipes added here are saved on <b>this device</b> only. To share them with everyone, use <b>Get publish files</b> (appears after your first save) and add them to the cookbook on GitHub — see the README.</p>
+      <div class="grid2">
+        <label class="wide">Recipe name *<input name="name" required maxlength="80" /></label>
+        <label>Category<input name="category" list="cat-list" placeholder="Dinner" /></label>
+        <label>Total time<input name="time" placeholder="30 min" /></label>
+        <label>Servings<input name="servings" type="number" min="1" placeholder="4" /></label>
+        <label>Difficulty<select name="difficulty"><option>Easy</option><option>Medium</option><option>Hard</option></select></label>
+        <label class="wide">Short description<textarea name="description" rows="2"></textarea></label>
+        <label class="wide">Where the recipe is from<input name="source" placeholder="Grandma's notebook, a website…" /></label>
+        <label>Picture<input name="image" type="file" accept="image/*" /></label>
+        <label>Final product picture<input name="finalImage" type="file" accept="image/*" /></label>
+        <label class="wide">What it should look like<textarea name="look" rows="2" placeholder="Golden brown, crispy edges…"></textarea></label>
+        <label>No picture? Pixel dish style<select name="dish"><option value="plate">Plate</option><option value="bowl">Bowl</option><option value="stack">Stack</option><option value="pasta">Pasta</option><option value="cookies">Cookies</option><option value="glass">Drink</option><option value="pot">Pot</option></select></label>
+        <label>Food color<input name="food" type="color" value="#e3a857" /></label>
+      </div>
+      <h3>Ingredients <small>(and where to find them)</small></h3>
+      <div id="ing-rows" class="rows"></div>
+      <button type="button" class="btn small" data-add-row="ing">+ Ingredient</button>
+      <h3>Steps <small>(pick an animation; timer in minutes)</small></h3>
+      <div id="step-rows" class="rows"></div>
+      <button type="button" class="btn small" data-add-row="step">+ Step</button>
+      <p id="form-error" class="error" role="alert"></p>
+      <footer>
+        <button type="button" class="btn small" id="btn-export" hidden>Get publish files</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn" data-close>Cancel</button>
+        <button type="submit" class="btn btn-red" id="btn-save">Save recipe</button>
+      </footer>
+    </form>
+    <datalist id="cat-list"></datalist>
+  </dialog>
+
+  <dialog id="install-dialog" class="small-dialog">
+    <div class="install-body">
+      <header><h2>Put the cookbook on your desktop</h2><button type="button" class="btn small" data-close>✕</button></header>
+      <ul>
+        <li><b>Chrome or Edge (Windows / Mac):</b> click the <b>install icon</b> at the right end of the address bar (a monitor with a ⬇ arrow), or the <b>⋮</b> menu → <b>Cast, save and share → Install page as app</b> / <b>Apps → Install this site as an app</b>.</li>
+        <li><b>Safari (Mac):</b> <b>File → Add to Dock</b>.</li>
+        <li><b>iPhone / iPad:</b> tap <b>Share</b> → <b>Add to Home Screen</b>.</li>
+        <li><b>Android:</b> tap <b>⋮</b> → <b>Add to Home screen</b>.</li>
+      </ul>
+      <p>The installed app opens in its own window, works without internet, and gets new recipes automatically.</p>
+      <p id="zip-row">Using another browser? <a id="zip-link" target="_blank" rel="noopener">Download the cookbook (.zip)</a>, unzip it, and double-click <b>cookbook/index.html</b>.</p>
+    </div>
+  </dialog>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/recipes.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/art.js"></script>
+  <script src="js/book.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
