@@ -1,0 +1,1110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<!--ARTIFACT-START-->
+<title>FXN HT Quality Tracker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: control-room board. Header band + KPI strip on top, then two working views:
+   the ticket log (table) and the analysis bench (charts). Edits happen in one dialog. */
+:root {
+  --bg: #eef2f3;
+  --surface: #ffffff;
+  --sunken: #e4eaec;
+  --ink: #152027;
+  --muted: #586771;
+  --line: #d3dcdf;
+  --accent: #0b6872;
+  --accent-ink: #ffffff;
+  --accent-soft: #d6ecee;
+  --sev0: #c62f2f;
+  --sev1: #c97a06;
+  --sev2: #3f6ea8;
+  --st-open: #c62f2f;
+  --st-monitor: #b47100;
+  --st-close: #22855a;
+  --series-open: #0b6872;
+  --series-close: #22855a;
+  --series-backlog: #c97a06;
+  --danger: #b42727;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1418; --surface: #161f25; --sunken: #1d282f; --ink: #e2eaed; --muted: #94a3ab; --line: #2b3840;
+    --accent: #4dbcc7; --accent-ink: #062226; --accent-soft: #173a3f;
+    --sev0: #f06a6a; --sev1: #f0a93c; --sev2: #7ba7e0;
+    --st-open: #f06a6a; --st-monitor: #f0a93c; --st-close: #4fc48e;
+    --series-open: #4dbcc7; --series-close: #4fc48e; --series-backlog: #f0a93c; --danger: #f06a6a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1418; --surface: #161f25; --sunken: #1d282f; --ink: #e2eaed; --muted: #94a3ab; --line: #2b3840;
+  --accent: #4dbcc7; --accent-ink: #062226; --accent-soft: #173a3f;
+  --sev0: #f06a6a; --sev1: #f0a93c; --sev2: #7ba7e0;
+  --st-open: #f06a6a; --st-monitor: #f0a93c; --st-close: #4fc48e;
+  --series-open: #4dbcc7; --series-close: #4fc48e; --series-backlog: #f0a93c; --danger: #f06a6a;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font-body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 1280px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+a { color: var(--accent); }
+
+/* header */
+.top { background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
+.top .wrap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding-block: 10px; }
+.brand { display: flex; flex-direction: column; line-height: 1.1; margin-right: auto; min-width: 0; }
+.brand h1 { margin: 0; font: 700 1.6rem/1 var(--font-display); letter-spacing: .01em; text-transform: uppercase; }
+.brand span { font-size: .78rem; color: var(--muted); letter-spacing: .04em; }
+.tabs { display: flex; gap: 2px; background: var(--sunken); padding: 3px; border-radius: var(--radius); }
+.tabs button { border: 0; background: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: 500; color: var(--muted); }
+.tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+.btn { border: 1px solid var(--line); background: var(--surface); padding: 7px 14px; border-radius: var(--radius); cursor: pointer; font-weight: 500; white-space: nowrap; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--danger); }
+.btn.small { padding: 4px 10px; font-size: .85rem; }
+.btn:disabled { opacity: .55; cursor: default; }
+
+.banner { margin-top: 12px; padding: 8px 12px; border-radius: var(--radius); background: var(--accent-soft); font-size: .88rem; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.banner b { font-weight: 600; }
+
+/* KPI strip */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin-top: 16px; }
+.kpi { background: var(--surface); padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+.kpi .lbl { font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.kpi .val { font: 600 2rem/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.kpi .sub { font-size: .75rem; color: var(--muted); }
+.kpi.open .val { color: var(--st-open); }
+.kpi.monitor .val { color: var(--st-monitor); }
+.kpi.close .val { color: var(--st-close); }
+
+/* filters */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-top: 16px; }
+.filters label { display: flex; flex-direction: column; gap: 2px; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.filters input, .filters select { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; font-size: .9rem; text-transform: none; letter-spacing: 0; color: var(--ink); min-width: 0; }
+.filters .search { flex: 1 1 220px; }
+.filters .search input { width: 100%; }
+.filters .spacer { flex: 1 1 auto; }
+
+/* table */
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); margin-top: 12px; }
+.table-scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 980px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; background: var(--sunken); position: relative; }
+th button { all: unset; cursor: pointer; }
+th button:focus-visible { outline: 2px solid var(--accent); }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: var(--sunken); }
+tbody tr:last-child td { border-bottom: 0; }
+td.sevcell { padding-left: 0; }
+.mono { font-family: var(--font-mono); font-size: .82rem; font-variant-numeric: tabular-nums; }
+td.mono { white-space: nowrap; }
+.desc { max-width: 380px; }
+.desc .sub { color: var(--muted); font-size: .8rem; }
+.stripe { display: inline-block; width: 4px; height: 100%; min-height: 34px; border-radius: 2px; margin-right: 8px; vertical-align: top; }
+.sev-tag { font: 600 .95rem/1 var(--font-display); letter-spacing: .03em; }
+.s-S0 { --sev: var(--sev0); } .s-S1 { --sev: var(--sev1); } .s-S2 { --sev: var(--sev2); }
+.stripe, .sev-dot { background: var(--sev); }
+.sev-tag { color: var(--sev); }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; font-size: .74rem; font-weight: 600; letter-spacing: .05em; border: 1px solid currentColor; white-space: nowrap; }
+.chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.st-OPEN { color: var(--st-open); } .st-MONITOR { color: var(--st-monitor); } .st-CLOSE { color: var(--st-close); }
+.type { font-size: .72rem; font-weight: 600; letter-spacing: .06em; padding: 1px 6px; border-radius: 3px; background: var(--sunken); color: var(--muted); }
+.type.SCAR { background: var(--accent-soft); color: var(--accent); }
+.muted { color: var(--muted); }
+.empty { padding: 40px 20px; text-align: center; color: var(--muted); }
+.empty h2 { font: 600 1.5rem/1.2 var(--font-display); color: var(--ink); margin: 0 0 6px; text-transform: uppercase; }
+.empty p { margin: 0 auto 14px; max-width: 52ch; }
+.empty .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.count-line { font-size: .82rem; color: var(--muted); margin-top: 8px; }
+
+/* analysis */
+.subtabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+.subtabs button { border: 1px solid var(--line); background: var(--surface); padding: 6px 12px; border-radius: 999px; cursor: pointer; font-size: .88rem; }
+.subtabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.chart-panel { padding: 16px; }
+.chart-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between; margin-bottom: 10px; }
+.chart-head h2 { margin: 0; font: 600 1.35rem/1.1 var(--font-display); text-transform: uppercase; letter-spacing: .02em; text-wrap: balance; }
+.chart-head p { margin: 2px 0 0; color: var(--muted); font-size: .85rem; max-width: 70ch; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.seg button { border: 0; background: var(--surface); padding: 5px 10px; cursor: pointer; font-size: .82rem; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; font-size: .82rem; }
+.canvas-box { position: relative; height: 340px; }
+.pareto-table { margin-top: 14px; overflow-x: auto; }
+.pareto-table table { min-width: 0; }
+.pareto-table td, .pareto-table th { padding: 6px 10px; }
+.pareto-table tbody tr { cursor: default; }
+.pareto-table tr.vital td:first-child { font-weight: 600; }
+.chart-empty { height: 340px; display: grid; place-items: center; color: var(--muted); text-align: center; }
+
+/* dialog */
+dialog { border: 0; padding: 0; border-radius: 10px; background: var(--surface); color: var(--ink); width: min(860px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); box-shadow: 0 20px 60px rgb(0 0 0 / .35); }
+dialog::backdrop { background: rgb(8 14 18 / .55); }
+.dlg { display: flex; flex-direction: column; max-height: calc(100dvh - 24px); }
+.dlg-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.dlg-head h2 { margin: 0; font: 600 1.4rem/1.1 var(--font-display); text-transform: uppercase; margin-right: auto; }
+.dlg-body { overflow-y: auto; padding: 16px 18px; display: flex; flex-direction: column; gap: 18px; }
+.dlg-foot { display: flex; gap: 8px; align-items: center; padding: 12px 18px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.dlg-foot .grow { flex: 1; }
+.xbtn { border: 0; background: none; font-size: 1.4rem; line-height: 1; cursor: pointer; color: var(--muted); padding: 4px 8px; }
+fieldset { border: 1px solid var(--line); border-radius: var(--radius); margin: 0; padding: 12px 14px 14px; min-width: 0; }
+legend { font: 600 .95rem/1 var(--font-display); text-transform: uppercase; letter-spacing: .06em; padding: 0 6px; color: var(--muted); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.field.wide { grid-column: 1 / -1; }
+.field > span { font-size: .78rem; font-weight: 600; color: var(--muted); }
+.field > span i { color: var(--danger); font-style: normal; }
+.field input:not([type="radio"]):not([type="checkbox"]), .field select, .field textarea { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 7px 9px; width: 100%; min-width: 0; }
+.field textarea { min-height: 64px; resize: vertical; }
+.field.invalid input:not([type="radio"]), .field.invalid select, .field.invalid textarea, .field.invalid .sev-pick, .field.invalid .radio-row { outline: 2px solid var(--danger); outline-offset: 1px; }
+.err { color: var(--danger); font-size: .8rem; }
+.err:empty { display: none; }
+.dlg-foot .err { flex-basis: 100%; order: -1; }
+.sev-pick { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; border-radius: var(--radius); }
+.sev-pick label { position: relative; display: flex; gap: 10px; border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 10px; cursor: pointer; background: var(--bg); }
+.sev-pick input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; margin: 0; }
+.sev-pick .sev-dot { flex: none; width: 10px; border-radius: 3px; }
+.sev-pick b { font: 700 1.1rem/1 var(--font-display); color: var(--sev); }
+.sev-pick small { display: block; color: var(--muted); font-size: .78rem; line-height: 1.3; margin-top: 2px; }
+.sev-pick label:has(input:checked) { border-color: var(--sev); box-shadow: inset 0 0 0 1px var(--sev); }
+.sev-pick label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.radio-row { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; width: max-content; max-width: 100%; }
+.radio-row label { position: relative; padding: 6px 14px; cursor: pointer; background: var(--bg); font-weight: 500; font-size: .9rem; }
+.radio-row label + label { border-left: 1px solid var(--line); }
+.radio-row input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; margin: 0; }
+.radio-row label:has(input:checked) { background: var(--accent); color: var(--accent-ink); }
+.radio-row label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+.flags { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.flags label { display: inline-flex; gap: 6px; align-items: center; font-size: .88rem; }
+details > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+.attach-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.att { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; background: var(--bg); max-width: 100%; min-width: 0; }
+.att img { width: 56px; height: 42px; object-fit: cover; border-radius: 3px; display: block; }
+.att a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; font-size: .86rem; }
+.att .kind { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.att button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 1.1rem; line-height: 1; padding: 0 2px; }
+.attach-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.attach-add input[type="url"], .attach-add input[type="text"] { flex: 1 1 180px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; min-width: 0; }
+.drop-hint { font-size: .8rem; color: var(--muted); margin-top: 6px; }
+.confirm-del { display: inline-flex; gap: 6px; align-items: center; font-size: .86rem; color: var(--danger); flex-wrap: wrap; }
+.meta-line { font-size: .78rem; color: var(--muted); }
+
+.toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: var(--radius); font-size: .9rem; z-index: 50; max-width: calc(100vw - 32px); box-shadow: 0 6px 20px rgb(0 0 0 / .25); }
+.import-box { margin-top: 12px; }
+main { padding-block: 4px 40px; }
+footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
+@media (max-width: 640px) {
+  .brand h1 { font-size: 1.3rem; }
+  .kpi .val { font-size: 1.6rem; }
+  .canvas-box, .chart-empty { height: 280px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <h1>FXN HT Quality Tracker</h1>
+      <span>Quality issues · SCAR / RCA log · IB4 Houston</span>
+    </div>
+    <div class="tabs" role="tablist" aria-label="View">
+      <button role="tab" id="tab-tickets" aria-selected="true" data-view="tickets">Tickets</button>
+      <button role="tab" id="tab-analysis" aria-selected="false" data-view="analysis">Analysis</button>
+    </div>
+    <button class="btn primary" id="newBtn" type="button">+ New ticket</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="banner" id="modeBanner" hidden></div>
+
+  <section class="kpis" id="kpis" aria-label="Summary"></section>
+
+  <div class="filters" id="filters">
+    <label class="search">Search
+      <input id="fSearch" type="search" placeholder="Description, SCAR #, PIC, root cause…">
+    </label>
+    <label id="fStatusWrap">Status
+      <select id="fStatus"><option value="">All</option><option>OPEN</option><option>MONITOR</option><option>CLOSE</option></select>
+    </label>
+    <label>Severity
+      <select id="fSev"><option value="">All</option><option>S0</option><option>S1</option><option>S2</option></select>
+    </label>
+    <label>Type
+      <select id="fType"><option value="">All</option><option>SCAR</option><option>RCA</option><option>Other</option></select>
+    </label>
+    <label>Phase
+      <select id="fPhase"><option value="">All</option><option>QB</option><option>MP</option></select>
+    </label>
+    <label>Factory area
+      <select id="fArea"><option value="">All</option></select>
+    </label>
+    <label>Product
+      <select id="fProduct"><option value="">All</option></select>
+    </label>
+    <span class="spacer"></span>
+    <button class="btn" id="importBtn" type="button">Import Excel</button>
+    <button class="btn" id="exportBtn" type="button">Export Excel</button>
+    <input type="file" id="importFile" accept=".xlsx,.xlsm,.xls" hidden>
+  </div>
+
+  <div class="panel import-box" id="importBox" hidden></div>
+
+  <!-- Tickets view -->
+  <section id="view-tickets" role="tabpanel" aria-labelledby="tab-tickets">
+    <div class="panel">
+      <div class="table-scroll" id="tableWrap"></div>
+    </div>
+    <div class="count-line" id="countLine"></div>
+  </section>
+
+  <!-- Analysis view -->
+  <section id="view-analysis" role="tabpanel" aria-labelledby="tab-analysis" hidden>
+    <div class="subtabs" role="tablist" aria-label="Chart">
+      <button role="tab" data-chart="openclose" aria-selected="true">Open vs closed</button>
+      <button role="tab" data-chart="tickets" aria-selected="false">Tickets per month</button>
+      <button role="tab" data-chart="scar" aria-selected="false">SCARs per month</button>
+      <button role="tab" data-chart="rca" aria-selected="false">RCAs per month</button>
+      <button role="tab" data-chart="pareto" aria-selected="false">Pareto</button>
+    </div>
+    <div class="panel chart-panel">
+      <div class="chart-head">
+        <div><h2 id="chartTitle"></h2><p id="chartNote"></p></div>
+        <div class="controls" id="chartControls"></div>
+      </div>
+      <div class="canvas-box" id="canvasBox"><canvas id="chart" aria-label="Chart" role="img"></canvas></div>
+      <div class="chart-empty" id="chartEmpty" hidden></div>
+      <div class="pareto-table" id="paretoTable" hidden></div>
+    </div>
+  </section>
+</main>
+<footer class="wrap" id="footNote"></footer>
+
+<!-- Ticket dialog -->
+<dialog id="dlg" aria-labelledby="dlgTitle">
+  <form class="dlg" id="ticketForm" novalidate>
+    <div class="dlg-head">
+      <h2 id="dlgTitle">New ticket</h2>
+      <span id="dlgStatusChip"></span>
+      <button class="xbtn" type="button" id="dlgClose" aria-label="Close">×</button>
+    </div>
+    <div class="dlg-body">
+      <fieldset>
+        <legend>Issue</legend>
+        <div class="grid">
+          <label class="field"><span>Issue detected <i>*</i></span><input type="date" id="f_detected" name="detected"></label>
+          <label class="field"><span>Ticket type <i>*</i></span>
+            <select id="f_type" name="type"><option value="">Choose…</option><option value="SCAR">SCAR</option><option value="RCA">RCA</option><option value="Other">Other</option></select>
+          </label>
+          <label class="field"><span>SCAR / bug # (NV)</span><input type="text" id="f_ref" name="ref" placeholder="e.g. SCAR-04459 or BUG # 6712387"></label>
+          <label class="field wide"><span>Quality issue description <i>*</i></span><textarea id="f_description" name="description" placeholder="What happened, where, and what was found"></textarea></label>
+          <div class="field wide" id="sevField"><span>Severity <i>*</i></span>
+            <div class="sev-pick" role="radiogroup" aria-label="Severity">
+              <label class="s-S0"><input type="radio" name="severity" value="S0"><span class="sev-dot"></span><span><b>S0</b><small>Customer escape, reliability risk on material, safety risk, lines down</small></span></label>
+              <label class="s-S1"><input type="radio" name="severity" value="S1"><span class="sev-dot"></span><span><b>S1</b><small>High FPY fail</small></span></label>
+              <label class="s-S2"><input type="radio" name="severity" value="S2"><span class="sev-dot"></span><span><b>S2</b><small>Few units fail, issue contained in factory</small></span></label>
+            </div>
+          </div>
+          <label class="field"><span>Product name <i>*</i></span><input type="text" id="f_product" name="product" list="dl_product" placeholder="e.g. 900-2G548-0081-000"></label>
+          <div class="field" id="phaseField"><span>Product phase <i>*</i></span>
+            <div class="radio-row" role="radiogroup" aria-label="Product phase">
+              <label><input type="radio" name="phase" value="QB">QB</label>
+              <label><input type="radio" name="phase" value="MP">MP</label>
+            </div>
+          </div>
+          <label class="field"><span>Client <i>*</i></span><input type="text" id="f_client" name="client" list="dl_client" placeholder="e.g. NVIDIA"></label>
+          <label class="field"><span>Reporter <i>*</i></span><input type="text" id="f_reporter" name="reporter" list="dl_reporter"></label>
+          <label class="field"><span>PIC from FXN <i>*</i></span><input type="text" id="f_pic" name="pic" list="dl_pic"></label>
+          <label class="field"><span>Units impacted <i>*</i></span><input type="text" id="f_units" name="units" inputmode="numeric" placeholder="Number, or NA"></label>
+          <label class="field"><span>Factory area <i>*</i></span><select id="f_area" name="area"><option value="">Choose…</option></select></label>
+        </div>
+      </fieldset>
+
+      <details id="updDetails">
+        <summary>Investigation &amp; closure <span class="muted" id="updHint">(fill in once the RCA is done)</span></summary>
+        <fieldset style="margin-top:10px">
+          <legend>Root cause &amp; status</legend>
+          <div class="grid">
+            <label class="field"><span>Root cause</span><select id="f_rootCause" name="rootCause"><option value="">Not yet determined</option></select></label>
+            <label class="field"><span>Sub-root cause</span><input type="text" id="f_subRootCause" name="subRootCause" list="dl_rc"></label>
+            <div class="field"><span>Status</span>
+              <div class="radio-row" role="radiogroup" aria-label="Status">
+                <label><input type="radio" name="status" value="OPEN">Open</label>
+                <label><input type="radio" name="status" value="MONITOR">Monitor</label>
+                <label><input type="radio" name="status" value="CLOSE">Close</label>
+              </div>
+            </div>
+            <label class="field" id="closedField"><span>Closed on</span><input type="date" id="f_closedDate" name="closedDate"></label>
+            <div class="field wide"><span>Impact &amp; actions</span>
+              <div class="flags" id="flagBox"></div>
+            </div>
+            <label class="field wide"><span>Comments</span><textarea id="f_comments" name="comments" placeholder="Impact, scrap, rework, containment, CAPA…"></textarea></label>
+          </div>
+        </fieldset>
+        <fieldset style="margin-top:12px">
+          <legend>Report</legend>
+          <div class="attach-list" id="attachList"></div>
+          <div class="attach-add">
+            <input type="url" id="linkUrl" placeholder="Paste a link (SharePoint, Drive…)">
+            <input type="text" id="linkName" placeholder="Label (optional)">
+            <button class="btn small" type="button" id="addLinkBtn">Add link</button>
+            <button class="btn small" type="button" id="uploadBtn">Upload file or image</button>
+            <input type="file" id="uploadInput" multiple hidden>
+          </div>
+          <div class="drop-hint" id="uploadHint">You can also paste a screenshot while this window is open.</div>
+        </fieldset>
+      </details>
+      <div class="meta-line" id="metaLine"></div>
+    </div>
+    <div class="dlg-foot">
+      <span id="delZone"></span>
+      <span class="grow"></span>
+      <span class="err" id="formErr"></span>
+      <button class="btn" type="button" id="cancelBtn">Cancel</button>
+      <button class="btn primary" type="submit" id="saveBtn">Create ticket</button>
+    </div>
+  </form>
+</dialog>
+
+<datalist id="dl_product"></datalist>
+<datalist id="dl_client"></datalist>
+<datalist id="dl_reporter"></datalist>
+<datalist id="dl_pic"></datalist>
+<datalist id="dl_rc"></datalist>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(() => {
+"use strict";
+
+/* ---------- reference lists (from the Excel "Drop Down lists" sheet) ---------- */
+const AREAS = ["SMT", "PTH", "Test POD", "Assembly", "Disassembly", "Warehouse", "Packaging", "IQC", "FA Area", "Test Areas (ICT/MDA)", "Factory", "NA"];
+const CAUSES = ["Human Error", "Operator Training", "Assembly workmanship", "Incoming Material (supplier)", "Facilities (power, HVAC, T/RH etc)", "SOPs/Work Instructions", "Material Handling", "Equipment (SMT, Automation etc)", "Fixtures and Tools", "Testers (ICT/MDA)", "Wrong Documentation", "Automation equipment", "Product Design/marginalities", "Potential ESD", "Calibration/PM", "Machine Error", "Other"];
+const FLAGS = [
+  ["linesDown", "Lines down (30+ min)"], ["factoryEscape", "Factory escape"], ["scrap", "L6 PCBA/CPU/GPU scrap"],
+  ["rework", "L6 PCBA/GPU/CPU rework"], ["shipmentDelay", "NV shipment / milestone delay"], ["safety", "Potential safety issue"],
+  ["capa", "CAPA implemented"], ["eightD", "8D issued"], ["repeat", "Repeat issue (same root cause)"]
+];
+const STATUS_LABEL = { OPEN: "Open", MONITOR: "Monitor", CLOSE: "Closed" };
+const LS_KEY = "fxnht-quality-tickets-v1";
+const UI_KEY = "fxnht-quality-ui-v1";
+const LOCAL_FILE_LIMIT = 1.5 * 1024 * 1024;
+
+/* ---------- state ---------- */
+let tickets = [];
+let mode = "starting"; // starting | shared | local | signedout
+let db = null, assetsApi = null, downloadsApi = null;
+let view = "tickets", chartKind = "openclose";
+let sort = { key: "detected", dir: "desc" };
+let ocMode = "flow", paretoDim = "rootCause", paretoMetric = "count", paretoBlank = false;
+let chart = null;
+let editing = null; // ticket being edited (copy) or null for new
+let draftAttachments = [];
+let pendingImport = null;
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const newId = () => "t_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const qid = n => "QI-" + String(n ?? 0).padStart(3, "0");
+const unitsNum = u => { const m = String(u ?? "").replace(/,/g, "").match(/\d+(\.\d+)?/); return m && !/%/.test(String(u)) ? Number(m[0]) : 0; };
+const daysBetween = (a, b) => Math.max(0, Math.round((Date.parse(b) - Date.parse(a)) / 86400000));
+const fmtDate = iso => { if (!iso) return ""; const [y, m, d] = iso.split("-"); return `${d} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+m - 1]} ${y}`; };
+
+function toast(msg, ms = 2600) {
+  const t = $("#toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), ms);
+}
+function lsGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } }
+
+/* ---------- storage ---------- */
+function loadLocal() {
+  try { tickets = JSON.parse(lsGet(LS_KEY) || "[]"); } catch { tickets = []; }
+  if (!Array.isArray(tickets)) tickets = [];
+}
+function persistLocal() {
+  if (!lsSet(LS_KEY, JSON.stringify(tickets))) toast("This browser refused to save. Free some space or remove large uploaded files.", 5000);
+}
+function cleanForStore(t) {
+  const o = {};
+  for (const [k, v] of Object.entries(t)) if (k !== "id" && v !== undefined) o[k] = v;
+  return o;
+}
+function writeError(e) {
+  const code = e && e.code;
+  if (code === "not_granted" || code === "revoked") return "You have view-only access. Ask the tracker's owner for edit access to add or change tickets.";
+  if (code === "quota_exceeded" || code === "resource_exhausted") return "Storage is full or busy. Try again in a moment.";
+  return "Couldn't save: " + ((e && e.message) || "unknown error");
+}
+async function saveTicket(t) {
+  t.updatedAt = new Date().toISOString();
+  if (mode === "shared") {
+    await db.collection("tickets").doc(t.id).set(cleanForStore(t));
+  } else {
+    const i = tickets.findIndex(x => x.id === t.id);
+    if (i >= 0) tickets[i] = t; else tickets.push(t);
+    persistLocal(); render();
+  }
+}
+async function deleteTicket(id) {
+  if (mode === "shared") await db.collection("tickets").doc(id).delete();
+  else { tickets = tickets.filter(t => t.id !== id); persistLocal(); render(); }
+}
+
+async function boot() {
+  restoreUI();
+  fillStaticOptions();
+  bindUI();
+  if (window.claude && typeof window.claude.use === "function") {
+    mode = "starting"; render();
+    try { db = await window.claude.use("db"); } catch { db = null; }
+    if (db) {
+      mode = "shared";
+      db.collection("tickets").limit(1000).onSnapshot(snap => {
+        tickets = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        render();
+      }, err => { banner(`<b>Live updates stopped.</b> ${esc(err && err.message)} Reload the page to reconnect.`); });
+      window.claude.use("assets").then(a => { assetsApi = a; updateUploadUI(); }).catch(() => {});
+      window.claude.use("downloads").then(d => { downloadsApi = d; render(); }).catch(() => {});
+    } else {
+      mode = "signedout"; loadLocal();
+    }
+  } else {
+    mode = "local"; loadLocal();
+  }
+  render();
+}
+
+function banner(html) { const b = $("#modeBanner"); if (!html) { b.hidden = true; return; } b.innerHTML = html; b.hidden = false; }
+
+/* ---------- UI prefs ---------- */
+function restoreUI() {
+  try {
+    const s = JSON.parse(lsGet(UI_KEY) || "{}");
+    if (s.view) view = s.view; if (s.chartKind) chartKind = s.chartKind;
+    if (s.paretoDim) paretoDim = s.paretoDim; if (s.paretoMetric) paretoMetric = s.paretoMetric;
+    if (s.ocMode) ocMode = s.ocMode; if (s.sort) sort = s.sort;
+  } catch {}
+  if (location.hash === "#analysis") view = "analysis";
+  if (location.hash === "#pareto") { view = "analysis"; chartKind = "pareto"; }
+}
+function saveUI() { lsSet(UI_KEY, JSON.stringify({ view, chartKind, paretoDim, paretoMetric, ocMode, sort })); }
+
+function fillStaticOptions() {
+  $("#f_area").insertAdjacentHTML("beforeend", AREAS.map(a => `<option>${esc(a)}</option>`).join(""));
+  $("#f_rootCause").insertAdjacentHTML("beforeend", CAUSES.map(a => `<option>${esc(a)}</option>`).join(""));
+  $("#flagBox").innerHTML = FLAGS.map(([k, l]) => `<label><input type="checkbox" id="flag_${k}" data-flag="${k}"> ${esc(l)}</label>`).join("");
+}
+
+/* ---------- filtering ---------- */
+function filtered({ ignoreStatus = false } = {}) {
+  const q = $("#fSearch").value.trim().toLowerCase();
+  const st = ignoreStatus ? "" : $("#fStatus").value, sev = $("#fSev").value, ty = $("#fType").value;
+  const ph = $("#fPhase").value, ar = $("#fArea").value, pr = $("#fProduct").value;
+  return tickets.filter(t =>
+    (!st || t.status === st) && (!sev || t.severity === sev) && (!ty || t.type === ty) &&
+    (!ph || t.phase === ph) && (!ar || t.area === ar) && (!pr || t.product === pr) &&
+    (!q || [qid(t.no), t.ref, t.description, t.reporter, t.pic, t.client, t.product, t.area, t.rootCause, t.subRootCause, t.comments]
+      .some(v => String(v || "").toLowerCase().includes(q))));
+}
+
+function refreshFilterOptions() {
+  const keep = (sel, values) => {
+    const el = $(sel), cur = el.value;
+    el.innerHTML = `<option value="">All</option>` + values.map(v => `<option>${esc(v)}</option>`).join("");
+    el.value = values.includes(cur) ? cur : "";
+  };
+  const uniq = k => [...new Set(tickets.map(t => (t[k] || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  keep("#fArea", [...new Set([...AREAS.filter(a => tickets.some(t => t.area === a)), ...uniq("area")])]);
+  keep("#fProduct", uniq("product"));
+  const dl = (id, vals) => { $(id).innerHTML = vals.map(v => `<option value="${esc(v)}"></option>`).join(""); };
+  dl("#dl_product", uniq("product")); dl("#dl_client", [...new Set(["NVIDIA", ...uniq("client")])]);
+  dl("#dl_reporter", uniq("reporter")); dl("#dl_pic", uniq("pic"));
+  dl("#dl_rc", [...new Set([...CAUSES, ...uniq("subRootCause")])]);
+}
+
+/* ---------- render ---------- */
+function render() {
+  refreshFilterOptions();
+  renderBanner();
+  renderKPIs();
+  $$(".tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.view === view)));
+  $("#view-tickets").hidden = view !== "tickets";
+  $("#view-analysis").hidden = view !== "analysis";
+  $("#fStatusWrap").hidden = view === "analysis";
+  const canExport = mode !== "starting" && (mode !== "shared" || downloadsApi) && typeof XLSX !== "undefined";
+  $("#exportBtn").hidden = !canExport || !tickets.length;
+  $("#importBtn").hidden = mode === "starting" || typeof XLSX === "undefined";
+  if (view === "tickets") renderTable(); else renderChart();
+}
+
+function renderBanner() {
+  if (mode === "starting") return banner("Connecting to the shared tracker…");
+  if (mode === "signedout") return banner("<b>Not signed in.</b> You're seeing tickets saved in this browser only. Sign in to claude.ai to see and edit the shared tracker.");
+  if (mode === "local") return banner("<b>Saved in this browser.</b> Tickets and uploads stay on this computer. Use Export Excel to back up or share them, and Import Excel to load the existing tracker.");
+  banner("");
+}
+
+function renderKPIs() {
+  const all = filtered({ ignoreStatus: true });
+  const c = s => all.filter(t => t.status === s).length;
+  const now = new Date(); const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const thisMonth = all.filter(t => (t.detected || "").startsWith(ym)).length;
+  const scar = all.filter(t => t.type === "SCAR").length, rca = all.filter(t => t.type === "RCA").length;
+  const units = all.reduce((s, t) => s + unitsNum(t.units), 0);
+  const openAges = all.filter(t => t.status !== "CLOSE" && t.detected).map(t => daysBetween(t.detected, todayISO()));
+  const avgAge = openAges.length ? Math.round(openAges.reduce((a, b) => a + b, 0) / openAges.length) : 0;
+  const k = (cls, lbl, val, sub = "") => `<div class="kpi ${cls}"><span class="lbl">${lbl}</span><span class="val">${val}</span><span class="sub">${sub}</span></div>`;
+  $("#kpis").innerHTML = mode === "starting" ? "" :
+    k("", "Total tickets", all.length, `${thisMonth} this month`) +
+    k("open", "Open", c("OPEN"), `${all.filter(t => t.status === "OPEN" && t.severity === "S0").length} at S0`) +
+    k("monitor", "Monitor", c("MONITOR"), "pending validation") +
+    k("close", "Closed", c("CLOSE"), all.length ? `${Math.round(c("CLOSE") / all.length * 100)}% of total` : "") +
+    k("", "SCARs", scar, `${rca} RCAs`) +
+    k("", "Units impacted", units.toLocaleString(), "numeric entries only") +
+    k("", "Avg age open", avgAge + "d", "open + monitor");
+}
+
+const COLS = [
+  ["sev", "Sev"], ["no", "No."], ["detected", "Detected"], ["type", "SCAR / RCA"], ["description", "Issue"],
+  ["status", "Status"], ["area", "Area"], ["rootCause", "Root cause"], ["pic", "PIC (FXN)"], ["units", "Units"], ["age", "Days"]
+];
+function sortVal(t, k) {
+  if (k === "sev") return t.severity || "S9";
+  if (k === "no") return t.no || 0;
+  if (k === "units") return unitsNum(t.units);
+  if (k === "age") return ageOf(t);
+  if (k === "status") return ({ OPEN: 0, MONITOR: 1, CLOSE: 2 })[t.status] ?? 3;
+  return String(t[k] || "").toLowerCase();
+}
+function ageOf(t) { if (!t.detected) return 0; return daysBetween(t.detected, t.status === "CLOSE" && t.closedDate ? t.closedDate : todayISO()); }
+
+function renderTable() {
+  const wrap = $("#tableWrap");
+  if (mode === "starting") { wrap.innerHTML = `<div class="empty"><p>Loading tickets…</p></div>`; $("#countLine").textContent = ""; return; }
+  if (!tickets.length) {
+    wrap.innerHTML = `<div class="empty"><h2>No tickets yet</h2><p>Each quality issue becomes a ticket here: severity, product, area, who found it and who owns it. Add root cause, report and status as the investigation moves.</p>
+      <div class="row"><button class="btn primary" type="button" data-act="new">+ New ticket</button>${typeof XLSX !== "undefined" ? `<button class="btn" type="button" data-act="import">Import the Excel tracker</button>` : ""}</div></div>`;
+    $("#countLine").textContent = "";
+    return;
+  }
+  const rows = filtered().sort((a, b) => {
+    const x = sortVal(a, sort.key), y = sortVal(b, sort.key);
+    const r = x < y ? -1 : x > y ? 1 : (b.no || 0) - (a.no || 0);
+    return sort.dir === "asc" ? r : -r;
+  });
+  const arrow = k => sort.key === k ? (sort.dir === "asc" ? " ▲" : " ▼") : "";
+  wrap.innerHTML = `<table><thead><tr>${COLS.map(([k, l]) => `<th scope="col" aria-sort="${sort.key === k ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}"><button type="button" data-sort="${k}">${l}${arrow(k)}</button></th>`).join("")}</tr></thead><tbody>${
+    rows.map(t => `<tr data-id="${esc(t.id)}" tabindex="0">
+      <td class="sevcell s-${esc(t.severity)}"><span class="stripe"></span><span class="sev-tag">${esc(t.severity)}</span></td>
+      <td class="mono">${qid(t.no)}</td>
+      <td class="mono">${esc(fmtDate(t.detected))}</td>
+      <td><span class="type ${esc(t.type)}">${esc(t.type || "—")}</span>${t.ref ? `<div class="mono muted">${esc(t.ref)}</div>` : ""}</td>
+      <td class="desc">${esc(t.description)}<div class="sub">${esc([t.product, t.phase, t.client].filter(Boolean).join(" · "))}</div></td>
+      <td><span class="chip st-${esc(t.status)}">${esc(STATUS_LABEL[t.status] || t.status)}</span></td>
+      <td>${esc(t.area)}</td>
+      <td>${t.rootCause ? esc(t.rootCause) + (t.subRootCause ? `<div class="sub muted">${esc(t.subRootCause)}</div>` : "") : `<span class="muted">Pending</span>`}</td>
+      <td>${esc(t.pic)}</td>
+      <td class="mono">${esc(t.units)}</td>
+      <td class="mono">${ageOf(t)}</td>
+    </tr>`).join("")}</tbody></table>${rows.length ? "" : `<div class="empty"><p>No tickets match these filters.</p></div>`}`;
+  $("#countLine").textContent = `Showing ${rows.length} of ${tickets.length} tickets. Click a row to update root cause, report or status.`;
+}
+
+/* ---------- charts ---------- */
+function css(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function monthKey(iso) { return (iso || "").slice(0, 7); }
+function monthRange(keys) {
+  const ks = keys.filter(Boolean).sort(); if (!ks.length) return [];
+  let [y, m] = ks[0].split("-").map(Number); const [ey, em] = ks[ks.length - 1].split("-").map(Number);
+  const out = [];
+  while (y < ey || (y === ey && m <= em)) { out.push(`${y}-${String(m).padStart(2, "0")}`); m++; if (m > 12) { m = 1; y++; } }
+  return out;
+}
+function monthLabel(k) { const [y, m] = k.split("-"); return ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+m - 1] + " '" + y.slice(2); }
+function closeMonth(t) { return t.status === "CLOSE" ? monthKey(t.closedDate || t.detected) : null; }
+
+const totalsPlugin = {
+  id: "totals",
+  afterDatasetsDraw(c, _a, opts) {
+    if (!opts || !opts.show) return;
+    const { ctx } = c; const metaList = c.data.datasets.map((d, i) => c.getDatasetMeta(i)).filter(m => m.type === "bar" && !m.hidden);
+    if (!metaList.length) return;
+    ctx.save(); ctx.fillStyle = css("--ink"); ctx.font = `600 12px ${css("--font-body")}`; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+    c.data.labels.forEach((_, i) => {
+      const total = opts.stacked ? metaList.reduce((s, m) => s + (c.data.datasets[m.index].data[i] || 0), 0) : null;
+      if (opts.stacked) {
+        if (!total) return;
+        const top = Math.min(...metaList.map(m => m.data[i].y));
+        ctx.fillText(total, metaList[0].data[i].x, top - 3);
+      } else {
+        metaList.forEach(m => { const v = c.data.datasets[m.index].data[i]; if (v) ctx.fillText(v, m.data[i].x, m.data[i].y - 3); });
+      }
+    });
+    ctx.restore();
+  }
+};
+const thresholdPlugin = {
+  id: "threshold",
+  afterDatasetsDraw(c, _a, opts) {
+    if (!opts || opts.value == null || !c.scales.y2) return;
+    const y = c.scales.y2.getPixelForValue(opts.value), { left, right } = c.chartArea, ctx = c.ctx;
+    ctx.save(); ctx.strokeStyle = css("--muted"); ctx.setLineDash([5, 4]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = css("--muted"); ctx.font = `500 11px ${css("--font-body")}`; ctx.textAlign = "right"; ctx.textBaseline = "bottom";
+    ctx.fillText("80%", right - 4, y - 3); ctx.restore();
+  }
+};
+
+function baseOptions({ stacked = false, totals = null, y2 = false } = {}) {
+  const ink = css("--ink"), muted = css("--muted"), grid = css("--line"), font = css("--font-body");
+  Chart.defaults.font.family = font; Chart.defaults.color = muted;
+  const o = {
+    responsive: true, maintainAspectRatio: false, animation: matchMedia("(prefers-reduced-motion: reduce)").matches ? false : { duration: 300 },
+    interaction: { mode: "index", intersect: false },
+    layout: { padding: { top: 18 } },
+    plugins: {
+      legend: { position: "top", align: "start", labels: { color: ink, boxWidth: 12, boxHeight: 12, usePointStyle: false, padding: 14 } },
+      tooltip: { backgroundColor: css("--surface"), titleColor: ink, bodyColor: ink, borderColor: grid, borderWidth: 1, padding: 10 },
+      totals: totals || { show: false }, threshold: { value: null }
+    },
+    scales: {
+      x: { stacked, grid: { display: false }, ticks: { color: muted }, border: { color: grid } },
+      y: { stacked, beginAtZero: true, grace: "12%", grid: { color: grid }, border: { display: false }, ticks: { color: muted, precision: 0 } }
+    }
+  };
+  if (y2) o.scales.y2 = { position: "right", min: 0, max: 100, grid: { display: false }, border: { display: false }, ticks: { color: muted, callback: v => v + "%" } };
+  return o;
+}
+
+const CHARTS = {
+  openclose: {
+    title: "Open vs closed per month",
+    note: () => ocMode === "flow"
+      ? "Bars: tickets raised and tickets closed in each month. Line: tickets still open or in monitor at month end."
+      : "Every ticket counted in the month it was raised, split by its current status.",
+    controls: () => `<div class="seg" role="group" aria-label="Open vs closed view"><button type="button" data-oc="flow" aria-pressed="${ocMode === "flow"}">Raised vs closed</button><button type="button" data-oc="mix" aria-pressed="${ocMode === "mix"}">Status by month raised</button></div>`,
+    build(rows) {
+      const months = monthRange([...rows.map(t => monthKey(t.detected)), ...rows.map(closeMonth)]);
+      if (ocMode === "mix") {
+        const ds = ["OPEN", "MONITOR", "CLOSE"].map(s => ({
+          type: "bar", label: STATUS_LABEL[s], data: months.map(m => rows.filter(t => monthKey(t.detected) === m && t.status === s).length),
+          backgroundColor: css({ OPEN: "--st-open", MONITOR: "--st-monitor", CLOSE: "--st-close" }[s]), borderRadius: 2, maxBarThickness: 46
+        }));
+        return { months, data: { labels: months.map(monthLabel), datasets: ds }, options: baseOptions({ stacked: true, totals: { show: true, stacked: true } }) };
+      }
+      const opened = months.map(m => rows.filter(t => monthKey(t.detected) === m).length);
+      const closed = months.map(m => rows.filter(t => closeMonth(t) === m).length);
+      let run = 0; const backlog = months.map((_, i) => (run += opened[i] - closed[i]));
+      const ds = [
+        { type: "bar", label: "Raised", data: opened, backgroundColor: css("--series-open"), borderRadius: 2, maxBarThickness: 34, order: 2 },
+        { type: "bar", label: "Closed", data: closed, backgroundColor: css("--series-close"), borderRadius: 2, maxBarThickness: 34, order: 2 },
+        { type: "line", label: "Open at month end", data: backlog, borderColor: css("--series-backlog"), backgroundColor: css("--series-backlog"), tension: .25, pointRadius: 3, pointHoverRadius: 5, borderWidth: 2, order: 1 }
+      ];
+      return { months, data: { labels: months.map(monthLabel), datasets: ds }, options: baseOptions({ totals: { show: true, stacked: false } }) };
+    }
+  },
+  tickets: {
+    title: "Tickets per month",
+    note: () => "All tickets raised each month, stacked by severity. Totals above each bar.",
+    controls: () => "",
+    build(rows) {
+      const months = monthRange(rows.map(t => monthKey(t.detected)));
+      const ds = ["S0", "S1", "S2"].map(s => ({
+        type: "bar", label: s, data: months.map(m => rows.filter(t => monthKey(t.detected) === m && t.severity === s).length),
+        backgroundColor: css({ S0: "--sev0", S1: "--sev1", S2: "--sev2" }[s]), borderRadius: 2, maxBarThickness: 46
+      }));
+      return { months, data: { labels: months.map(monthLabel), datasets: ds }, options: baseOptions({ stacked: true, totals: { show: true, stacked: true } }) };
+    }
+  },
+  scar: { title: "SCARs per month", note: () => "Tickets of type SCAR, by month raised and current status.", controls: () => "", build: rows => typeByMonth(rows, "SCAR") },
+  rca: { title: "RCAs per month", note: () => "Tickets of type RCA, by month raised and current status.", controls: () => "", build: rows => typeByMonth(rows, "RCA") },
+  pareto: {
+    title: "Pareto",
+    note: () => `${{ rootCause: "Root causes", subRootCause: "Sub-root causes", area: "Factory areas" }[paretoDim]} ranked by ${paretoMetric === "count" ? "number of tickets" : "units impacted"}. The line is the cumulative share; causes left of 80% are the vital few.`,
+    controls: () => `<div class="seg" role="group" aria-label="Group by">${[["rootCause", "Root cause"], ["subRootCause", "Sub-root cause"], ["area", "Factory area"]].map(([k, l]) => `<button type="button" data-pd="${k}" aria-pressed="${paretoDim === k}">${l}</button>`).join("")}</div>
+      <div class="seg" role="group" aria-label="Measure">${[["count", "Tickets"], ["units", "Units"]].map(([k, l]) => `<button type="button" data-pm="${k}" aria-pressed="${paretoMetric === k}">${l}</button>`).join("")}</div>
+      <label style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="pBlank" ${paretoBlank ? "checked" : ""}> Include “not yet determined”</label>`,
+    build(rows) {
+      const map = new Map();
+      rows.forEach(t => {
+        let k = (t[paretoDim] || "").trim();
+        if (!k) { if (!paretoBlank) return; k = "Not yet determined"; }
+        map.set(k, (map.get(k) || 0) + (paretoMetric === "count" ? 1 : unitsNum(t.units)));
+      });
+      const items = [...map.entries()].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+      const total = items.reduce((s, [, v]) => s + v, 0);
+      let run = 0; const cum = items.map(([, v]) => Math.round(((run += v) / total) * 1000) / 10);
+      const vital = cum.map((c, i) => i === 0 || cum[i - 1] < 80);
+      const accent = css("--accent"), soft = css("--muted");
+      const ds = [
+        { type: "bar", label: paretoMetric === "count" ? "Tickets" : "Units impacted", data: items.map(([, v]) => v), backgroundColor: vital.map(v => v ? accent : soft), borderRadius: 2, maxBarThickness: 56, order: 2, yAxisID: "y" },
+        { type: "line", label: "Cumulative %", data: cum, borderColor: css("--series-backlog"), backgroundColor: css("--series-backlog"), pointRadius: 3, borderWidth: 2, tension: 0, yAxisID: "y2", order: 1 }
+      ];
+      const o = baseOptions({ y2: true, totals: { show: true, stacked: false } });
+      o.plugins.threshold = { value: 80 };
+      o.scales.x.ticks = { color: css("--muted"), autoSkip: false, maxRotation: 50, minRotation: 0, callback(v) { const l = this.getLabelForValue(v); return l.length > 22 ? l.slice(0, 21) + "…" : l; } };
+      o.plugins.tooltip.callbacks = { label: c => c.dataset.yAxisID === "y2" ? ` Cumulative: ${c.raw}%` : ` ${c.dataset.label}: ${c.raw.toLocaleString()} (${Math.round(c.raw / total * 100)}%)` };
+      return { months: items, items, total, cum, vital, data: { labels: items.map(([k]) => k), datasets: ds }, options: o };
+    }
+  }
+};
+function typeByMonth(rows, type) {
+  const sub = rows.filter(t => t.type === type);
+  const months = monthRange(rows.map(t => monthKey(t.detected)));
+  const ds = ["OPEN", "MONITOR", "CLOSE"].map(s => ({
+    type: "bar", label: STATUS_LABEL[s], data: months.map(m => sub.filter(t => monthKey(t.detected) === m && t.status === s).length),
+    backgroundColor: css({ OPEN: "--st-open", MONITOR: "--st-monitor", CLOSE: "--st-close" }[s]), borderRadius: 2, maxBarThickness: 46
+  }));
+  return { months: sub.length ? months : [], data: { labels: months.map(monthLabel), datasets: ds }, options: baseOptions({ stacked: true, totals: { show: true, stacked: true } }) };
+}
+
+function renderChart() {
+  $$(".subtabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.chart === chartKind)));
+  const def = CHARTS[chartKind];
+  $("#chartTitle").textContent = def.title;
+  $("#chartNote").textContent = def.note();
+  $("#chartControls").innerHTML = def.controls();
+  if (chart) { chart.destroy(); chart = null; }
+  const rows = filtered({ ignoreStatus: true });
+  const pt = $("#paretoTable"); pt.hidden = true;
+  if (typeof Chart === "undefined") return showChartEmpty("The chart library didn't load. Check your connection and reload the page.");
+  if (mode === "starting") return showChartEmpty("Loading tickets…");
+  const built = def.build(rows);
+  if (!built.months.length) return showChartEmpty(chartKind === "pareto" ? "No tickets with a root cause in this selection yet. Add root causes as investigations finish, or tick “Include not yet determined”." : "No tickets in this selection yet.");
+  $("#chartEmpty").hidden = true; $("#canvasBox").hidden = false;
+  Chart.register(totalsPlugin, thresholdPlugin);
+  chart = new Chart($("#chart"), { type: "bar", data: built.data, options: built.options });
+  if (chartKind === "pareto") {
+    pt.hidden = false;
+    pt.innerHTML = `<table><thead><tr><th>${{ rootCause: "Root cause", subRootCause: "Sub-root cause", area: "Factory area" }[paretoDim]}</th><th>${paretoMetric === "count" ? "Tickets" : "Units"}</th><th>Share</th><th>Cumulative</th></tr></thead><tbody>${
+      built.items.map(([k, v], i) => `<tr class="${built.vital[i] ? "vital" : ""}"><td>${esc(k)}</td><td class="mono">${v.toLocaleString()}</td><td class="mono">${(v / built.total * 100).toFixed(1)}%</td><td class="mono">${built.cum[i].toFixed(1)}%</td></tr>`).join("")}</tbody></table>`;
+  }
+}
+function showChartEmpty(msg) { $("#canvasBox").hidden = true; const e = $("#chartEmpty"); e.hidden = false; e.textContent = msg; }
+
+/* ---------- dialog ---------- */
+function openTicket(t) {
+  editing = t ? JSON.parse(JSON.stringify(t)) : null;
+  const f = $("#ticketForm"); f.reset();
+  $$(".field.invalid", f).forEach(el => el.classList.remove("invalid"));
+  $("#formErr").textContent = "";
+  const last = tickets.slice().sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))[0] || {};
+  const v = t || { detected: todayISO(), status: "OPEN", product: last.product || "", client: last.client || "", phase: last.phase || "" };
+  $("#dlgTitle").textContent = t ? `${qid(t.no)}` : "New ticket";
+  $("#dlgStatusChip").innerHTML = t ? `<span class="chip st-${esc(t.status)}">${esc(STATUS_LABEL[t.status] || t.status)}</span>` : "";
+  for (const k of ["detected", "type", "ref", "description", "product", "client", "reporter", "pic", "units", "area", "rootCause", "subRootCause", "closedDate", "comments"]) {
+    const el = $("#f_" + k); if (!el) continue;
+    if (el.tagName === "SELECT" && v[k] && ![...el.options].some(o => o.value === v[k])) el.insertAdjacentHTML("beforeend", `<option>${esc(v[k])}</option>`);
+    el.value = v[k] ?? "";
+  }
+  setRadio("severity", v.severity); setRadio("phase", v.phase); setRadio("status", v.status || "OPEN");
+  FLAGS.forEach(([k]) => { $("#flag_" + k).checked = !!(v.flags && v.flags[k]); });
+  draftAttachments = (v.attachments || []).slice();
+  renderAttachments();
+  $("#updDetails").open = !!t;
+  $("#updHint").hidden = !!t;
+  $("#saveBtn").textContent = t ? "Save changes" : "Create ticket";
+  $("#delZone").innerHTML = t ? `<button class="btn danger small" type="button" id="delBtn">Delete</button>` : "";
+  $("#metaLine").textContent = t ? [t.createdAt && `Created ${fmtDate(t.createdAt.slice(0, 10))}`, t.updatedAt && `last updated ${fmtDate(t.updatedAt.slice(0, 10))}`].filter(Boolean).join(", ") : "";
+  syncClosed();
+  updateUploadUI();
+  $("#dlg").showModal();
+  if (!t) $("#f_description").focus();
+}
+function setRadio(name, val) { $$(`input[name="${name}"]`).forEach(r => (r.checked = r.value === val)); }
+function getRadio(name) { const r = $(`input[name="${name}"]:checked`); return r ? r.value : ""; }
+function syncClosed() {
+  const closed = getRadio("status") === "CLOSE";
+  $("#closedField").hidden = !closed;
+  if (closed && !$("#f_closedDate").value) $("#f_closedDate").value = todayISO();
+}
+function closeDialog() { $("#dlg").close(); editing = null; draftAttachments = []; }
+
+const REQUIRED = [["detected", "f_detected"], ["type", "f_type"], ["description", "f_description"], ["severity", "sevField"], ["product", "f_product"], ["phase", "phaseField"], ["client", "f_client"], ["reporter", "f_reporter"], ["pic", "f_pic"], ["units", "f_units"], ["area", "f_area"]];
+
+async function submitForm(e) {
+  e.preventDefault();
+  const val = id => $("#" + id).value.trim();
+  const data = {
+    detected: val("f_detected"), type: val("f_type"), ref: val("f_ref"), description: val("f_description"),
+    severity: getRadio("severity"), product: val("f_product"), phase: getRadio("phase"), client: val("f_client"),
+    reporter: val("f_reporter"), pic: val("f_pic"), units: val("f_units"), area: val("f_area"),
+    rootCause: val("f_rootCause"), subRootCause: val("f_subRootCause"), status: getRadio("status") || "OPEN",
+    closedDate: getRadio("status") === "CLOSE" ? val("f_closedDate") : "", comments: val("f_comments"),
+    flags: Object.fromEntries(FLAGS.map(([k]) => [k, $("#flag_" + k).checked]).filter(([, v]) => v)),
+    attachments: draftAttachments
+  };
+  let missing = [];
+  REQUIRED.forEach(([k, id]) => {
+    const host = $("#" + id).closest(".field") || $("#" + id);
+    const bad = !data[k];
+    host.classList.toggle("invalid", bad);
+    if (bad) missing.push(host.querySelector("span").textContent.replace("*", "").trim());
+  });
+  if (missing.length) { $("#formErr").textContent = `Fill in: ${missing.join(", ")}`; return; }
+  const t = editing ? { ...editing, ...data } : { id: newId(), no: Math.max(0, ...tickets.map(x => x.no || 0)) + 1, createdAt: new Date().toISOString(), ...data };
+  const btn = $("#saveBtn"); btn.disabled = true;
+  try {
+    await saveTicket(t);
+    toast(editing ? `${qid(t.no)} updated` : `${qid(t.no)} created`);
+    closeDialog();
+  } catch (err) { $("#formErr").textContent = writeError(err); }
+  finally { btn.disabled = false; }
+}
+
+/* ---------- attachments ---------- */
+function attUrl(a) { return a.url || (a.assetId ? "/_blob/" + a.assetId : a.dataUrl || ""); }
+function renderAttachments() {
+  const box = $("#attachList");
+  if (!draftAttachments.length) { box.innerHTML = `<span class="muted">No report attached yet.</span>`; return; }
+  box.innerHTML = draftAttachments.map((a, i) => {
+    const url = attUrl(a);
+    const thumb = a.kind === "image" && url ? `<a href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" alt="${esc(a.name)}"></a>` : "";
+    return `<div class="att">${thumb}<div style="min-width:0"><div class="kind">${esc(a.kind)}</div><a href="${esc(url)}" target="_blank" rel="noopener" title="${esc(a.name)}">${esc(a.name || url)}</a></div><button type="button" data-rm="${i}" aria-label="Remove ${esc(a.name)}">×</button></div>`;
+  }).join("");
+}
+function updateUploadUI() {
+  const can = mode === "local" || mode === "signedout" || (mode === "shared" && assetsApi);
+  $("#uploadBtn").hidden = !can;
+  $("#uploadHint").textContent = !can
+    ? "File upload needs edit access to this tracker. Add a link to the report instead."
+    : mode === "shared" ? "Files and images up to 20 MB. You can also paste a screenshot while this window is open."
+    : "Files up to 1.5 MB are kept in this browser. For bigger reports, add a link. You can also paste a screenshot.";
+}
+function readAsDataURL(file) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = () => rej(r.error); r.readAsDataURL(file); }); }
+async function addFiles(files) {
+  for (const file of files) {
+    const kind = file.type.startsWith("image/") ? "image" : "file";
+    const name = file.name || (kind === "image" ? `screenshot-${todayISO()}.png` : "file");
+    try {
+      if (mode === "shared") {
+        if (!assetsApi) { toast("File upload needs edit access. Add a link instead.", 4000); return; }
+        toast(`Uploading ${name}…`, 60000);
+        const r = await assetsApi.upload(file);
+        draftAttachments.push({ kind, name, assetId: r.id, url: r.url, size: r.sizeBytes });
+        toast(`${name} attached. Save to keep it on the ticket.`);
+      } else {
+        if (file.size > LOCAL_FILE_LIMIT) { toast(`${name} is over 1.5 MB. Add a link to it instead.`, 4500); continue; }
+        draftAttachments.push({ kind, name, dataUrl: await readAsDataURL(file), size: file.size });
+      }
+    } catch (err) {
+      const code = err && err.code;
+      toast(code === "too_large" ? `${name} is too large (20 MB max).` : code === "unsupported_type" ? `${name}: this file type can't be uploaded. Use PDF, image, video or text, or add a link.` : `Couldn't upload ${name}: ${(err && err.message) || "unknown error"}`, 5000);
+    }
+  }
+  renderAttachments();
+}
+function addLink() {
+  let url = $("#linkUrl").value.trim(); if (!url) return;
+  if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+  try { new URL(url); } catch { toast("That doesn't look like a web address."); return; }
+  const name = $("#linkName").value.trim() || decodeURIComponent((url.match(/[^/?#]+\.(pptx|pdf|docx|xlsx)/i) || [url.replace(/^https?:\/\//, "").slice(0, 60)])[0]);
+  draftAttachments.push({ kind: "link", name, url });
+  $("#linkUrl").value = ""; $("#linkName").value = "";
+  renderAttachments();
+}
+
+/* ---------- Excel import / export ---------- */
+const norm = s => String(s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+function serialToISO(v) {
+  if (v == null || v === "") return "";
+  if (typeof v === "number") { const d = XLSX.SSF.parse_date_code(v); return d ? `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}` : ""; }
+  const p = Date.parse(v); if (isNaN(p)) return "";
+  const d = new Date(p); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function parseType(raw) {
+  const v = String(raw ?? "").replace(/\s+/g, " ").trim(), up = v.toUpperCase();
+  const type = up.includes("SCAR") ? "SCAR" : up.startsWith("RCA") ? "RCA" : "Other";
+  const ref = v.replace(/^(RCA|SCAR)(?=\s|$)\s*/i, "").trim();
+  return { type, ref };
+}
+function yn(v) { return /^(y|p)/i.test(String(v ?? "").trim()); }
+function parseWorkbook(buf) {
+  const wb = XLSX.read(buf, { type: "array", cellDates: false });
+  for (const name of wb.SheetNames) {
+    const ws = wb.Sheets[name];
+    const grid = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+    const hr = grid.findIndex(r => r && r.some(c => norm(c) === "quality issue description"));
+    if (hr < 0) continue;
+    const H = grid[hr].map(norm);
+    const col = (...tests) => H.findIndex(h => tests.some(t => typeof t === "function" ? t(h) : h.startsWith(t)));
+    const C = {
+      no: 0, detected: col("issue detected"), scar: col("scar #"), description: col("quality issue description"), severity: col("issue severity"),
+      status: col("issue status"), product: col("product name"), phase: col("product phase"), reporter: col("reporter"), pic: col("pic from"),
+      area: col("factory area"), units: col("# units impacted"), rootCause: col(h => h === "root cause"), sub: col("sub-root cause"),
+      closed: col("8d closure date"), link: col("report link"), comments: col("comments"), client: col("client"),
+      linesDown: col("lines down"), factoryEscape: col("factory escape"), scrap: col(h => h.includes("scrap")), rework: col(h => h.includes("rework")),
+      shipmentDelay: col(h => h.includes("shipment")), safety: col("potential safety"), capa: col("capa implemented"), eightD: col("8d issued"), repeat: col("repeat quality")
+    };
+    const out = [];
+    for (let r = hr + 1; r < grid.length; r++) {
+      const row = grid[r] || [], g = i => (i >= 0 ? row[i] : null), s = i => String(g(i) ?? "").replace(/[​]/g, "").replace(/\s+/g, " ").trim();
+      if (!s(C.description) && g(C.detected) == null) continue;
+      const { type, ref } = parseType(g(C.scar));
+      const status = (s(C.status).toUpperCase().match(/OPEN|MONITOR|CLOSE/) || ["OPEN"])[0];
+      const linkCell = C.link >= 0 ? ws[XLSX.utils.encode_cell({ r, c: C.link })] : null;
+      const href = linkCell && linkCell.l && linkCell.l.Target;
+      const flags = {};
+      ["linesDown", "factoryEscape", "scrap", "rework", "shipmentDelay", "safety", "capa", "eightD", "repeat"].forEach(k => { if (C[k] >= 0 && yn(g(C[k]))) flags[k] = true; });
+      out.push({
+        no: Number(g(C.no)) || null, detected: serialToISO(g(C.detected)), type, ref, description: s(C.description),
+        severity: (s(C.severity).toUpperCase().match(/S[012]/) || [""])[0], status, product: s(C.product),
+        phase: (s(C.phase).toUpperCase().match(/QB|MP/) || [""])[0], client: s(C.client) || "NVIDIA", reporter: s(C.reporter), pic: s(C.pic),
+        area: s(C.area), units: s(C.units), rootCause: s(C.rootCause), subRootCause: s(C.sub),
+        closedDate: status === "CLOSE" ? serialToISO(g(C.closed)) : "", comments: s(C.comments), flags,
+        attachments: href && /^https?:/i.test(href) ? [{ kind: "link", name: decodeURIComponent((href.match(/[^/=&?]+\.(pptx|pdf|docx|xlsx)/i) || ["Report"])[0]), url: href }] : []
+      });
+    }
+    return { sheet: name, rows: out };
+  }
+  return null;
+}
+async function handleImportFile(file) {
+  const box = $("#importBox");
+  try {
+    const parsed = parseWorkbook(await file.arrayBuffer());
+    if (!parsed) { box.hidden = false; box.innerHTML = `<div class="chart-panel"><b>No issue list found.</b> The workbook needs a sheet with a “Quality issue description” column header. <button class="btn small" type="button" data-act="import-cancel">Close</button></div>`; return; }
+    const key = t => `${t.detected}|${norm(t.description)}`;
+    const have = new Set(tickets.map(key));
+    const fresh = parsed.rows.filter(t => !have.has(key(t)));
+    pendingImport = fresh;
+    box.hidden = false;
+    box.innerHTML = `<div class="chart-panel" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span><b>${esc(file.name)}</b>, sheet “${esc(parsed.sheet)}”: ${parsed.rows.length} issues found, ${fresh.length} new${parsed.rows.length - fresh.length ? `, ${parsed.rows.length - fresh.length} already in the tracker and skipped` : ""}.</span><span class="grow" style="flex:1"></span>
+      <button class="btn" type="button" data-act="import-cancel">Cancel</button><button class="btn primary" type="button" data-act="import-go" ${fresh.length ? "" : "disabled"}>Import ${fresh.length} tickets</button></div>`;
+  } catch (err) {
+    box.hidden = false; box.innerHTML = `<div class="chart-panel"><b>Couldn't read that file.</b> ${esc(err.message)} <button class="btn small" type="button" data-act="import-cancel">Close</button></div>`;
+  }
+}
+async function runImport() {
+  if (!pendingImport) return;
+  const used = new Set(tickets.map(t => t.no));
+  let next = Math.max(0, ...tickets.map(t => t.no || 0), ...pendingImport.map(t => t.no || 0));
+  const btn = $('[data-act="import-go"]'); if (btn) { btn.disabled = true; btn.textContent = "Importing…"; }
+  let done = 0;
+  try {
+    for (const row of pendingImport) {
+      let no = row.no; if (!no || used.has(no)) no = ++next; used.add(no);
+      const t = { id: newId(), createdAt: new Date().toISOString(), ...row, no };
+      if (mode === "shared") await db.collection("tickets").doc(t.id).set(cleanForStore({ ...t, updatedAt: t.createdAt }));
+      else { t.updatedAt = t.createdAt; tickets.push(t); }
+      done++;
+    }
+    if (mode !== "shared") { persistLocal(); }
+    toast(`Imported ${done} tickets`);
+  } catch (err) { toast(`Imported ${done} tickets, then stopped. ${writeError(err)}`, 6000); }
+  pendingImport = null; $("#importBox").hidden = true; render();
+}
+async function exportExcel() {
+  const head = ["No.", "Issue detected", "Ticket type", "SCAR / bug # (NV)", "Quality issue description", "Severity", "Status", "Product name", "Product phase", "Client", "Reporter", "PIC from FXN", "Factory area", "Units impacted", "Root cause", "Sub-root cause", "Closed on", "Days open", ...FLAGS.map(f => f[1]), "Report", "Comments"];
+  const rows = filtered().sort((a, b) => (a.no || 0) - (b.no || 0)).map(t => [
+    qid(t.no), t.detected, t.type, t.ref, t.description, t.severity, t.status, t.product, t.phase, t.client, t.reporter, t.pic, t.area, t.units,
+    t.rootCause, t.subRootCause, t.closedDate, ageOf(t), ...FLAGS.map(([k]) => (t.flags && t.flags[k] ? "Y" : "N")),
+    (t.attachments || []).map(a => a.url || (a.assetId ? `(uploaded) ${a.name}` : `(in browser) ${a.name}`)).join("\n"), t.comments
+  ]);
+  const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
+  ws["!cols"] = head.map((h, i) => ({ wch: i === 4 || i === head.length - 1 ? 50 : 14 }));
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Quality Issue List");
+  const filename = `FXN_HT_Quality_Issues_${todayISO()}.xlsx`;
+  const data = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+  if (mode === "shared") {
+    try { await downloadsApi.save({ filename, data: new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }) }); }
+    catch (err) { if (err && err.code !== "declined") toast("Couldn't save the file: " + (err.message || err.code), 5000); }
+  } else {
+    const url = URL.createObjectURL(new Blob([data], { type: "application/octet-stream" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: filename }); document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  }
+}
+
+/* ---------- events ---------- */
+function bindUI() {
+  $$(".tabs button").forEach(b => b.addEventListener("click", () => { view = b.dataset.view; saveUI(); render(); }));
+  $$(".subtabs button").forEach(b => b.addEventListener("click", () => { chartKind = b.dataset.chart; saveUI(); renderChart(); }));
+  $("#newBtn").addEventListener("click", () => openTicket(null));
+  ["#fSearch", "#fStatus", "#fSev", "#fType", "#fPhase", "#fArea", "#fProduct"].forEach(s => $(s).addEventListener("input", () => { renderKPIs(); view === "tickets" ? renderTable() : renderChart(); }));
+  $("#tableWrap").addEventListener("click", e => {
+    const s = e.target.closest("[data-sort]");
+    if (s) { const k = s.dataset.sort; sort = { key: k, dir: sort.key === k && sort.dir === "desc" ? "asc" : "desc" }; saveUI(); renderTable(); return; }
+    const tr = e.target.closest("tr[data-id]"); if (tr) openTicket(tickets.find(t => t.id === tr.dataset.id));
+  });
+  $("#tableWrap").addEventListener("keydown", e => { const tr = e.target.closest("tr[data-id]"); if (tr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openTicket(tickets.find(t => t.id === tr.dataset.id)); } });
+  document.addEventListener("click", e => {
+    const a = e.target.closest("[data-act]"); if (!a) return;
+    if (a.dataset.act === "new") openTicket(null);
+    if (a.dataset.act === "import") $("#importFile").click();
+    if (a.dataset.act === "import-cancel") { pendingImport = null; $("#importBox").hidden = true; }
+    if (a.dataset.act === "import-go") runImport();
+  });
+  $("#chartControls").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.oc) ocMode = b.dataset.oc; if (b.dataset.pd) paretoDim = b.dataset.pd; if (b.dataset.pm) paretoMetric = b.dataset.pm;
+    saveUI(); renderChart();
+  });
+  $("#chartControls").addEventListener("change", e => { if (e.target.id === "pBlank") { paretoBlank = e.target.checked; renderChart(); } });
+  $("#importBtn").addEventListener("click", () => $("#importFile").click());
+  $("#importFile").addEventListener("change", e => { const f = e.target.files[0]; if (f) handleImportFile(f); e.target.value = ""; });
+  $("#exportBtn").addEventListener("click", exportExcel);
+
+  $("#ticketForm").addEventListener("submit", submitForm);
+  $("#dlgClose").addEventListener("click", closeDialog);
+  $("#cancelBtn").addEventListener("click", closeDialog);
+  $("#dlg").addEventListener("cancel", () => { editing = null; });
+  $$('input[name="status"]').forEach(r => r.addEventListener("change", syncClosed));
+  $("#ticketForm").addEventListener("input", e => { const f = e.target.closest(".field.invalid"); if (f) f.classList.remove("invalid"); });
+  $("#addLinkBtn").addEventListener("click", addLink);
+  $("#linkUrl").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addLink(); } });
+  $("#uploadBtn").addEventListener("click", () => $("#uploadInput").click());
+  $("#uploadInput").addEventListener("change", e => { addFiles([...e.target.files]); e.target.value = ""; });
+  $("#attachList").addEventListener("click", e => { const b = e.target.closest("[data-rm]"); if (b) { draftAttachments.splice(+b.dataset.rm, 1); renderAttachments(); } });
+  $("#dlg").addEventListener("paste", e => {
+    const files = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith("image/"));
+    if (files.length && !$("#uploadBtn").hidden) { e.preventDefault(); $("#updDetails").open = true; addFiles(files); }
+  });
+  $("#delZone").addEventListener("click", async e => {
+    if (e.target.id === "delBtn") {
+      $("#delZone").innerHTML = `<span class="confirm-del">Delete ${esc(qid(editing.no))} for everyone? <button class="btn danger small" type="button" id="delYes">Delete</button><button class="btn small" type="button" id="delNo">Keep</button></span>`;
+    } else if (e.target.id === "delNo") {
+      $("#delZone").innerHTML = `<button class="btn danger small" type="button" id="delBtn">Delete</button>`;
+    } else if (e.target.id === "delYes") {
+      const id = editing.id, n = editing.no;
+      try { await deleteTicket(id); toast(`${qid(n)} deleted`); closeDialog(); } catch (err) { $("#formErr").textContent = writeError(err); }
+    }
+  });
+  const rerender = () => { if (view === "analysis") renderChart(); };
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", rerender);
+  new MutationObserver(rerender).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+}
+
+boot();
+})();
+</script>
+<!--ARTIFACT-END-->
+</body>
+</html>
