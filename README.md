@@ -73,13 +73,7 @@ The first version used Electron and a MySQL database, which made the project too
 
 ## Quality issue tracker
 
-`quality-tracker/index.html` is a separate single-page tracker for FXN HT quality issues (SCAR / RCA tickets).
-Open it at https://tylertrinh12803.github.io/digital-cook-book-app/quality-tracker/ once this branch is on the Pages branch.
-
-- **+ New ticket**: issue detected, ticket type, quality issue description, severity (S0/S1/S2), product, phase (QB/MP), client, reporter, PIC from FXN, units impacted, factory area are required.
-- Click a ticket to add root cause, sub-root cause, report (links, uploaded files or pasted screenshots) and status (Open / Monitor / Close).
-- **Analysis**: open vs closed per month, tickets per month, SCARs per month, RCAs per month, and a Pareto of root causes, sub-root causes or factory areas.
-- **Import Excel** loads the existing `FXN_HT_Quality_Issue_tracker` workbook; **Export Excel** saves the current list.
-
-Opened from GitHub Pages, tickets are stored in that browser only (no issue data is kept in this repo).
-
+`quality-tracker/` is a separate FXN HT quality-issue tracker that runs only on your own computer
+(http://localhost:8080). Start it with `start-windows.bat` or `sh start-mac-linux.sh`; see
+[quality-tracker/README.md](quality-tracker/README.md). Tickets and uploaded reports are saved in
+`quality-tracker/data/`, which git ignores, so no issue data is ever committed here.
