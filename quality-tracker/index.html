@@ -970,7 +970,7 @@ function parseWorkbook(buf) {
       const { type, ref } = parseType(g(C.scar));
       const status = (s(C.status).toUpperCase().match(/OPEN|MONITOR|CLOSE/) || ["OPEN"])[0];
       const linkCell = C.link >= 0 ? ws[XLSX.utils.encode_cell({ r, c: C.link })] : null;
-      const href = linkCell && linkCell.l && linkCell.l.Target;
+      const href = linkCell && linkCell.l && String(linkCell.l.Target || "").replace(/&amp;/g, "&");
       const flags = {};
       ["linesDown", "factoryEscape", "scrap", "rework", "shipmentDelay", "safety", "capa", "eightD", "repeat"].forEach(k => { if (C[k] >= 0 && yn(g(C[k]))) flags[k] = true; });
       out.push({
