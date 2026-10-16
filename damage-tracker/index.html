@@ -112,9 +112,10 @@ th { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color:
   <div class="wrap">
     <div class="brand">
       <h1>FXN HT Incoming Damage</h1>
-      <span>Damaged units checked in per day · IB4 Houston</span>
+      <span id="subtitle">Damaged units checked in per day · IB4 Houston</span>
     </div>
-    <button class="btn primary" type="button" data-act="import">Import check-in log</button>
+    <button class="btn" type="button" id="shareBtn" hidden title="Save a read-only copy of these charts as one HTML file anyone can open">Share as HTML</button>
+    <button class="btn primary" type="button" id="importBtn" data-act="import">Import check-in log</button>
     <input type="file" id="importFile" accept=".xlsx,.xlsm,.xls" hidden>
   </div>
 </header>
@@ -152,7 +153,7 @@ const LS_KEY = "fxnht-damage-checkin-v1";
 const UI_KEY = "fxnht-damage-ui-v1";
 const POLL_MS = 8000;
 
-let mode = "starting"; // starting | server (start script running) | local (page opened as a file)
+let mode = "starting"; // starting | server (start script running) | local (page opened as a file) | snapshot (shared HTML copy)
 let checkin = { rows: [] }, sig = "", lost = false;
 let range = "all", charts = [], pending = null;
 
@@ -198,7 +199,15 @@ async function pull() {
 async function boot() {
   try { const s = JSON.parse(lsGet(UI_KEY) || "{}"); if (s.range) range = s.range; } catch {}
   bind();
-  if (location.protocol.startsWith("http")) {
+  if (window.SNAPSHOT) {
+    // A shared copy: the data is built into the file and can't be changed here.
+    mode = "snapshot";
+    accept(window.SNAPSHOT.data);
+    const when = new Date(window.SNAPSHOT.takenAt);
+    $("#subtitle").textContent = `Shared copy made ${fmtDate(window.SNAPSHOT.takenAt.slice(0, 10))} ${when.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} · IB4 Houston`;
+    $("#importBtn").hidden = true;
+    banner("<b>This is a shared copy.</b> It shows the check-in log as it was when it was made. Ask for a new copy to see newer days.");
+  } else if (location.protocol.startsWith("http")) {
     try {
       accept(await api("GET", "api/checkin"));
       mode = "server";
@@ -242,6 +251,7 @@ function render() {
   $$("[data-range]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.range === range)));
   charts.forEach(c => c.destroy()); charts = [];
   const body = $("#body");
+  $("#shareBtn").hidden = !(mode === "server" && checkin.rows.length);
   if (mode === "starting") { body.innerHTML = `<div class="panel empty"><p>Loading…</p></div>`; return; }
   if (!checkin.rows.length) {
     body.innerHTML = `<div class="panel empty"><h2>No check-in log yet</h2><p>Import the Check-in workbook. Its CHECK-IN LOG sheet has one row per day with the damaged CP Rivet, CP TIM, CX8, Busbar, Tray and Paddle board units that came in. Import it again whenever it's updated.</p><button class="btn primary" type="button" data-act="import">Import check-in log</button></div>`;
@@ -358,8 +368,41 @@ async function runImport() {
   pending = null; showImport(""); render();
 }
 
+/* ---------- share as one HTML file ---------- */
+// Builds a read-only copy of this page with the chart library, fonts and current log built in,
+// so it opens from an email or Teams attachment with no install and no internet.
+async function buildSnapshot() {
+  const get = async u => { const r = await fetch(u, { cache: "no-store" }); if (!r.ok) throw new Error(`${u} didn't load`); return r; };
+  const b64 = buf => { const a = new Uint8Array(buf); let s = ""; for (let i = 0; i < a.length; i += 0x8000) s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(s); };
+  let html = await (await get("index.html")).text();
+  const chartJs = (await (await get("vendor/chart.umd.min.js")).text()).replace(/<\/script/gi, "<\\/script");
+  html = html.replace('<script src="vendor/chart.umd.min.js"><\/script>', () => `<script>${chartJs}<\/script>`);
+  html = html.replace('<script src="vendor/xlsx.full.min.js"><\/script>\n', "");
+  for (const f of [...new Set(html.match(/vendor\/fonts\/[\w.-]+\.woff2/g) || [])]) {
+    const data = b64(await (await get(f)).arrayBuffer());
+    html = html.split(`url("${f}")`).join(`url(data:font/woff2;base64,${data})`);
+  }
+  const snap = JSON.stringify({ data: checkin, takenAt: new Date().toISOString() }).replace(/</g, "\\u003c");
+  html = html.replace("<script>\n(() => {", () => `<script>window.SNAPSHOT = ${snap};<\/script>\n<script>\n(() => {`);
+  return html;
+}
+async function share() {
+  const btn = $("#shareBtn"); btn.disabled = true; btn.textContent = "Making copy…";
+  try {
+    const html = await buildSnapshot();
+    const name = `FXN-HT-Incoming-Damage-${new Date().toISOString().slice(0, 10)}.html`;
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: name });
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast(`Saved ${name}. Send it by email or Teams; it opens in any browser.`, 5000);
+  } catch (err) { toast(`Couldn't make the copy: ${err.message}`, 6000); }
+  finally { btn.disabled = false; btn.textContent = "Share as HTML"; }
+}
+
 /* ---------- events ---------- */
 function bind() {
+  $("#shareBtn").addEventListener("click", share);
   document.addEventListener("click", e => {
     const a = e.target.closest("[data-act]");
     if (a) {

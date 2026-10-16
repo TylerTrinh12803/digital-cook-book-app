@@ -22,6 +22,15 @@ Click **Import check-in log** and pick the Check-in workbook. The app reads its 
 one row per day, one column per part. Import it again whenever the workbook is updated. Days already
 in the app are refreshed and new days are added.
 
+## Share the charts
+
+Click **Share as HTML** to save a read-only copy of the charts as one HTML file (about 400 KB). Send it by
+email or Teams, or put it on a shared drive. Anyone can open it in a browser by double-clicking: no install,
+no Python and no internet, because the chart library, fonts and data are all inside the file. The copy shows
+the log as it was when you made it, with the date on top; make a new copy after each import.
+
+To let people see the live charts instead, see "Let teammates open it" below.
+
 ## How the trend is worked out
 
 For each part, the logged days in the chosen range (all days, last 2 weeks or last week) are split in
