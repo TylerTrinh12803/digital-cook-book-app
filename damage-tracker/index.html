@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FXN HT Incoming Damage</title>
+<style>
+/* Fonts ship in vendor/fonts so the page works with no internet connection. */
+@font-face { font-family: "IBM Plex Sans"; font-weight: 400; font-display: swap; src: url("vendor/fonts/ibm-plex-sans-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-weight: 500; font-display: swap; src: url("vendor/fonts/ibm-plex-sans-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Sans"; font-weight: 600; font-display: swap; src: url("vendor/fonts/ibm-plex-sans-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-weight: 400; font-display: swap; src: url("vendor/fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-weight: 600; font-display: swap; src: url("vendor/fonts/barlow-condensed-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-weight: 700; font-display: swap; src: url("vendor/fonts/barlow-condensed-latin-700-normal.woff2") format("woff2"); }
+
+/* Layout: one header band, a range/import bar, then a grid of small multiples (one chart per part),
+   each with its own scale and a falling/rising verdict. Numbers table folds away underneath. */
+:root {
+  --bg: #f0f1f6;
+  --surface: #ffffff;
+  --sunken: #e6e8f0;
+  --ink: #171b2b;
+  --muted: #5a6075;
+  --line: #d6d9e4;
+  --accent: #3b4cb0;
+  --accent-ink: #ffffff;
+  --accent-soft: #dfe3f7;
+  --good: #1f8456;
+  --bad: #c33030;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --radius: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1119; --surface: #171a26; --sunken: #1f2332; --ink: #e3e6f0; --muted: #969cb3; --line: #2c3144;
+    --accent: #8e9cf2; --accent-ink: #0c1030; --accent-soft: #252c55; --good: #4fc48e; --bad: #f06a6a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1119; --surface: #171a26; --sunken: #1f2332; --ink: #e3e6f0; --muted: #969cb3; --line: #2c3144;
+  --accent: #8e9cf2; --accent-ink: #0c1030; --accent-soft: #252c55; --good: #4fc48e; --bad: #f06a6a;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font-body); }
+.wrap { max-width: 1280px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.top { background: var(--surface); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding-block: 10px; }
+.brand { display: flex; flex-direction: column; line-height: 1.1; margin-right: auto; min-width: 0; }
+.brand h1 { margin: 0; font: 700 1.6rem/1 var(--font-display); letter-spacing: .01em; text-transform: uppercase; }
+.brand span { font-size: .78rem; color: var(--muted); letter-spacing: .04em; }
+.btn { border: 1px solid var(--line); background: var(--surface); padding: 7px 14px; border-radius: var(--radius); cursor: pointer; font-weight: 500; white-space: nowrap; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.small { padding: 4px 10px; font-size: .85rem; }
+.btn:disabled { opacity: .55; cursor: default; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.seg button { border: 0; background: var(--surface); padding: 6px 11px; cursor: pointer; font-size: .85rem; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+main { padding-block: 4px 40px; }
+.banner { margin-top: 12px; padding: 8px 12px; border-radius: var(--radius); background: var(--accent-soft); font-size: .88rem; }
+.head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between; margin-top: 16px; }
+.head h2 { margin: 0; font: 600 1.5rem/1.1 var(--font-display); text-transform: uppercase; letter-spacing: .02em; text-wrap: balance; }
+.head p { margin: 2px 0 0; color: var(--muted); font-size: .85rem; max-width: 72ch; }
+.controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); margin-top: 12px; }
+.import-box { padding: 12px 14px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.import-box .grow { flex: 1; }
+
+.key { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .8rem; color: var(--muted); margin-top: 12px; align-items: center; }
+.key i { display: inline-block; vertical-align: middle; margin-right: 6px; }
+.key .sw-bar { width: 10px; height: 12px; border-radius: 2px 2px 0 0; background: var(--accent); }
+.key .sw-line { width: 18px; height: 2px; background: var(--ink); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 12px; margin-top: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 14px 10px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.card header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.card h3 { margin: 0; font: 600 1.25rem/1 var(--font-display); text-transform: uppercase; letter-spacing: .03em; }
+.stats { margin: 0; font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stats b { color: var(--ink); font-weight: 600; }
+.canvas { position: relative; height: 200px; }
+.none { height: 200px; display: grid; place-items: center; color: var(--muted); font-size: .85rem; text-align: center; }
+.trend { display: inline-flex; gap: 6px; align-items: center; font-size: .78rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.trend.down { color: var(--good); } .trend.up { color: var(--bad); } .trend.flat, .trend.few { color: var(--muted); }
+
+.numbers summary { cursor: pointer; font-weight: 600; padding: 10px 14px; }
+.table-scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; }
+th, td { padding: 6px 10px; border-top: 1px solid var(--line); text-align: right; }
+th:first-child, td:first-child { text-align: left; }
+th { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; background: var(--sunken); }
+.mono { font-family: var(--font-mono); font-size: .82rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.empty { padding: 40px 20px; text-align: center; color: var(--muted); }
+.empty h2 { font: 600 1.5rem/1.2 var(--font-display); color: var(--ink); margin: 0 0 6px; text-transform: uppercase; }
+.empty p { margin: 0 auto 14px; max-width: 56ch; }
+.toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: var(--radius); font-size: .9rem; z-index: 50; max-width: calc(100vw - 32px); box-shadow: 0 6px 20px rgb(0 0 0 / .25); }
+@media (max-width: 640px) { .brand h1 { font-size: 1.3rem; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <h1>FXN HT Incoming Damage</h1>
+      <span>Damaged units checked in per day · IB4 Houston</span>
+    </div>
+    <button class="btn primary" type="button" data-act="import">Import check-in log</button>
+    <input type="file" id="importFile" accept=".xlsx,.xlsm,.xls" hidden>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="banner" id="modeBanner" hidden></div>
+  <div class="panel import-box" id="importBox" hidden></div>
+
+  <div class="head">
+    <div>
+      <h2>Damaged units checked in per day</h2>
+      <p id="meta">Daily counts from the CHECK-IN LOG sheet. Each part has its own scale.</p>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Date range">
+        <button type="button" data-range="all" aria-pressed="true">All days</button>
+        <button type="button" data-range="14" aria-pressed="false">Last 2 weeks</button>
+        <button type="button" data-range="7" aria-pressed="false">Last week</button>
+      </div>
+    </div>
+  </div>
+  <div id="body"></div>
+</main>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="vendor/chart.umd.min.js"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script>
+(() => {
+"use strict";
+
+const PARTS = [["cpRivet", "CP Rivet"], ["cpTim", "CP TIM"], ["cx8", "CX8"], ["busbar", "Busbar"], ["trays", "Tray"], ["paddle", "Paddle board"]];
+const LS_KEY = "fxnht-damage-checkin-v1";
+const UI_KEY = "fxnht-damage-ui-v1";
+const POLL_MS = 8000;
+
+let mode = "starting"; // starting | server (start script running) | local (page opened as a file)
+let checkin = { rows: [] }, sig = "", lost = false;
+let range = "all", charts = [], pending = null;
+
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const norm = s => String(s ?? "").toLowerCase().replace(/\s+/g, " ").trim();
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const fmtDate = iso => { if (!iso) return ""; const [y, m, d] = iso.split("-"); return `${+d} ${MONTHS[+m - 1]} ${y}`; };
+const shortDate = iso => { const [, m, d] = iso.split("-"); return `${+m}/${+d}`; };
+const addDays = (iso, n) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+function toast(msg, ms = 3000) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), ms); }
+function lsGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } }
+function banner(html) { const b = $("#modeBanner"); b.hidden = !html; b.innerHTML = html || ""; }
+
+/* ---------- storage ---------- */
+async function api(method, path, body, headers) {
+  const r = await fetch(path, { method, body, headers, cache: "no-store" });
+  if (!r.ok) { let msg = r.statusText; try { msg = (await r.json()).error || msg; } catch {} throw new Error(msg); }
+  return r.json();
+}
+function accept(data) {
+  const s = JSON.stringify(data);
+  if (s === sig || !data || !Array.isArray(data.rows)) return false;
+  sig = s; checkin = data; return true;
+}
+async function save() {
+  if (mode === "server") await api("PUT", "api/checkin", JSON.stringify(checkin), { "Content-Type": "application/json" });
+  else if (!lsSet(LS_KEY, JSON.stringify(checkin))) throw new Error("this browser refused to save");
+  sig = JSON.stringify(checkin);
+}
+async function pull() {
+  try {
+    if (accept(await api("GET", "api/checkin"))) render();
+    if (lost) { lost = false; banner(""); }
+  } catch {
+    if (!lost) { lost = true; banner("<b>Lost contact with the app's server.</b> Check that the start window is still open. The page reconnects by itself."); }
+  }
+}
+async function boot() {
+  try { const s = JSON.parse(lsGet(UI_KEY) || "{}"); if (s.range) range = s.range; } catch {}
+  bind();
+  if (location.protocol.startsWith("http")) {
+    try {
+      accept(await api("GET", "api/checkin"));
+      mode = "server";
+      setInterval(pull, POLL_MS);
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) pull(); });
+    } catch { mode = "local"; }
+  } else mode = "local";
+  if (mode === "local") {
+    try { accept(JSON.parse(lsGet(LS_KEY) || "null")); } catch {}
+    banner("<b>Opened as a plain file, so the log saves in this browser only.</b> To keep it in the app's data folder instead, close this tab and run the start file (start-windows.bat, or start-mac-linux.sh).");
+  }
+  render();
+}
+
+/* ---------- trend ---------- */
+function rowsInRange() {
+  const rows = checkin.rows.slice().sort((a, b) => a.date.localeCompare(b.date));
+  if (range === "all" || !rows.length) return rows;
+  const from = addDays(rows[rows.length - 1].date, -(Number(range) - 1));
+  return rows.filter(r => r.date >= from);
+}
+// Compare the average of the earlier half of the logged days with the later half.
+function trendOf(vals) {
+  const n = vals.length;
+  if (n < 4) return { kind: "few", n };
+  const h = Math.floor(n / 2), mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const early = mean(vals.slice(0, h)), recent = mean(vals.slice(n - h));
+  const pct = early ? (recent - early) / early * 100 : recent > 0 ? 100 : 0;
+  return { kind: pct <= -15 ? "down" : pct >= 15 ? "up" : "flat", early, recent, pct, n, h };
+}
+function badge(t) {
+  if (t.kind === "few") return `<span class="trend few">Not enough days yet (${t.n})</span>`;
+  const p = Math.abs(Math.round(t.pct));
+  if (t.kind === "down") return `<span class="trend down">▼ Falling ${p}%</span>`;
+  if (t.kind === "up") return `<span class="trend up">▲ Rising ${p}%</span>`;
+  return `<span class="trend flat">▬ Flat (${t.pct > 0 ? "+" : t.pct < 0 ? "−" : ""}${p}%)</span>`;
+}
+
+/* ---------- render ---------- */
+function render() {
+  $$("[data-range]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.range === range)));
+  charts.forEach(c => c.destroy()); charts = [];
+  const body = $("#body");
+  if (mode === "starting") { body.innerHTML = `<div class="panel empty"><p>Loading…</p></div>`; return; }
+  if (!checkin.rows.length) {
+    body.innerHTML = `<div class="panel empty"><h2>No check-in log yet</h2><p>Import the Check-in workbook. Its CHECK-IN LOG sheet has one row per day with the damaged CP Rivet, CP TIM, CX8, Busbar, Tray and Paddle board units that came in. Import it again whenever it's updated.</p><button class="btn primary" type="button" data-act="import">Import check-in log</button></div>`;
+    return;
+  }
+  const rows = rowsInRange();
+  const all = checkin.rows.map(r => r.date).sort();
+  $("#meta").textContent = `Damaged units logged on ${all.length} check-in days, ${fmtDate(all[0])} to ${fmtDate(all[all.length - 1])}${checkin.source ? `, from ${checkin.source}` : ""}. Each part has its own scale. The trend compares the average of the earlier half of the logged days with the later half; blank days in the log are left out, not counted as zero.`;
+  const fmt = v => (Math.round(v * 10) / 10).toLocaleString();
+  const cards = PARTS.map(([k, label]) => {
+    const pts = rows.filter(r => typeof r[k] === "number");
+    const t = trendOf(pts.map(p => p[k]));
+    const last = pts[pts.length - 1];
+    const stats = t.kind === "few"
+      ? (pts.length ? `Latest <b>${last[k]}</b> on ${fmtDate(last.date)}` : "No counts logged in this range")
+      : `Avg per day <b>${fmt(t.early)}</b> (first ${t.h} days) → <b>${fmt(t.recent)}</b> (last ${t.h}) · latest <b>${last[k]}</b> on ${shortDate(last.date)}`;
+    return { k, label, pts, html: `<article class="card"><header><h3>${esc(label)}</h3>${badge(t)}</header><p class="stats">${stats}</p>${pts.length ? `<div class="canvas"><canvas id="c_${k}" role="img" aria-label="${esc(label)} damaged units per day"></canvas></div>` : `<div class="none">Nothing logged for ${esc(label)} in this range.</div>`}</article>` };
+  });
+  body.innerHTML = `<div class="key"><span><i class="sw-bar"></i>Damaged units that day</span><span><i class="sw-line"></i>3-day average</span><span>▼ falling · ▲ rising · ▬ within ±15%</span></div>
+    <div class="grid">${cards.map(c => c.html).join("")}</div>
+    <details class="panel numbers"><summary>Show the numbers</summary><div class="table-scroll"><table><thead><tr><th>Date</th>${PARTS.map(([, l]) => `<th>${esc(l)}</th>`).join("")}</tr></thead><tbody>${
+      rows.slice().reverse().map(r => `<tr><td class="mono">${esc(fmtDate(r.date))}</td>${PARTS.map(([k]) => `<td class="mono">${typeof r[k] === "number" ? r[k] : "–"}</td>`).join("")}</tr>`).join("")}</tbody></table></div></details>`;
+  if (typeof Chart === "undefined") return;
+  const accent = css("--accent"), ink = css("--ink"), muted = css("--muted"), grid = css("--line");
+  Chart.defaults.font.family = css("--font-body"); Chart.defaults.color = muted;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  cards.forEach(c => {
+    if (!c.pts.length) return;
+    const vals = c.pts.map(p => p[c.k]);
+    const avg3 = vals.map((_, i) => { const w = vals.slice(Math.max(0, i - 2), i + 1); return Math.round(w.reduce((a, b) => a + b, 0) / w.length * 10) / 10; });
+    charts.push(new Chart($("#c_" + c.k), {
+      type: "bar",
+      data: {
+        labels: c.pts.map(p => shortDate(p.date)),
+        datasets: [
+          { type: "bar", label: "Damaged", data: vals, backgroundColor: accent, borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: "bottom", maxBarThickness: 22, order: 2 },
+          { type: "line", label: "3-day average", data: avg3, borderColor: ink, backgroundColor: ink, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: .3, order: 1 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: reduced ? false : { duration: 300 },
+        interaction: { mode: "index", intersect: false },
+        layout: { padding: { top: 4 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { backgroundColor: css("--surface"), titleColor: ink, bodyColor: ink, borderColor: grid, borderWidth: 1, padding: 10,
+            callbacks: { title: items => fmtDate(c.pts[items[0].dataIndex].date) } }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: muted, maxRotation: 0, autoSkip: true, autoSkipPadding: 8 }, border: { color: grid } },
+          y: { beginAtZero: true, grace: "8%", grid: { color: grid }, border: { display: false }, ticks: { color: muted, precision: 0 } }
+        }
+      }
+    }));
+  });
+}
+
+/* ---------- Excel import ---------- */
+function serialToISO(v) {
+  if (v == null || v === "") return "";
+  if (typeof v === "number") { const d = XLSX.SSF.parse_date_code(v); return d ? `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}` : ""; }
+  const p = Date.parse(v); if (isNaN(p)) return "";
+  const d = new Date(p); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+// Finds the sheet with a Date column and the most part columns, preferring one named like "Check-in".
+function parseCheckin(wb) {
+  const tests = { cpRivet: h => h.includes("rivet"), cpTim: h => /\btim\b/.test(h), cx8: h => h.includes("cx8"), busbar: h => h.includes("busbar"), trays: h => h.startsWith("tray"), paddle: h => h.includes("paddle") };
+  let best = null;
+  for (const name of wb.SheetNames) {
+    const grid = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: null });
+    const hr = grid.findIndex(r => r && r.some(c => norm(c) === "date") && r.some(c => Object.values(tests).some(t => t(norm(c)))));
+    if (hr < 0) continue;
+    const H = grid[hr].map(norm), cols = {};
+    for (const [k, t] of Object.entries(tests)) { const i = H.findIndex(t); if (i >= 0) cols[k] = i; }
+    const score = Object.keys(cols).length + (/check.?in/i.test(name) ? 10 : 0);
+    if (!best || score > best.score) best = { name, grid, hr, dateCol: H.indexOf("date"), cols, score };
+  }
+  if (!best) return null;
+  const rows = [];
+  for (let r = best.hr + 1; r < best.grid.length; r++) {
+    const row = best.grid[r] || [];
+    const date = serialToISO(row[best.dateCol]);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    const out = { date };
+    for (const [k, i] of Object.entries(best.cols)) { const v = row[i]; out[k] = typeof v === "number" ? v : (v != null && v !== "" && !isNaN(Number(v)) ? Number(v) : null); }
+    if (PARTS.some(([k]) => typeof out[k] === "number")) rows.push(out);
+  }
+  return { sheet: best.name, rows };
+}
+function showImport(html) { const b = $("#importBox"); b.hidden = !html; b.innerHTML = html || ""; }
+async function handleFile(file) {
+  try {
+    const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: false });
+    const ci = parseCheckin(wb);
+    if (!ci || !ci.rows.length) return showImport(`<span><b>No check-in log found in ${esc(file.name)}.</b> The app reads a sheet with a Date column and part columns (CP Rivet, CP TIM, CX8, Busbar, Trays, Paddle Board).</span><span class="grow"></span><button class="btn small" type="button" data-act="import-cancel">Close</button>`);
+    const known = new Set(checkin.rows.map(r => r.date));
+    const added = ci.rows.filter(r => !known.has(r.date)).length, updated = ci.rows.length - added;
+    pending = { rows: ci.rows, source: file.name };
+    showImport(`<span><b>${esc(file.name)}</b>, sheet “${esc(ci.sheet)}”: ${ci.rows.length} check-in days (${[added && `${added} new`, updated && `${updated} already here, will be refreshed`].filter(Boolean).join(", ")}).</span><span class="grow"></span>
+      <button class="btn" type="button" data-act="import-cancel">Cancel</button><button class="btn primary" type="button" data-act="import-go">Import</button>`);
+  } catch (err) {
+    showImport(`<span><b>Couldn't read that file.</b> ${esc(err.message)}</span><span class="grow"></span><button class="btn small" type="button" data-act="import-cancel">Close</button>`);
+  }
+}
+async function runImport() {
+  if (!pending) return;
+  const btn = $('[data-act="import-go"]'); if (btn) { btn.disabled = true; btn.textContent = "Importing…"; }
+  const before = checkin;
+  const byDate = new Map(checkin.rows.map(r => [r.date, r]));
+  pending.rows.forEach(r => byDate.set(r.date, r));
+  checkin = { rows: [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)), source: pending.source, importedAt: new Date().toISOString() };
+  try { await save(); toast(`Imported ${pending.rows.length} check-in days`); }
+  catch (err) { checkin = before; toast(`Couldn't save the log: ${err.message}. Check that the start window is still open.`, 6000); }
+  pending = null; showImport(""); render();
+}
+
+/* ---------- events ---------- */
+function bind() {
+  document.addEventListener("click", e => {
+    const a = e.target.closest("[data-act]");
+    if (a) {
+      if (a.dataset.act === "import") $("#importFile").click();
+      if (a.dataset.act === "import-cancel") { pending = null; showImport(""); }
+      if (a.dataset.act === "import-go") runImport();
+    }
+    const r = e.target.closest("[data-range]");
+    if (r) { range = r.dataset.range; lsSet(UI_KEY, JSON.stringify({ range })); render(); }
+  });
+  $("#importFile").addEventListener("change", e => { const f = e.target.files[0]; if (f) handleFile(f); e.target.value = ""; });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+  new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+}
+
+boot();
+})();
+</script>
+</body>
+</html>

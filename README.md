@@ -77,3 +77,10 @@ The first version used Electron and a MySQL database, which made the project too
 (http://localhost:8080). Start it with `start-windows.bat` or `sh start-mac-linux.sh`; see
 [quality-tracker/README.md](quality-tracker/README.md). Tickets and uploaded reports are saved in
 `quality-tracker/data/`, which git ignores, so no issue data is ever committed here.
+
+## Incoming damage trend
+
+`damage-tracker/` is a second, separate local app (http://localhost:8081) that charts the damaged
+CP Rivet, CP TIM, CX8, Busbar, Tray and Paddle board units checked in per day from the Check-in
+workbook. See [damage-tracker/README.md](damage-tracker/README.md). Its data folder is git-ignored too.
+

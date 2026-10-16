@@ -14,24 +14,18 @@ and fonts are all in this folder, and tickets are saved in `data/` next to these
 If you got the zip, your issues from `FXN_HT_Quality_Issue_tracker` are already loaded.
 To load them into an empty tracker, click **Import Excel** and pick the workbook.
 
-## Incoming damage trend
-
-The **Incoming damage** tab charts the damaged CP Rivet, CP TIM, CX8, Busbar, Tray and Paddle board
-units checked in each day, one chart per part, with a 3-day average and a falling / rising verdict.
-Click **Import check-in log** and pick the Check-in workbook (it reads the CHECK-IN LOG sheet).
-Import it again whenever the workbook is updated: days already in the tracker are refreshed, new days are added.
-
 ## Update to a newer version
 
 Unzip the new version over this folder and replace the files when asked. Your `data/` folder is not in
-the update, so tickets, uploads and the check-in log stay as they are. Then close the start window and start it again.
+the update, so tickets and uploads stay as they are. Then close the start window and start it again.
+
+The daily damage trend is a separate app, **FXN HT Incoming Damage**, in its own folder (port 8081).
 
 ## Where things are saved
 
 | What | Where |
 |---|---|
 | Tickets | `data/tickets.json` |
-| Check-in log (damage trend) | `data/checkin.json` |
 | Uploaded reports, images | `data/uploads/` |
 | One copy of the tickets per day | `data/backups/` |
 
