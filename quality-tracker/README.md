@@ -21,9 +21,14 @@ plus the reports attached to tickets. Use **Import PowerPoints** to add several 
 (the SCAR number and type are guessed from the file name; check them with **Edit**), or **+ Add report**
 for one report with a link, a PowerPoint or a PDF. Link a report to its ticket and it shows on the ticket too.
 
-Every report has a **Convert to PDF** button. For an uploaded PowerPoint it converts right away. For a report
-that is only a SharePoint link, download the PowerPoint first; the button asks you to pick it, keeps it with
-the report and converts it. The PDF shows on the report and on its ticket.
+Each report converts in two steps:
+
+1. **Upload PowerPoint**: for a report that is a SharePoint link, download the PowerPoint from SharePoint and
+   upload it into that report (in the reports tab, or on the ticket under Report). It's kept with the report;
+   **Replace PowerPoint** swaps in a newer version.
+2. **Convert to PDF**: makes the PDF, which then opens from **Open PDF** on the report and on its ticket.
+
+A PowerPoint uploaded straight onto a ticket, or added with Import PowerPoints, skips step 1.
 
 Conversion turns the PowerPoint into a PDF on this computer. It needs **Microsoft PowerPoint**
 (Windows) or **LibreOffice** (free, any system) installed on the computer running the tracker; the start
