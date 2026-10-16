@@ -28,6 +28,7 @@ DATA_DIR = os.path.join(APP_DIR, "data")
 UPLOAD_DIR = os.path.join(DATA_DIR, "uploads")
 BACKUP_DIR = os.path.join(DATA_DIR, "backups")
 TICKETS_FILE = os.path.join(DATA_DIR, "tickets.json")
+CHECKIN_FILE = os.path.join(DATA_DIR, "checkin.json")
 MAX_UPLOAD = 50 * 1024 * 1024
 MAX_TICKET = 2 * 1024 * 1024
 ID_RE = re.compile(r"^[A-Za-z0-9_.-]{1,80}$")
@@ -52,13 +53,29 @@ def save_tickets(tickets):
     os.replace(tmp, TICKETS_FILE)
 
 
+def load_checkin():
+    if not os.path.exists(CHECKIN_FILE):
+        return {"rows": []}
+    with open(CHECKIN_FILE, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_checkin(data):
+    fd, tmp = tempfile.mkstemp(dir=DATA_DIR, suffix=".tmp")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=1, ensure_ascii=False)
+    os.replace(tmp, CHECKIN_FILE)
+
+
 def daily_backup():
-    if not os.path.exists(TICKETS_FILE):
-        return
     os.makedirs(BACKUP_DIR, exist_ok=True)
-    target = os.path.join(BACKUP_DIR, "tickets-%s.json" % time.strftime("%Y-%m-%d"))
-    if not os.path.exists(target):
-        shutil.copy2(TICKETS_FILE, target)
+    for path in (TICKETS_FILE, CHECKIN_FILE):
+        if not os.path.exists(path):
+            continue
+        stem = os.path.splitext(os.path.basename(path))[0]
+        target = os.path.join(BACKUP_DIR, "%s-%s.json" % (stem, time.strftime("%Y-%m-%d")))
+        if not os.path.exists(target):
+            shutil.copy2(path, target)
 
 
 def safe_name(name):
@@ -100,6 +117,9 @@ class Handler(SimpleHTTPRequestHandler):
 
     def end_headers(self):
         self.send_header("X-Content-Type-Options", "nosniff")
+        if not self.route().startswith("/api/"):
+            # Always check for a newer page after the tracker files are updated.
+            self.send_header("Cache-Control", "no-cache")
         if getattr(self, "force_download", False):
             self.send_header("Content-Disposition", "attachment")
         super().end_headers()
@@ -111,6 +131,9 @@ class Handler(SimpleHTTPRequestHandler):
             with lock:
                 tickets = load_tickets()
             return self.send_json(list(tickets.values()))
+        if path == "/api/checkin":
+            with lock:
+                return self.send_json(load_checkin())
         # Only the page, its vendor files and uploaded reports are served.
         if path.startswith("/data/") and not path.startswith("/data/uploads/"):
             return self.error_json(HTTPStatus.NOT_FOUND, "Not found")
@@ -127,6 +150,18 @@ class Handler(SimpleHTTPRequestHandler):
     # ---- PUT / POST / DELETE ----
     def do_PUT(self):
         path = self.route()
+        if path == "/api/checkin":
+            raw = self.read_body(MAX_TICKET)
+            if raw is None:
+                return self.error_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Check-in log is too large")
+            try:
+                data = json.loads(raw.decode("utf-8"))
+                assert isinstance(data, dict) and isinstance(data.get("rows"), list)
+            except Exception:
+                return self.error_json(HTTPStatus.BAD_REQUEST, "Check-in log must be a JSON object with a rows list")
+            with lock:
+                save_checkin(data)
+            return self.send_json(data)
         m = re.fullmatch(r"/api/tickets/([^/]+)", path)
         if not m:
             return self.error_json(HTTPStatus.NOT_FOUND, "Not found")

@@ -211,6 +211,30 @@ details > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
 .confirm-del { display: inline-flex; gap: 6px; align-items: center; font-size: .86rem; color: var(--danger); flex-wrap: wrap; }
 .meta-line { font-size: .78rem; color: var(--muted); }
 
+/* incoming damage */
+.damage-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between; margin-top: 16px; }
+.damage-head h2 { margin: 0; font: 600 1.5rem/1.1 var(--font-display); text-transform: uppercase; letter-spacing: .02em; }
+.damage-head p { margin: 2px 0 0; color: var(--muted); font-size: .85rem; max-width: 72ch; }
+.key { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .8rem; color: var(--muted); margin-top: 12px; align-items: center; }
+.key i { display: inline-block; vertical-align: middle; margin-right: 6px; }
+.key .sw-bar { width: 10px; height: 12px; border-radius: 2px 2px 0 0; background: var(--accent); }
+.key .sw-line { width: 18px; height: 2px; background: var(--ink); }
+.damage-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 12px; margin-top: 12px; }
+.dcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 14px 10px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.dcard header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.dcard h3 { margin: 0; font: 600 1.25rem/1 var(--font-display); text-transform: uppercase; letter-spacing: .03em; }
+.dstats { margin: 0; font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dstats b { color: var(--ink); font-weight: 600; }
+.dcanvas { position: relative; height: 200px; }
+.dnone { height: 200px; display: grid; place-items: center; color: var(--muted); font-size: .85rem; text-align: center; }
+.trend { display: inline-flex; gap: 6px; align-items: center; font-size: .78rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.trend.down { color: var(--st-close); } .trend.up { color: var(--st-open); } .trend.flat, .trend.few { color: var(--muted); }
+.damage-table { margin-top: 12px; }
+.damage-table table { min-width: 560px; }
+.damage-table td, .damage-table th { padding: 6px 10px; text-align: right; }
+.damage-table td:first-child, .damage-table th:first-child { text-align: left; }
+.damage-table tbody tr { cursor: default; }
+.damage-table tbody tr:hover td { background: none; }
 .toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: var(--radius); font-size: .9rem; z-index: 50; max-width: calc(100vw - 32px); box-shadow: 0 6px 20px rgb(0 0 0 / .25); }
 .import-box { margin-top: 12px; }
 main { padding-block: 4px 40px; }
@@ -234,6 +258,7 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
     <div class="tabs" role="tablist" aria-label="View">
       <button role="tab" id="tab-tickets" aria-selected="true" data-view="tickets">Tickets</button>
       <button role="tab" id="tab-analysis" aria-selected="false" data-view="analysis">Analysis</button>
+      <button role="tab" id="tab-damage" aria-selected="false" data-view="damage">Incoming damage</button>
     </div>
     <button class="btn primary" id="newBtn" type="button">+ New ticket</button>
   </div>
@@ -300,6 +325,25 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
       <div class="chart-empty" id="chartEmpty" hidden></div>
       <div class="pareto-table" id="paretoTable" hidden></div>
     </div>
+  </section>
+
+  <!-- Incoming damage view -->
+  <section id="view-damage" role="tabpanel" aria-labelledby="tab-damage" hidden>
+    <div class="damage-head">
+      <div>
+        <h2>Damaged units checked in per day</h2>
+        <p id="damageMeta">Daily counts from the CHECK-IN LOG sheet. Each part has its own scale. The trend compares the average of the earlier half of the logged days with the later half.</p>
+      </div>
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Date range">
+          <button type="button" data-range="all" aria-pressed="true">All days</button>
+          <button type="button" data-range="14" aria-pressed="false">Last 2 weeks</button>
+          <button type="button" data-range="7" aria-pressed="false">Last week</button>
+        </div>
+        <button class="btn" type="button" data-act="import">Import check-in log</button>
+      </div>
+    </div>
+    <div id="damageBody"></div>
   </section>
 </main>
 <footer class="wrap" id="footNote"></footer>
@@ -429,6 +473,10 @@ let chart = null;
 let editing = null; // ticket being edited (copy) or null for new
 let draftAttachments = [];
 let pendingImport = null;
+const PARTS = [["cpRivet", "CP Rivet"], ["cpTim", "CP TIM"], ["cx8", "CX8"], ["busbar", "Busbar"], ["trays", "Tray"], ["paddle", "Paddle board"]];
+const CI_KEY = "fxnht-checkin-v1";
+let checkin = { rows: [] }, ciSig = "";
+let damageRange = "all", damageCharts = [];
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -472,11 +520,28 @@ async function pull() {
   try {
     const list = await api("GET", "api/tickets");
     const sig = JSON.stringify(list);
-    if (sig !== lastSig) { lastSig = sig; tickets = list; render(); }
+    const ci = await api("GET", "api/checkin");
+    const cs = JSON.stringify(ci);
+    let changed = false;
+    if (sig !== lastSig) { lastSig = sig; tickets = list; changed = true; }
+    if (cs !== ciSig && ci && Array.isArray(ci.rows)) { ciSig = cs; checkin = ci; changed = true; }
+    if (changed) render();
     if (pull.lost) { pull.lost = false; renderBanner(); }
   } catch {
     if (!pull.lost) { pull.lost = true; banner("<b>Lost contact with the tracker server.</b> Check that the start window is still open. The page reconnects by itself."); }
   }
+}
+async function loadCheckin() {
+  let data = null;
+  if (mode === "server") { try { data = await api("GET", "api/checkin"); } catch {} }
+  else { try { data = JSON.parse(lsGet(CI_KEY) || "null"); } catch {} }
+  checkin = data && Array.isArray(data.rows) ? data : { rows: [] };
+  ciSig = JSON.stringify(checkin);
+}
+async function saveCheckin() {
+  if (mode === "server") await api("PUT", "api/checkin", JSON.stringify(checkin), { "Content-Type": "application/json" });
+  else if (!lsSet(CI_KEY, JSON.stringify(checkin))) toast("This browser refused to save the check-in log.", 5000);
+  ciSig = JSON.stringify(checkin);
 }
 function upsertLocal(t) {
   const i = tickets.findIndex(x => x.id === t.id);
@@ -517,6 +582,7 @@ async function boot() {
   } else {
     mode = "local"; loadLocal();
   }
+  await loadCheckin();
   render();
 }
 
@@ -526,14 +592,15 @@ function banner(html) { const b = $("#modeBanner"); if (!html) { b.hidden = true
 function restoreUI() {
   try {
     const s = JSON.parse(lsGet(UI_KEY) || "{}");
-    if (s.view) view = s.view; if (s.chartKind) chartKind = s.chartKind;
+    if (s.view) view = s.view; if (s.damageRange) damageRange = s.damageRange; if (s.chartKind) chartKind = s.chartKind;
     if (s.paretoDim) paretoDim = s.paretoDim; if (s.paretoMetric) paretoMetric = s.paretoMetric;
     if (s.ocMode) ocMode = s.ocMode; if (s.sort) sort = s.sort;
   } catch {}
   if (location.hash === "#analysis") view = "analysis";
   if (location.hash === "#pareto") { view = "analysis"; chartKind = "pareto"; }
+  if (location.hash === "#damage") view = "damage";
 }
-function saveUI() { lsSet(UI_KEY, JSON.stringify({ view, chartKind, paretoDim, paretoMetric, ocMode, sort })); }
+function saveUI() { lsSet(UI_KEY, JSON.stringify({ view, chartKind, paretoDim, paretoMetric, ocMode, sort, damageRange })); }
 
 function fillStaticOptions() {
   $("#f_area").insertAdjacentHTML("beforeend", AREAS.map(a => `<option>${esc(a)}</option>`).join(""));
@@ -576,11 +643,15 @@ function render() {
   $$(".tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.view === view)));
   $("#view-tickets").hidden = view !== "tickets";
   $("#view-analysis").hidden = view !== "analysis";
+  $("#view-damage").hidden = view !== "damage";
+  $("#kpis").hidden = view === "damage";
+  $("#filters").hidden = view === "damage";
   $("#fStatusWrap").hidden = view === "analysis";
   const canExport = mode !== "starting" && typeof XLSX !== "undefined";
   $("#exportBtn").hidden = !canExport || !tickets.length;
   $("#importBtn").hidden = mode === "starting" || typeof XLSX === "undefined";
-  if (view === "tickets") renderTable(); else renderChart();
+  if (view !== "damage") { damageCharts.forEach(c => c.destroy()); damageCharts = []; }
+  if (view === "tickets") renderTable(); else if (view === "analysis") renderChart(); else renderDamage();
 }
 
 function renderBanner() {
@@ -827,6 +898,81 @@ function renderChart() {
 }
 function showChartEmpty(msg) { $("#canvasBox").hidden = true; const e = $("#chartEmpty"); e.hidden = false; e.textContent = msg; }
 
+/* ---------- incoming damage ---------- */
+function shortDate(iso) { const [, m, d] = iso.split("-"); return `${+m}/${+d}`; }
+function addDays(iso, n) { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+function damageRows() {
+  const rows = checkin.rows.slice().sort((a, b) => a.date.localeCompare(b.date));
+  if (damageRange === "all" || !rows.length) return rows;
+  const from = addDays(rows[rows.length - 1].date, -(Number(damageRange) - 1));
+  return rows.filter(r => r.date >= from);
+}
+function trendOf(vals) {
+  const n = vals.length;
+  if (n < 4) return { kind: "few", n };
+  const h = Math.floor(n / 2), mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const early = mean(vals.slice(0, h)), recent = mean(vals.slice(n - h));
+  const pct = early ? (recent - early) / early * 100 : recent > 0 ? 100 : 0;
+  return { kind: pct <= -15 ? "down" : pct >= 15 ? "up" : "flat", early, recent, pct, n, h };
+}
+function trendBadge(t) {
+  if (t.kind === "few") return `<span class="trend few">Not enough days yet (${t.n})</span>`;
+  const p = Math.abs(Math.round(t.pct));
+  if (t.kind === "down") return `<span class="trend down">▼ Falling ${p}%</span>`;
+  if (t.kind === "up") return `<span class="trend up">▲ Rising ${p}%</span>`;
+  return `<span class="trend flat">▬ Flat (${t.pct > 0 ? "+" : t.pct < 0 ? "−" : ""}${p}%)</span>`;
+}
+function renderDamage() {
+  $$("#view-damage [data-range]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.range === damageRange)));
+  damageCharts.forEach(c => c.destroy()); damageCharts = [];
+  const body = $("#damageBody");
+  if (!checkin.rows.length) {
+    body.innerHTML = `<div class="panel"><div class="empty"><h2>No check-in log yet</h2><p>Import the Check-in workbook. Its CHECK-IN LOG sheet has one row per day with the damaged CP Rivet, CP TIM, CX8, Busbar, Tray and Paddle board units that came in. Import it again whenever it's updated.</p><div class="row"><button class="btn primary" type="button" data-act="import">Import check-in log</button></div></div></div>`;
+    return;
+  }
+  const rows = damageRows();
+  const all = checkin.rows.map(r => r.date).sort();
+  $("#damageMeta").textContent = `Damaged units logged on ${all.length} check-in days, ${fmtDate(all[0])} to ${fmtDate(all[all.length - 1])}${checkin.source ? `, from ${checkin.source}` : ""}. Each part has its own scale. The trend compares the average of the earlier half of the logged days with the later half; blank days in the log are left out, not counted as zero.`;
+  const fmt = v => (Math.round(v * 10) / 10).toLocaleString();
+  const cards = PARTS.map(([k, label]) => {
+    const pts = rows.filter(r => typeof r[k] === "number");
+    const t = trendOf(pts.map(p => p[k]));
+    const last = pts[pts.length - 1];
+    const stats = t.kind === "few"
+      ? (pts.length ? `Latest <b>${last[k]}</b> on ${fmtDate(last.date)}` : "No counts logged in this range")
+      : `Avg per day <b>${fmt(t.early)}</b> (first ${t.h} days) → <b>${fmt(t.recent)}</b> (last ${t.h}) · latest <b>${last[k]}</b> on ${shortDate(last.date)}`;
+    return { k, label, pts, html: `<article class="dcard"><header><h3>${esc(label)}</h3>${trendBadge(t)}</header><p class="dstats">${stats}</p>${pts.length ? `<div class="dcanvas"><canvas id="dc_${k}" role="img" aria-label="${esc(label)} damaged units per day"></canvas></div>` : `<div class="dnone">Nothing logged for ${esc(label)} in this range.</div>`}</article>` };
+  });
+  body.innerHTML = `<div class="key"><span><i class="sw-bar"></i>Damaged units that day</span><span><i class="sw-line"></i>3-day average</span><span>▼ falling · ▲ rising · ▬ within ±15%</span></div>
+    <div class="damage-grid">${cards.map(c => c.html).join("")}</div>
+    <details class="panel damage-table"><summary class="chart-panel" style="padding:10px 14px">Show the numbers</summary><div class="table-scroll"><table><thead><tr><th>Date</th>${PARTS.map(([, l]) => `<th>${esc(l)}</th>`).join("")}</tr></thead><tbody>${
+      rows.slice().reverse().map(r => `<tr><td class="mono">${esc(fmtDate(r.date))}</td>${PARTS.map(([k]) => `<td class="mono">${typeof r[k] === "number" ? r[k] : "–"}</td>`).join("")}</tr>`).join("")}</tbody></table></div></details>`;
+  if (typeof Chart === "undefined") return;
+  const accent = css("--accent"), ink = css("--ink"), muted = css("--muted"), grid = css("--line");
+  cards.forEach(c => {
+    if (!c.pts.length) return;
+    const vals = c.pts.map(p => p[c.k]);
+    const avg3 = vals.map((_, i) => { const w = vals.slice(Math.max(0, i - 2), i + 1); return Math.round(w.reduce((a, b) => a + b, 0) / w.length * 10) / 10; });
+    const o = baseOptions();
+    o.plugins.legend = { display: false };
+    o.layout = { padding: { top: 4 } };
+    o.scales.x.ticks = { color: muted, maxRotation: 0, autoSkip: true, autoSkipPadding: 8 };
+    o.scales.y.grace = "8%";
+    o.plugins.tooltip.callbacks = { title: items => fmtDate(c.pts[items[0].dataIndex].date) };
+    damageCharts.push(new Chart($("#dc_" + c.k), {
+      type: "bar",
+      data: {
+        labels: c.pts.map(p => shortDate(p.date)),
+        datasets: [
+          { type: "bar", label: "Damaged", data: vals, backgroundColor: accent, borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: "bottom", maxBarThickness: 22, order: 2 },
+          { type: "line", label: "3-day average", data: avg3, borderColor: ink, backgroundColor: ink, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, tension: .3, order: 1 }
+        ]
+      },
+      options: o
+    }));
+  });
+}
+
 /* ---------- dialog ---------- */
 function openTicket(t) {
   editing = t ? JSON.parse(JSON.stringify(t)) : null;
@@ -960,8 +1106,31 @@ function parseType(raw) {
   return { type, ref };
 }
 function yn(v) { return /^(y|p)/i.test(String(v ?? "").trim()); }
-function parseWorkbook(buf) {
-  const wb = XLSX.read(buf, { type: "array", cellDates: false });
+function parseCheckin(wb) {
+  const tests = { cpRivet: h => h.includes("rivet"), cpTim: h => /\btim\b/.test(h), cx8: h => h.includes("cx8"), busbar: h => h.includes("busbar"), trays: h => h.startsWith("tray"), paddle: h => h.includes("paddle") };
+  let best = null;
+  for (const name of wb.SheetNames) {
+    const grid = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: null });
+    const hr = grid.findIndex(r => r && r.some(c => norm(c) === "date") && r.some(c => Object.values(tests).some(t => t(norm(c)))));
+    if (hr < 0) continue;
+    const H = grid[hr].map(norm), cols = {};
+    for (const [k, t] of Object.entries(tests)) { const i = H.findIndex(t); if (i >= 0) cols[k] = i; }
+    const score = Object.keys(cols).length + (/check.?in/i.test(name) ? 10 : 0);
+    if (!best || score > best.score) best = { name, grid, hr, dateCol: H.indexOf("date"), cols, score };
+  }
+  if (!best) return null;
+  const rows = [];
+  for (let r = best.hr + 1; r < best.grid.length; r++) {
+    const row = best.grid[r] || [];
+    const date = serialToISO(row[best.dateCol]);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+    const out = { date };
+    for (const [k, i] of Object.entries(best.cols)) { const v = row[i]; out[k] = typeof v === "number" ? v : (v != null && v !== "" && !isNaN(Number(v)) ? Number(v) : null); }
+    if (PARTS.some(([k]) => typeof out[k] === "number")) rows.push(out);
+  }
+  return { sheet: best.name, rows };
+}
+function parseWorkbook(wb) {
   for (const name of wb.SheetNames) {
     const ws = wb.Sheets[name];
     const grid = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
@@ -1002,39 +1171,65 @@ function parseWorkbook(buf) {
 }
 async function handleImportFile(file) {
   const box = $("#importBox");
+  const done = html => { box.hidden = false; box.innerHTML = `<div class="chart-panel" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${html}</div>`; };
   try {
-    const parsed = parseWorkbook(await file.arrayBuffer());
-    if (!parsed) { box.hidden = false; box.innerHTML = `<div class="chart-panel"><b>No issue list found.</b> The workbook needs a sheet with a “Quality issue description” column header. <button class="btn small" type="button" data-act="import-cancel">Close</button></div>`; return; }
-    const key = t => `${t.detected}|${norm(t.description)}`;
-    const have = new Set(tickets.map(key));
-    const fresh = parsed.rows.filter(t => !have.has(key(t)));
-    pendingImport = fresh;
-    box.hidden = false;
-    box.innerHTML = `<div class="chart-panel" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span><b>${esc(file.name)}</b>, sheet “${esc(parsed.sheet)}”: ${parsed.rows.length} issues found, ${fresh.length} new${parsed.rows.length - fresh.length ? `, ${parsed.rows.length - fresh.length} already in the tracker and skipped` : ""}.</span><span class="grow" style="flex:1"></span>
-      <button class="btn" type="button" data-act="import-cancel">Cancel</button><button class="btn primary" type="button" data-act="import-go" ${fresh.length ? "" : "disabled"}>Import ${fresh.length} tickets</button></div>`;
+    const wb = XLSX.read(await file.arrayBuffer(), { type: "array", cellDates: false });
+    const issues = parseWorkbook(wb), ci = parseCheckin(wb);
+    if (!issues && !ci) return done(`<span><b>Nothing to import in ${esc(file.name)}.</b> The tracker reads a sheet with a “Quality issue description” column, or a check-in log with a Date column and part columns (CP Rivet, Busbar…).</span><button class="btn small" type="button" data-act="import-cancel">Close</button>`);
+    const parts = [];
+    let fresh = null;
+    if (issues) {
+      const key = t => `${t.detected}|${norm(t.description)}`;
+      const have = new Set(tickets.map(key));
+      fresh = issues.rows.filter(t => !have.has(key(t)));
+      parts.push(`sheet “${esc(issues.sheet)}”: ${issues.rows.length} issues, ${fresh.length} new`);
+    }
+    if (ci) {
+      const known = new Set(checkin.rows.map(r => r.date));
+      const added = ci.rows.filter(r => !known.has(r.date)).length, updated = ci.rows.length - added;
+      parts.push(`sheet “${esc(ci.sheet)}”: ${ci.rows.length} check-in days (${[added && `${added} new`, updated && `${updated} already here, will be refreshed`].filter(Boolean).join(", ")})`);
+    }
+    pendingImport = { tickets: fresh, checkin: ci ? ci.rows : null, source: file.name };
+    const n = (fresh ? fresh.length : 0) + (ci ? ci.rows.length : 0);
+    done(`<span><b>${esc(file.name)}</b>: ${parts.join("; ")}.</span><span style="flex:1"></span>
+      <button class="btn" type="button" data-act="import-cancel">Cancel</button><button class="btn primary" type="button" data-act="import-go" ${n ? "" : "disabled"}>Import</button>`);
   } catch (err) {
-    box.hidden = false; box.innerHTML = `<div class="chart-panel"><b>Couldn't read that file.</b> ${esc(err.message)} <button class="btn small" type="button" data-act="import-cancel">Close</button></div>`;
+    done(`<span><b>Couldn't read that file.</b> ${esc(err.message)}</span><button class="btn small" type="button" data-act="import-cancel">Close</button>`);
   }
 }
 async function runImport() {
   if (!pendingImport) return;
-  const used = new Set(tickets.map(t => t.no));
-  let next = Math.max(0, ...tickets.map(t => t.no || 0), ...pendingImport.map(t => t.no || 0));
+  const { tickets: fresh, checkin: ciRows, source } = pendingImport;
   const btn = $('[data-act="import-go"]'); if (btn) { btn.disabled = true; btn.textContent = "Importing…"; }
-  let done = 0;
-  try {
-    for (const row of pendingImport) {
-      let no = row.no; if (!no || used.has(no)) no = ++next; used.add(no);
-      const t = { id: newId(), createdAt: new Date().toISOString(), ...row, no };
-      t.updatedAt = t.createdAt;
-      if (mode === "server") await putTicket(t);
-      tickets.push(t);
-      done++;
-    }
+  const msgs = [];
+  if (ciRows) {
+    try {
+      const byDate = new Map(checkin.rows.map(r => [r.date, r]));
+      ciRows.forEach(r => byDate.set(r.date, r));
+      checkin = { rows: [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)), source, importedAt: new Date().toISOString() };
+      await saveCheckin();
+      msgs.push(`${ciRows.length} check-in days`);
+    } catch (err) { msgs.push(`check-in log not saved: ${writeError(err)}`); }
+  }
+  if (fresh && fresh.length) {
+    const used = new Set(tickets.map(t => t.no));
+    let next = Math.max(0, ...tickets.map(t => t.no || 0), ...fresh.map(t => t.no || 0));
+    let done = 0;
+    try {
+      for (const row of fresh) {
+        let no = row.no; if (!no || used.has(no)) no = ++next; used.add(no);
+        const t = { id: newId(), createdAt: new Date().toISOString(), ...row, no };
+        t.updatedAt = t.createdAt;
+        if (mode === "server") await putTicket(t);
+        tickets.push(t);
+        done++;
+      }
+      msgs.push(`${done} tickets`);
+    } catch (err) { msgs.push(`${done} tickets, then stopped: ${writeError(err)}`); }
     if (mode === "local") persistLocal();
-    toast(`Imported ${done} tickets`);
-  } catch (err) { toast(`Imported ${done} tickets, then stopped. ${writeError(err)}`, 6000); }
-  pendingImport = null; $("#importBox").hidden = true; render();
+  }
+  toast(`Imported ${msgs.join(" and ")}`, 4000);
+  pendingImport = null; $("#importBox").hidden = true; lastSig = ""; render();
 }
 async function exportExcel() {
   const head = ["No.", "Issue detected", "Ticket type", "SCAR / bug # (NV)", "Quality issue description", "Severity", "Status", "Product name", "Product phase", "Client", "Reporter", "PIC from FXN", "Factory area", "Units impacted", "Root cause", "Sub-root cause", "Closed on", "Days open", ...FLAGS.map(f => f[1]), "Report", "Comments"];
@@ -1079,6 +1274,7 @@ function bindUI() {
   });
   $("#chartControls").addEventListener("change", e => { if (e.target.id === "pBlank") { paretoBlank = e.target.checked; renderChart(); } });
   $("#importBtn").addEventListener("click", () => $("#importFile").click());
+  $("#view-damage").addEventListener("click", e => { const b = e.target.closest("[data-range]"); if (b) { damageRange = b.dataset.range; saveUI(); renderDamage(); } });
   $("#importFile").addEventListener("change", e => { const f = e.target.files[0]; if (f) handleImportFile(f); e.target.value = ""; });
   $("#exportBtn").addEventListener("click", exportExcel);
 
@@ -1107,7 +1303,7 @@ function bindUI() {
       try { await deleteTicket(id); toast(`${qid(n)} deleted`); closeDialog(); } catch (err) { $("#formErr").textContent = writeError(err); }
     }
   });
-  const rerender = () => { if (view === "analysis") renderChart(); };
+  const rerender = () => { if (view === "analysis") renderChart(); if (view === "damage") renderDamage(); };
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", rerender);
   new MutationObserver(rerender).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
 }
