@@ -89,7 +89,12 @@ a { color: var(--accent); }
 
 /* KPI strip */
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin-top: 16px; }
-.kpi { background: var(--surface); padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; }
+.kpi { background: var(--surface); padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; border: 0; text-align: left; font: inherit; color: inherit; box-shadow: inset 0 -3px 0 transparent; }
+button.kpi { cursor: pointer; }
+button.kpi:hover { background: var(--sunken); }
+button.kpi:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+button.kpi[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 -3px 0 var(--accent); }
+.kpi .hint { font-size: .7rem; color: var(--accent); font-weight: 600; }
 .kpi .lbl { font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
 .kpi .val { font: 600 2rem/1 var(--font-display); font-variant-numeric: tabular-nums; }
 .kpi .sub { font-size: .75rem; color: var(--muted); }
@@ -694,9 +699,9 @@ function fillStaticOptions() {
 }
 
 /* ---------- filtering ---------- */
-function filtered({ ignoreStatus = false } = {}) {
+function filtered({ ignoreStatus = false, ignoreType = false } = {}) {
   const q = $("#fSearch").value.trim().toLowerCase();
-  const st = ignoreStatus ? "" : $("#fStatus").value, sev = $("#fSev").value, ty = $("#fType").value;
+  const st = ignoreStatus ? "" : $("#fStatus").value, sev = $("#fSev").value, ty = ignoreType ? "" : $("#fType").value;
   const ph = $("#fPhase").value, ar = $("#fArea").value, pr = $("#fProduct").value;
   return tickets.filter(t =>
     (!st || t.status === st) && (!sev || t.severity === sev) && (!ty || t.type === ty) &&
@@ -750,25 +755,43 @@ function renderBanner() {
   if (!pull.lost) banner("");
 }
 
+// Each clickable tile counts tickets ignoring the Status and Type filters, so its number
+// matches the list it opens; the other filters (search, severity, phase, area, product) still apply.
 function renderKPIs() {
-  const all = filtered({ ignoreStatus: true });
+  const all = filtered({ ignoreStatus: true, ignoreType: true });
   const c = s => all.filter(t => t.status === s).length;
   const now = new Date(); const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const thisMonth = all.filter(t => (t.detected || "").startsWith(ym)).length;
-  const scar = all.filter(t => t.type === "SCAR").length, rca = all.filter(t => t.type === "RCA").length;
+  const typeCount = ty => all.filter(t => t.type === ty).length;
   const spanMonths = all.length ? monthRange([...all.map(t => monthKey(t.detected)), ym]).length : 0;
   const perMonth = spanMonths ? Math.round(all.length / spanMonths * 10) / 10 : 0;
   const openAges = all.filter(t => t.status !== "CLOSE" && t.detected).map(t => daysBetween(t.detected, todayISO()));
   const avgAge = openAges.length ? Math.round(openAges.reduce((a, b) => a + b, 0) / openAges.length) : 0;
-  const k = (cls, lbl, val, sub = "") => `<div class="kpi ${cls}"><span class="lbl">${lbl}</span><span class="val">${val}</span><span class="sub">${sub}</span></div>`;
+  const st = $("#fStatus").value, ty = $("#fType").value;
+  const tile = (cls, lbl, val, sub, pick) => {
+    const body = `<span class="lbl">${lbl}</span><span class="val">${val}</span><span class="sub">${sub}</span>`;
+    if (!pick) return `<div class="kpi ${cls}">${body}</div>`;
+    const [f, v] = pick.split(":");
+    const on = view === "tickets" && (f === "all" ? !st && !ty : f === "status" ? st === v : ty === v);
+    return `<button type="button" class="kpi ${cls}" data-kpi="${pick}" aria-pressed="${on}" title="${on && f !== "all" ? "Show all tickets" : `Show ${f === "all" ? "all" : lbl.toLowerCase()} tickets`}">${body}</button>`;
+  };
   $("#kpis").innerHTML = mode === "starting" ? "" :
-    k("", "Total tickets", all.length, `${thisMonth} this month`) +
-    k("open", "Open", c("OPEN"), `${all.filter(t => t.status === "OPEN" && t.severity === "S0").length} at S0`) +
-    k("monitor", "Monitor", c("MONITOR"), "pending validation") +
-    k("close", "Closed", c("CLOSE"), all.length ? `${Math.round(c("CLOSE") / all.length * 100)}% of total` : "") +
-    k("", "SCARs", scar, `${rca} RCAs`) +
-    k("", "Avg tickets / month", perMonth.toLocaleString(), spanMonths ? `over ${spanMonths} month${spanMonths > 1 ? "s" : ""}` : "") +
-    k("", "Avg age open", avgAge + "d", "open + monitor");
+    tile("", "Total tickets", all.length, `${thisMonth} this month`, "all:") +
+    tile("open", "Open", c("OPEN"), `${all.filter(t => t.status === "OPEN" && t.severity === "S0").length} at S0`, "status:OPEN") +
+    tile("monitor", "Monitor", c("MONITOR"), "pending validation", "status:MONITOR") +
+    tile("close", "Closed", c("CLOSE"), all.length ? `${Math.round(c("CLOSE") / all.length * 100)}% of total` : "", "status:CLOSE") +
+    tile("", "SCARs", typeCount("SCAR"), `${all.filter(t => t.type === "SCAR" && t.status !== "CLOSE").length} not closed`, "type:SCAR") +
+    tile("", "RCAs", typeCount("RCA"), `${all.filter(t => t.type === "RCA" && t.status !== "CLOSE").length} not closed`, "type:RCA") +
+    tile("", "Avg tickets / month", perMonth.toLocaleString(), spanMonths ? `over ${spanMonths} month${spanMonths > 1 ? "s" : ""}` : "") +
+    tile("", "Avg age open", avgAge + "d", "open + monitor");
+}
+// Clicking a tile opens the Tickets list with just that filter; clicking the active tile again clears it.
+function pickKPI(pick) {
+  const [f, v] = pick.split(":");
+  const on = view === "tickets" && (f === "status" ? $("#fStatus").value === v : f === "type" ? $("#fType").value === v : false);
+  $("#fStatus").value = !on && f === "status" ? v : "";
+  $("#fType").value = !on && f === "type" ? v : "";
+  view = "tickets"; saveUI(); render();
 }
 
 const COLS = [
@@ -1436,6 +1459,7 @@ function bindUI() {
   $("#importBtn").addEventListener("click", () => $("#importFile").click());
   $("#importFile").addEventListener("change", e => { const f = e.target.files[0]; if (f) handleImportFile(f); e.target.value = ""; });
   $("#exportBtn").addEventListener("click", exportExcel);
+  $("#kpis").addEventListener("click", e => { const t = e.target.closest("[data-kpi]"); if (t) pickKPI(t.dataset.kpi); });
 
   // actions editor
   $("#ticketForm").addEventListener("click", e => {
