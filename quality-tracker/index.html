@@ -342,19 +342,19 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
     <div class="rep-head">
       <div>
         <h2>SCAR / RCA reports</h2>
-        <p>Every SCAR, RCA and 8D report in one place: PowerPoints and links you add here, plus the reports attached to tickets. PowerPoints can be converted to PDF.</p>
+        <p>Every SCAR, RCA and 8D report in one place: PowerPoints and links you add here, plus the reports attached to tickets. Use <b>Convert to PDF</b> on any report. For reports that are only a SharePoint link, download the PowerPoint first; the button asks you to pick it.</p>
       </div>
       <div class="controls">
         <button class="btn" type="button" id="pptImportBtn">Import PowerPoints</button>
         <button class="btn primary" type="button" id="addReportBtn">+ Add report</button>
         <input type="file" id="pptInput" accept=".ppt,.pptx,.pdf" multiple hidden>
+        <input type="file" id="convPick" accept=".ppt,.pptx" hidden>
       </div>
     </div>
     <div class="banner" id="convNote" hidden></div>
     <div class="rep-tools">
       <label class="search">Search<input id="rSearch" type="search" placeholder="Title, SCAR #, ticket, file name…"></label>
       <label>Type<select id="rType"><option value="">All</option><option>SCAR</option><option>RCA</option><option>8D</option><option>Other</option></select></label>
-      <label>PDF<select id="rPdf"><option value="">All</option><option value="has">Has PDF</option><option value="needs">PowerPoint without PDF</option></select></label>
       <span style="flex:1"></span>
       <button class="btn" type="button" id="convertAllBtn" hidden>Convert all to PDF</button>
     </div>
@@ -1024,7 +1024,8 @@ function reportRows() {
   const out = reports.map(r => ({ src: "lib", r, id: r.id, type: r.type, ref: r.ref, title: r.title, ticket: tickets.find(t => t.id === r.ticketId), file: r.file, link: r.link, pdf: r.pdf, notes: r.notes, added: r.addedAt || "" }));
   tickets.forEach(t => (t.attachments || []).forEach((a, i) => {
     if (a.kind === "image") return;
-    out.push({ src: "ticket", tid: t.id, idx: i, type: t.type, ref: t.ref, title: a.name || "Report", ticket: t, file: a.kind === "file" ? a : null, link: a.kind === "link" ? a.url : "", pdf: a.pdf, added: t.createdAt || "" });
+    const isPdfFile = a.kind === "file" && /\.pdf$/i.test(a.name || "");
+    out.push({ src: "ticket", tid: t.id, idx: i, type: t.type, ref: t.ref, title: a.name || "Report", ticket: t, file: a.kind === "file" ? a : a.pptx || null, link: a.kind === "link" ? a.url : "", pdf: isPdfFile ? a : a.pdf, added: t.createdAt || "" });
   }));
   return out;
 }
@@ -1041,10 +1042,9 @@ function renderReports() {
     $("#repCount").textContent = ""; $("#convertAllBtn").hidden = true;
     return;
   }
-  const q = $("#rSearch").value.trim().toLowerCase(), ty = $("#rType").value, pf = $("#rPdf").value;
+  const q = $("#rSearch").value.trim().toLowerCase(), ty = $("#rType").value;
   const rows = all.filter(x =>
     (!ty || x.type === ty) &&
-    (!pf || (pf === "has" ? !!x.pdf : !x.pdf && x.file && isPpt(x.file.name))) &&
     (!q || [x.title, x.ref, x.type, x.notes, x.link, x.file && x.file.name, x.ticket && qid(x.ticket.no), x.ticket && x.ticket.description].some(v => String(v || "").toLowerCase().includes(q))))
     .sort((a, b) => (b.ticket ? b.ticket.no : 0) - (a.ticket ? a.ticket.no : 0) || b.added.localeCompare(a.added));
   const pending = all.filter(x => !x.pdf && canConvert(x.file));
@@ -1058,7 +1058,8 @@ function renderReports() {
       x.link ? `<a href="${esc(x.link)}" target="_blank" rel="noopener" title="${esc(x.link)}">Link (${esc(host(x.link))})</a>` : ""
     ].filter(Boolean).join(" · ") || `<span class="muted">—</span>`;
     const pdf = x.pdf ? `<a href="${esc(attUrl(x.pdf))}" target="_blank" rel="noopener">Open PDF</a>`
-      : x.file && isPpt(x.file.name) ? `<button class="btn small" type="button" data-convrow="${esc(key)}" ${canConvert(x.file) ? "" : "disabled title=\"PowerPoint or LibreOffice is needed to convert\""}>Convert to PDF</button>` : `<span class="muted">—</span>`;
+      : mode !== "server" ? `<span class="muted">—</span>`
+      : `<button class="btn small" type="button" data-convrow="${esc(key)}" ${converters.length ? `title="${canConvert(x.file) ? "Convert the uploaded PowerPoint" : "Pick the PowerPoint file for this report, then convert it"}"` : `disabled title="PowerPoint or LibreOffice is needed to convert"`}>Convert to PDF</button>`;
     const action = x.src === "lib" ? `<button class="btn small" type="button" data-editrep="${esc(x.id)}">Edit</button>` : `<button class="btn small" type="button" data-openticket="${esc(x.tid)}">Open ticket</button>`;
     return `<tr>
       <td><span class="type ${esc(x.type)}">${esc(x.type || "—")}</span></td>
@@ -1070,15 +1071,29 @@ function renderReports() {
   $("#repCount").textContent = `Showing ${rows.length} of ${all.length} reports.`;
 }
 function findRow(key) { return reportRows().find(x => (x.src === "lib" ? `lib:${x.id}` : `t:${x.tid}:${x.idx}`) === key); }
-async function convertRow(x) {
-  const pdf = await convertToPdf(x.file);
-  if (x.src === "lib") await saveReport({ ...x.r, pdf });
+// upload: a PowerPoint the user picked for a report that was only a link; it's kept with the report.
+async function convertRow(x, upload) {
+  const pdf = await convertToPdf(upload || x.file);
+  if (x.src === "lib") await saveReport({ ...x.r, ...(upload ? { file: upload } : {}), pdf });
   else {
     const t = JSON.parse(JSON.stringify(tickets.find(y => y.id === x.tid)));
-    t.attachments[x.idx].pdf = pdf;
+    const a = t.attachments[x.idx];
+    a.pdf = pdf;
+    if (upload) a.pptx = upload;
     await saveTicket(t);
   }
   return pdf;
+}
+let convKey = null;
+async function convertPicked(file) {
+  const x = convKey && findRow(convKey); convKey = null;
+  if (!x) return;
+  if (!isPpt(file.name)) { toast("Pick a PowerPoint file (.pptx or .ppt).", 5000); return; }
+  try {
+    toast(`Uploading and converting ${file.name}…`, 120000);
+    const pdf = await convertRow(x, await storeFile(file, file.name));
+    toast(`PDF ready: ${pdf.name}`);
+  } catch (err) { toast(err.message || "Couldn't convert", 6000); renderReports(); }
 }
 async function convertAll() {
   const btn = $("#convertAllBtn"); btn.disabled = true;
@@ -1482,7 +1497,8 @@ function bindUI() {
   $("#ticketForm").addEventListener("change", e => { if (e.target.classList.contains("act-status")) { e.target.dataset.status = e.target.value; syncClosed(); } });
 
   // reports
-  ["#rSearch", "#rType", "#rPdf"].forEach(sel => $(sel).addEventListener("input", renderReports));
+  ["#rSearch", "#rType"].forEach(sel => $(sel).addEventListener("input", renderReports));
+  $("#convPick").addEventListener("change", e => { const f = e.target.files[0]; e.target.value = ""; if (f) convertPicked(f); else convKey = null; });
   $("#addReportBtn").addEventListener("click", () => openReport(null));
   $("#pptImportBtn").addEventListener("click", () => $("#pptInput").click());
   $("#pptInput").addEventListener("change", e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) importPowerPoints(f); });
@@ -1492,6 +1508,13 @@ function bindUI() {
     const ot = e.target.closest("[data-openticket]"); if (ot) return openTicket(tickets.find(t => t.id === ot.dataset.openticket));
     const cv = e.target.closest("[data-convrow]");
     if (cv) {
+      const x = findRow(cv.dataset.convrow);
+      if (!canConvert(x.file)) {
+        convKey = cv.dataset.convrow;
+        toast(`Pick the PowerPoint for “${x.title}”. If it's on SharePoint, download it first.`, 6000);
+        $("#convPick").click();
+        return;
+      }
       cv.disabled = true; cv.textContent = "Converting…";
       try { const pdf = await convertRow(findRow(cv.dataset.convrow)); toast(`PDF ready: ${pdf.name}`); }
       catch (err) { toast(err.message || "Couldn't convert", 6000); renderReports(); }
