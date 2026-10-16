@@ -211,6 +211,35 @@ details > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
 .confirm-del { display: inline-flex; gap: 6px; align-items: center; font-size: .86rem; color: var(--danger); flex-wrap: wrap; }
 .meta-line { font-size: .78rem; color: var(--muted); }
 
+/* actions editor */
+.act-list { display: flex; flex-direction: column; gap: 6px; }
+.act-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px 140px 104px auto; gap: 6px; align-items: center; }
+.act-row input, .act-row select { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; width: 100%; min-width: 0; }
+.act-row select[data-status="Open"] { color: var(--st-open); font-weight: 600; }
+.act-row select[data-status="Closed"] { color: var(--st-close); font-weight: 600; }
+.act-row button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 1.2rem; line-height: 1; padding: 0 4px; }
+.act-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.act-head span { font-size: .78rem; font-weight: 600; color: var(--muted); }
+.act-empty { font-size: .85rem; color: var(--muted); }
+.act-warn { color: var(--st-monitor); font-size: .82rem; font-weight: 600; }
+.act-sum { display: block; margin-top: 4px; font-size: .72rem; color: var(--muted); white-space: nowrap; }
+@media (max-width: 640px) { .act-row { grid-template-columns: 1fr 1fr; } .act-row .act-text { grid-column: 1 / -1; } }
+
+/* reports */
+.rep-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between; margin-top: 16px; }
+.rep-head h2 { margin: 0; font: 600 1.5rem/1.1 var(--font-display); text-transform: uppercase; letter-spacing: .02em; }
+.rep-head p { margin: 2px 0 0; color: var(--muted); font-size: .85rem; max-width: 72ch; }
+.rep-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-top: 12px; }
+.rep-tools label { display: flex; flex-direction: column; gap: 2px; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.rep-tools input, .rep-tools select { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; font-size: .9rem; color: var(--ink); text-transform: none; letter-spacing: 0; min-width: 0; }
+.rep-tools .search { flex: 1 1 240px; } .rep-tools .search input { width: 100%; }
+#repWrap tbody tr { cursor: default; }
+#repWrap tbody tr:hover td { background: none; }
+.src { font-size: .72rem; color: var(--muted); }
+.file-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: .88rem; min-width: 0; }
+.file-line a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.att .pdf { font-size: .78rem; font-weight: 600; }
+.linked-reps { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; font-size: .86rem; }
 .toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: var(--radius); font-size: .9rem; z-index: 50; max-width: calc(100vw - 32px); box-shadow: 0 6px 20px rgb(0 0 0 / .25); }
 .import-box { margin-top: 12px; }
 main { padding-block: 4px 40px; }
@@ -234,6 +263,7 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
     <div class="tabs" role="tablist" aria-label="View">
       <button role="tab" id="tab-tickets" aria-selected="true" data-view="tickets">Tickets</button>
       <button role="tab" id="tab-analysis" aria-selected="false" data-view="analysis">Analysis</button>
+      <button role="tab" id="tab-reports" aria-selected="false" data-view="reports">SCAR / RCA reports</button>
     </div>
     <button class="btn primary" id="newBtn" type="button">+ New ticket</button>
   </div>
@@ -301,6 +331,31 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
       <div class="pareto-table" id="paretoTable" hidden></div>
     </div>
   </section>
+
+  <!-- Reports view -->
+  <section id="view-reports" role="tabpanel" aria-labelledby="tab-reports" hidden>
+    <div class="rep-head">
+      <div>
+        <h2>SCAR / RCA reports</h2>
+        <p>Every SCAR, RCA and 8D report in one place: PowerPoints and links you add here, plus the reports attached to tickets. PowerPoints can be converted to PDF.</p>
+      </div>
+      <div class="controls">
+        <button class="btn" type="button" id="pptImportBtn">Import PowerPoints</button>
+        <button class="btn primary" type="button" id="addReportBtn">+ Add report</button>
+        <input type="file" id="pptInput" accept=".ppt,.pptx,.pdf" multiple hidden>
+      </div>
+    </div>
+    <div class="banner" id="convNote" hidden></div>
+    <div class="rep-tools">
+      <label class="search">Search<input id="rSearch" type="search" placeholder="Title, SCAR #, ticket, file name…"></label>
+      <label>Type<select id="rType"><option value="">All</option><option>SCAR</option><option>RCA</option><option>8D</option><option>Other</option></select></label>
+      <label>PDF<select id="rPdf"><option value="">All</option><option value="has">Has PDF</option><option value="needs">PowerPoint without PDF</option></select></label>
+      <span style="flex:1"></span>
+      <button class="btn" type="button" id="convertAllBtn" hidden>Convert all to PDF</button>
+    </div>
+    <div class="panel"><div class="table-scroll" id="repWrap"></div></div>
+    <div class="count-line" id="repCount"></div>
+  </section>
 </main>
 <footer class="wrap" id="footNote"></footer>
 
@@ -351,6 +406,7 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
           <div class="grid">
             <label class="field"><span>Root cause</span><select id="f_rootCause" name="rootCause"><option value="">Not yet determined</option></select></label>
             <label class="field"><span>Sub-root cause</span><input type="text" id="f_subRootCause" name="subRootCause" list="dl_rc"></label>
+            <label class="field wide"><span>Root cause details</span><textarea id="f_rootCauseDetail" name="rootCauseDetail" placeholder="What caused it and how it was verified (5 Why, fishbone…)"></textarea></label>
             <div class="field"><span>Status</span>
               <div class="radio-row" role="radiogroup" aria-label="Status">
                 <label><input type="radio" name="status" value="OPEN">Open</label>
@@ -366,7 +422,24 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
           </div>
         </fieldset>
         <fieldset style="margin-top:12px">
+          <legend>Team &amp; actions</legend>
+          <div class="grid">
+            <label class="field"><span>Team lead</span><input type="text" id="f_teamLead" name="teamLead" list="dl_people"></label>
+            <label class="field" style="grid-column: span 2"><span>Members involved</span><input type="text" id="f_members" name="members" placeholder="Names, separated by commas"></label>
+            <div class="field wide">
+              <div class="act-head"><span>Containment actions</span><button class="btn small" type="button" data-addact="ca">+ Add containment action</button></div>
+              <div class="act-list" id="caList"></div>
+            </div>
+            <div class="field wide">
+              <div class="act-head"><span>Permanent corrective actions</span><button class="btn small" type="button" data-addact="pca">+ Add corrective action</button></div>
+              <div class="act-list" id="pcaList"></div>
+            </div>
+            <div class="act-warn" id="actWarn" hidden></div>
+          </div>
+        </fieldset>
+        <fieldset style="margin-top:12px">
           <legend>Report</legend>
+          <div class="linked-reps" id="linkedReps" hidden></div>
           <div class="attach-list" id="attachList"></div>
           <div class="attach-add">
             <input type="url" id="linkUrl" placeholder="Paste a link (SharePoint, Drive…)">
@@ -395,6 +468,40 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
 <datalist id="dl_reporter"></datalist>
 <datalist id="dl_pic"></datalist>
 <datalist id="dl_rc"></datalist>
+<datalist id="dl_people"></datalist>
+
+<!-- Report dialog -->
+<dialog id="rdlg" aria-labelledby="rdlgTitle">
+  <form class="dlg" id="reportForm" novalidate>
+    <div class="dlg-head">
+      <h2 id="rdlgTitle">Add report</h2>
+      <button class="xbtn" type="button" data-rclose aria-label="Close">×</button>
+    </div>
+    <div class="dlg-body">
+      <fieldset>
+        <legend>Report</legend>
+        <div class="grid">
+          <label class="field wide"><span>Title <i>*</i></span><input type="text" id="r_title" placeholder="e.g. 8D – Broken busbar"></label>
+          <label class="field"><span>Type</span><select id="r_type"><option>SCAR</option><option>RCA</option><option>8D</option><option>Other</option></select></label>
+          <label class="field"><span>SCAR / RCA #</span><input type="text" id="r_ref" placeholder="e.g. SCAR-04459"></label>
+          <label class="field"><span>Ticket</span><select id="r_ticket"><option value="">Not linked to a ticket</option></select></label>
+          <label class="field wide"><span>Link</span><input type="url" id="r_link" placeholder="SharePoint or other link to the report"></label>
+          <div class="field wide"><span>PowerPoint</span><div class="file-line" id="r_fileLine"></div></div>
+          <div class="field wide"><span>PDF</span><div class="file-line" id="r_pdfLine"></div></div>
+          <label class="field wide"><span>Notes</span><textarea id="r_notes"></textarea></label>
+        </div>
+      </fieldset>
+      <input type="file" id="r_fileInput" accept=".ppt,.pptx,.pdf" hidden>
+    </div>
+    <div class="dlg-foot">
+      <span id="rDelZone"></span>
+      <span class="grow"></span>
+      <span class="err" id="rErr"></span>
+      <button class="btn" type="button" data-rclose>Cancel</button>
+      <button class="btn primary" type="submit" id="rSave">Add report</button>
+    </div>
+  </form>
+</dialog>
 
 <div class="toast" id="toast" role="status" hidden></div>
 
@@ -429,6 +536,10 @@ let chart = null;
 let editing = null; // ticket being edited (copy) or null for new
 let draftAttachments = [];
 let pendingImport = null;
+let reports = [], repSig = "", converters = [];
+let editingReport = null, draftRFile = null, draftRPdf = null;
+const REP_KEY = "fxnht-quality-reports-v1";
+const isPpt = name => /\.pptx?$/i.test(name || "");
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
@@ -451,6 +562,8 @@ function lsSet(k, v) { try { localStorage.setItem(k, v); return true; } catch { 
 function loadLocal() {
   try { tickets = JSON.parse(lsGet(LS_KEY) || "[]"); } catch { tickets = []; }
   if (!Array.isArray(tickets)) tickets = [];
+  try { reports = JSON.parse(lsGet(REP_KEY) || "[]"); } catch { reports = []; }
+  if (!Array.isArray(reports)) reports = [];
 }
 function persistLocal() {
   if (!lsSet(LS_KEY, JSON.stringify(tickets))) toast("This browser refused to save. Free some space or remove large uploaded files.", 5000);
@@ -471,8 +584,13 @@ async function api(method, path, body, headers) {
 async function pull() {
   try {
     const list = await api("GET", "api/tickets");
-    const sig = JSON.stringify(list);
-    if (sig !== lastSig) { lastSig = sig; tickets = list; render(); }
+    const reps = await api("GET", "api/reports");
+    const sig = JSON.stringify(list), rs = JSON.stringify(reps);
+    let changed = false;
+    if (sig !== lastSig) { lastSig = sig; tickets = list; changed = true; }
+    if (rs !== repSig) { repSig = rs; reports = reps; changed = true; }
+    if (changed && !$("#dlg").open && !$("#rdlg").open) render();
+    else if (changed) { lastSig = ""; repSig = ""; }
     if (pull.lost) { pull.lost = false; renderBanner(); }
   } catch {
     if (!pull.lost) { pull.lost = true; banner("<b>Lost contact with the tracker server.</b> Check that the start window is still open. The page reconnects by itself."); }
@@ -485,6 +603,36 @@ function upsertLocal(t) {
 async function putTicket(t) {
   await api("PUT", "api/tickets/" + encodeURIComponent(t.id), JSON.stringify(t), { "Content-Type": "application/json" });
 }
+async function saveReport(r) {
+  r.updatedAt = new Date().toISOString();
+  if (mode === "server") await api("PUT", "api/reports/" + encodeURIComponent(r.id), JSON.stringify(r), { "Content-Type": "application/json" });
+  const i = reports.findIndex(x => x.id === r.id);
+  if (i >= 0) reports[i] = r; else reports.push(r);
+  if (mode === "local" && !lsSet(REP_KEY, JSON.stringify(reports))) toast("This browser refused to save. Add big reports as links instead.", 5000);
+  repSig = "";
+  render();
+}
+async function deleteReport(id) {
+  if (mode === "server") await api("DELETE", "api/reports/" + encodeURIComponent(id));
+  reports = reports.filter(r => r.id !== id);
+  if (mode === "local") lsSet(REP_KEY, JSON.stringify(reports));
+  repSig = "";
+  render();
+}
+// Saves an uploaded file: on the tracker server when it's running, otherwise in this browser (small files only).
+async function storeFile(file, name) {
+  if (mode === "server") {
+    const r = await api("POST", "api/uploads", file, { "Content-Type": file.type || "application/octet-stream", "X-Filename": encodeURIComponent(name) });
+    return { name, url: r.url, size: r.size };
+  }
+  if (file.size > LOCAL_FILE_LIMIT) throw { code: "too_big_local", message: `${name} is over 1.5 MB. Add a link to it instead.` };
+  return { name, dataUrl: await readAsDataURL(file), size: file.size };
+}
+async function convertToPdf(file) {
+  return api("POST", "api/convert", JSON.stringify({ url: file.url }), { "Content-Type": "application/json" });
+}
+// Only PowerPoints uploaded to the tracker can be converted; files behind web links (SharePoint) can't be reached.
+const canConvert = f => mode === "server" && converters.length > 0 && !!f && !!f.url && !/^https?:/i.test(f.url) && isPpt(f.name);
 async function saveTicket(t) {
   t.updatedAt = new Date().toISOString();
   if (mode === "server") await putTicket(t);
@@ -509,6 +657,9 @@ async function boot() {
     render();
     try {
       tickets = await api("GET", "api/tickets");
+      reports = await api("GET", "api/reports");
+      repSig = JSON.stringify(reports);
+      try { converters = (await api("GET", "api/status")).converters || []; } catch {}
       lastSig = JSON.stringify(tickets);
       mode = "server";
       setInterval(pull, POLL_MS);
@@ -532,6 +683,7 @@ function restoreUI() {
   } catch {}
   if (location.hash === "#analysis") view = "analysis";
   if (location.hash === "#pareto") { view = "analysis"; chartKind = "pareto"; }
+  if (location.hash === "#reports") view = "reports";
 }
 function saveUI() { lsSet(UI_KEY, JSON.stringify({ view, chartKind, paretoDim, paretoMetric, ocMode, sort })); }
 
@@ -549,7 +701,7 @@ function filtered({ ignoreStatus = false } = {}) {
   return tickets.filter(t =>
     (!st || t.status === st) && (!sev || t.severity === sev) && (!ty || t.type === ty) &&
     (!ph || t.phase === ph) && (!ar || t.area === ar) && (!pr || t.product === pr) &&
-    (!q || [qid(t.no), t.ref, t.description, t.reporter, t.pic, t.client, t.product, t.area, t.rootCause, t.subRootCause, t.comments]
+    (!q || [qid(t.no), t.ref, t.description, t.reporter, t.pic, t.client, t.product, t.area, t.rootCause, t.subRootCause, t.rootCauseDetail, t.teamLead, t.members, t.comments]
       .some(v => String(v || "").toLowerCase().includes(q))));
 }
 
@@ -566,6 +718,12 @@ function refreshFilterOptions() {
   dl("#dl_product", uniq("product")); dl("#dl_client", [...new Set(["NVIDIA", ...uniq("client")])]);
   dl("#dl_reporter", uniq("reporter")); dl("#dl_pic", uniq("pic"));
   dl("#dl_rc", [...new Set([...CAUSES, ...uniq("subRootCause")])]);
+  const people = new Set();
+  tickets.forEach(t => {
+    [t.pic, t.reporter, t.teamLead, ...String(t.members || "").split(","), ...[...(t.containment || []), ...(t.pca || [])].map(a => a.owner)]
+      .forEach(n => { n = (n || "").replace(/\s+/g, " ").trim(); if (n && n.length < 40 && !/^(fxn|na)$/i.test(n)) people.add(n); });
+  });
+  dl("#dl_people", [...people].sort((a, b) => a.localeCompare(b)));
 }
 
 /* ---------- render ---------- */
@@ -576,11 +734,14 @@ function render() {
   $$(".tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.view === view)));
   $("#view-tickets").hidden = view !== "tickets";
   $("#view-analysis").hidden = view !== "analysis";
+  $("#view-reports").hidden = view !== "reports";
+  $("#kpis").hidden = view === "reports";
+  $("#filters").hidden = view === "reports";
   $("#fStatusWrap").hidden = view === "analysis";
   const canExport = mode !== "starting" && typeof XLSX !== "undefined";
   $("#exportBtn").hidden = !canExport || !tickets.length;
   $("#importBtn").hidden = mode === "starting" || typeof XLSX === "undefined";
-  if (view === "tickets") renderTable(); else renderChart();
+  if (view === "tickets") renderTable(); else if (view === "analysis") renderChart(); else renderReports();
 }
 
 function renderBanner() {
@@ -595,7 +756,8 @@ function renderKPIs() {
   const now = new Date(); const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const thisMonth = all.filter(t => (t.detected || "").startsWith(ym)).length;
   const scar = all.filter(t => t.type === "SCAR").length, rca = all.filter(t => t.type === "RCA").length;
-  const units = all.reduce((s, t) => s + unitsNum(t.units), 0);
+  const spanMonths = all.length ? monthRange([...all.map(t => monthKey(t.detected)), ym]).length : 0;
+  const perMonth = spanMonths ? Math.round(all.length / spanMonths * 10) / 10 : 0;
   const openAges = all.filter(t => t.status !== "CLOSE" && t.detected).map(t => daysBetween(t.detected, todayISO()));
   const avgAge = openAges.length ? Math.round(openAges.reduce((a, b) => a + b, 0) / openAges.length) : 0;
   const k = (cls, lbl, val, sub = "") => `<div class="kpi ${cls}"><span class="lbl">${lbl}</span><span class="val">${val}</span><span class="sub">${sub}</span></div>`;
@@ -605,7 +767,7 @@ function renderKPIs() {
     k("monitor", "Monitor", c("MONITOR"), "pending validation") +
     k("close", "Closed", c("CLOSE"), all.length ? `${Math.round(c("CLOSE") / all.length * 100)}% of total` : "") +
     k("", "SCARs", scar, `${rca} RCAs`) +
-    k("", "Units impacted", units.toLocaleString(), "numeric entries only") +
+    k("", "Avg tickets / month", perMonth.toLocaleString(), spanMonths ? `over ${spanMonths} month${spanMonths > 1 ? "s" : ""}` : "") +
     k("", "Avg age open", avgAge + "d", "open + monitor");
 }
 
@@ -620,6 +782,11 @@ function sortVal(t, k) {
   if (k === "age") return ageOf(t);
   if (k === "status") return ({ OPEN: 0, MONITOR: 1, CLOSE: 2 })[t.status] ?? 3;
   return String(t[k] || "").toLowerCase();
+}
+function actSummary(t) {
+  const part = (label, list) => list && list.length ? `${label} ${list.filter(a => a.status === "Closed").length}/${list.length}` : "";
+  const txt = [part("CA", t.containment), part("PCA", t.pca)].filter(Boolean).join(" · ");
+  return txt ? `<span class="act-sum" title="Containment and permanent corrective actions closed">${txt} closed</span>` : "";
 }
 function ageOf(t) { if (!t.detected) return 0; return daysBetween(t.detected, t.status === "CLOSE" && t.closedDate ? t.closedDate : todayISO()); }
 
@@ -645,7 +812,7 @@ function renderTable() {
       <td class="mono">${esc(fmtDate(t.detected))}</td>
       <td><span class="type ${esc(t.type)}">${esc(t.type || "—")}</span>${t.ref ? `<div class="mono muted">${esc(t.ref)}</div>` : ""}</td>
       <td class="desc">${esc(t.description)}<div class="sub">${esc([t.product, t.phase, t.client].filter(Boolean).join(" · "))}</div></td>
-      <td><span class="chip st-${esc(t.status)}">${esc(STATUS_LABEL[t.status] || t.status)}</span></td>
+      <td><span class="chip st-${esc(t.status)}">${esc(STATUS_LABEL[t.status] || t.status)}</span>${actSummary(t)}</td>
       <td>${esc(t.area)}</td>
       <td>${t.rootCause ? esc(t.rootCause) + (t.subRootCause ? `<div class="sub muted">${esc(t.subRootCause)}</div>` : "") : `<span class="muted">Pending</span>`}</td>
       <td>${esc(t.pic)}</td>
@@ -827,6 +994,156 @@ function renderChart() {
 }
 function showChartEmpty(msg) { $("#canvasBox").hidden = true; const e = $("#chartEmpty"); e.hidden = false; e.textContent = msg; }
 
+/* ---------- SCAR / RCA reports ---------- */
+function guessType(name) { const n = name.toUpperCase(); return /SCAR/.test(n) ? "SCAR" : /\b8D\b|_8D_|8D /.test(n) ? "8D" : /RCA/.test(n) ? "RCA" : "Other"; }
+function guessRef(name) { const m = name.match(/SCAR[-_ ]?\d{3,}/i) || name.match(/BUG\s*#?\s*\d{5,}/i); return m ? m[0].toUpperCase().replace(/[_ ]/, "-") : ""; }
+function reportRows() {
+  const out = reports.map(r => ({ src: "lib", r, id: r.id, type: r.type, ref: r.ref, title: r.title, ticket: tickets.find(t => t.id === r.ticketId), file: r.file, link: r.link, pdf: r.pdf, notes: r.notes, added: r.addedAt || "" }));
+  tickets.forEach(t => (t.attachments || []).forEach((a, i) => {
+    if (a.kind === "image") return;
+    out.push({ src: "ticket", tid: t.id, idx: i, type: t.type, ref: t.ref, title: a.name || "Report", ticket: t, file: a.kind === "file" ? a : null, link: a.kind === "link" ? a.url : "", pdf: a.pdf, added: t.createdAt || "" });
+  }));
+  return out;
+}
+function renderReports() {
+  const note = $("#convNote");
+  note.hidden = mode === "server" && converters.length > 0;
+  note.innerHTML = mode !== "server"
+    ? "<b>PDF conversion needs the tracker server.</b> Open the tracker with the start file to convert PowerPoints and keep large files."
+    : "<b>PDF conversion isn't available on this computer.</b> It needs Microsoft PowerPoint (Windows) or LibreOffice installed on the computer running the tracker. Restart the tracker after installing. You can still add PowerPoints and links.";
+  const wrap = $("#repWrap");
+  const all = reportRows();
+  if (!all.length) {
+    wrap.innerHTML = `<div class="empty"><h2>No SCAR / RCA reports yet</h2><p>Add a report link, or import the PowerPoints for your SCARs, RCAs and 8Ds. Link each one to its ticket so it shows up there too.</p><div class="row"><button class="btn primary" type="button" data-act="add-report">+ Add report</button><button class="btn" type="button" data-act="import-ppt">Import PowerPoints</button></div></div>`;
+    $("#repCount").textContent = ""; $("#convertAllBtn").hidden = true;
+    return;
+  }
+  const q = $("#rSearch").value.trim().toLowerCase(), ty = $("#rType").value, pf = $("#rPdf").value;
+  const rows = all.filter(x =>
+    (!ty || x.type === ty) &&
+    (!pf || (pf === "has" ? !!x.pdf : !x.pdf && x.file && isPpt(x.file.name))) &&
+    (!q || [x.title, x.ref, x.type, x.notes, x.link, x.file && x.file.name, x.ticket && qid(x.ticket.no), x.ticket && x.ticket.description].some(v => String(v || "").toLowerCase().includes(q))))
+    .sort((a, b) => (b.ticket ? b.ticket.no : 0) - (a.ticket ? a.ticket.no : 0) || b.added.localeCompare(a.added));
+  const pending = all.filter(x => !x.pdf && canConvert(x.file));
+  $("#convertAllBtn").hidden = !pending.length;
+  $("#convertAllBtn").textContent = `Convert all to PDF (${pending.length})`;
+  const host = u => { try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return "link"; } };
+  wrap.innerHTML = `<table><thead><tr><th>Type</th><th>SCAR / RCA #</th><th>Report</th><th>Ticket</th><th>PowerPoint / link</th><th>PDF</th><th></th></tr></thead><tbody>${rows.map((x, i) => {
+    const key = x.src === "lib" ? `lib:${x.id}` : `t:${x.tid}:${x.idx}`;
+    const source = [
+      x.file ? `<a href="${esc(attUrl(x.file))}" target="_blank" rel="noopener" title="${esc(x.file.name)}">${esc(isPpt(x.file.name) ? "PowerPoint" : "File")}</a>` : "",
+      x.link ? `<a href="${esc(x.link)}" target="_blank" rel="noopener" title="${esc(x.link)}">Link (${esc(host(x.link))})</a>` : ""
+    ].filter(Boolean).join(" · ") || `<span class="muted">—</span>`;
+    const pdf = x.pdf ? `<a href="${esc(attUrl(x.pdf))}" target="_blank" rel="noopener">Open PDF</a>`
+      : x.file && isPpt(x.file.name) ? `<button class="btn small" type="button" data-convrow="${esc(key)}" ${canConvert(x.file) ? "" : "disabled title=\"PowerPoint or LibreOffice is needed to convert\""}>Convert to PDF</button>` : `<span class="muted">—</span>`;
+    const action = x.src === "lib" ? `<button class="btn small" type="button" data-editrep="${esc(x.id)}">Edit</button>` : `<button class="btn small" type="button" data-openticket="${esc(x.tid)}">Open ticket</button>`;
+    return `<tr>
+      <td><span class="type ${esc(x.type)}">${esc(x.type || "—")}</span></td>
+      <td class="mono">${esc(x.ref || "")}</td>
+      <td class="desc">${esc(x.title)}<div class="src">${x.src === "lib" ? "Added in this tab" : "Attached to the ticket"}${x.notes ? " · " + esc(x.notes) : ""}</div></td>
+      <td>${x.ticket ? `<button class="btn small" type="button" data-openticket="${esc(x.ticket.id)}" title="${esc(x.ticket.description)}">${qid(x.ticket.no)}</button>` : `<span class="muted">Not linked</span>`}</td>
+      <td>${source}</td><td>${pdf}</td><td>${action}</td></tr>`;
+  }).join("")}</tbody></table>${rows.length ? "" : `<div class="empty"><p>No reports match these filters.</p></div>`}`;
+  $("#repCount").textContent = `Showing ${rows.length} of ${all.length} reports.`;
+}
+function findRow(key) { return reportRows().find(x => (x.src === "lib" ? `lib:${x.id}` : `t:${x.tid}:${x.idx}`) === key); }
+async function convertRow(x) {
+  const pdf = await convertToPdf(x.file);
+  if (x.src === "lib") await saveReport({ ...x.r, pdf });
+  else {
+    const t = JSON.parse(JSON.stringify(tickets.find(y => y.id === x.tid)));
+    t.attachments[x.idx].pdf = pdf;
+    await saveTicket(t);
+  }
+  return pdf;
+}
+async function convertAll() {
+  const btn = $("#convertAllBtn"); btn.disabled = true;
+  const keys = reportRows().filter(x => !x.pdf && canConvert(x.file)).map(x => x.src === "lib" ? `lib:${x.id}` : `t:${x.tid}:${x.idx}`);
+  let done = 0, failed = 0;
+  for (const k of keys) {
+    btn.textContent = `Converting ${done + failed + 1} of ${keys.length}…`;
+    const x = findRow(k);
+    try { await convertRow(x); done++; } catch (err) { failed++; if (failed === 1) toast(err.message || "Couldn't convert", 6000); }
+  }
+  btn.disabled = false;
+  toast(`${done} PDF${done === 1 ? "" : "s"} made${failed ? `, ${failed} failed` : ""}`, 4000);
+  render();
+}
+async function importPowerPoints(files) {
+  let added = 0;
+  for (const file of files) {
+    try {
+      toast(`Adding ${file.name}…`, 60000);
+      const stored = await storeFile(file, file.name);
+      const isPdf = /\.pdf$/i.test(file.name);
+      const ref = guessRef(file.name);
+      const ticket = ref && tickets.find(t => norm(t.ref).includes(norm(ref)));
+      await saveReport({
+        id: newId(), addedAt: new Date().toISOString(), type: guessType(file.name), ref,
+        title: file.name.replace(/\.(pptx?|pdf)$/i, "").replace(/[_]+/g, " ").trim(),
+        ticketId: ticket ? ticket.id : "", link: "", notes: "",
+        file: isPdf ? null : stored, pdf: isPdf ? stored : null
+      });
+      added++;
+    } catch (err) { toast(err.code === "too_big_local" ? err.message : `Couldn't add ${file.name}: ${err.message || "unknown error"}`, 5000); }
+  }
+  if (added) toast(`Added ${added} report${added === 1 ? "" : "s"}. Check the type and ticket on each with Edit.`, 4500);
+}
+function openReport(r) {
+  editingReport = r ? { ...r } : null;
+  $("#reportForm").reset(); $("#rErr").textContent = "";
+  $("#rdlgTitle").textContent = r ? "Edit report" : "Add report";
+  $("#rSave").textContent = r ? "Save changes" : "Add report";
+  $("#r_ticket").innerHTML = `<option value="">Not linked to a ticket</option>` + tickets.slice().sort((a, b) => (b.no || 0) - (a.no || 0))
+    .map(t => `<option value="${esc(t.id)}">${qid(t.no)} · ${esc(String(t.description).slice(0, 60))}</option>`).join("");
+  const v = r || { type: "SCAR" };
+  $("#r_title").value = v.title || ""; $("#r_type").value = v.type || "SCAR"; $("#r_ref").value = v.ref || "";
+  $("#r_ticket").value = v.ticketId || ""; $("#r_link").value = v.link || ""; $("#r_notes").value = v.notes || "";
+  draftRFile = v.file || null; draftRPdf = v.pdf || null;
+  renderReportFiles();
+  $("#rDelZone").innerHTML = r ? `<button class="btn danger small" type="button" id="rDel">Delete</button>` : "";
+  $("#rdlg").showModal();
+  $("#r_title").focus();
+}
+function renderReportFiles() {
+  $("#r_fileLine").innerHTML = draftRFile
+    ? `<a href="${esc(attUrl(draftRFile))}" target="_blank" rel="noopener">${esc(draftRFile.name)}</a><button class="btn small" type="button" data-rfile="pick">Replace</button><button class="btn small" type="button" data-rfile="remove">Remove</button>`
+    : `<button class="btn small" type="button" data-rfile="pick">Upload PowerPoint</button><span class="muted">.pptx or .ppt${mode === "server" ? ", up to 50 MB" : ", up to 1.5 MB in this browser"}</span>`;
+  $("#r_pdfLine").innerHTML = draftRPdf
+    ? `<a href="${esc(attUrl(draftRPdf))}" target="_blank" rel="noopener">${esc(draftRPdf.name)}</a><button class="btn small" type="button" data-rfile="rmpdf">Remove</button>`
+    : draftRFile && isPpt(draftRFile.name)
+      ? (canConvert(draftRFile) ? `<button class="btn small" type="button" data-rfile="convert">Convert to PDF</button>` : `<span class="muted">Converting needs the tracker server with PowerPoint or LibreOffice on that computer.</span>`)
+      : `<span class="muted">Upload a PowerPoint to convert it, or upload a PDF directly.</span>`;
+}
+async function reportFileAction(act, btn) {
+  if (act === "pick") return $("#r_fileInput").click();
+  if (act === "remove") draftRFile = null;
+  if (act === "rmpdf") draftRPdf = null;
+  if (act === "convert") {
+    btn.disabled = true; btn.textContent = "Converting…";
+    try { draftRPdf = await convertToPdf(draftRFile); toast("PDF ready. Save to keep it on the report."); }
+    catch (err) { $("#rErr").textContent = err.message || "Couldn't convert"; }
+  }
+  renderReportFiles();
+}
+async function submitReport(e) {
+  e.preventDefault();
+  const title = $("#r_title").value.trim(), link = $("#r_link").value.trim();
+  $("#r_title").closest(".field").classList.toggle("invalid", !title);
+  if (!title) { $("#rErr").textContent = "Give the report a title."; return; }
+  if (!link && !draftRFile && !draftRPdf) { $("#rErr").textContent = "Add a link, a PowerPoint or a PDF."; return; }
+  const r = {
+    ...(editingReport || { id: newId(), addedAt: new Date().toISOString() }),
+    title, type: $("#r_type").value, ref: $("#r_ref").value.trim(), ticketId: $("#r_ticket").value,
+    link: link && !/^https?:\/\//i.test(link) ? "https://" + link : link, notes: $("#r_notes").value.trim(), file: draftRFile, pdf: draftRPdf
+  };
+  const btn = $("#rSave"); btn.disabled = true;
+  try { await saveReport(r); toast(editingReport ? "Report updated" : "Report added"); $("#rdlg").close(); }
+  catch (err) { $("#rErr").textContent = writeError(err); }
+  finally { btn.disabled = false; }
+}
+
 /* ---------- dialog ---------- */
 function openTicket(t) {
   editing = t ? JSON.parse(JSON.stringify(t)) : null;
@@ -837,15 +1154,18 @@ function openTicket(t) {
   const v = t || { detected: todayISO(), status: "OPEN", product: last.product || "", client: last.client || "", phase: last.phase || "" };
   $("#dlgTitle").textContent = t ? `${qid(t.no)}` : "New ticket";
   $("#dlgStatusChip").innerHTML = t ? `<span class="chip st-${esc(t.status)}">${esc(STATUS_LABEL[t.status] || t.status)}</span>` : "";
-  for (const k of ["detected", "type", "ref", "description", "product", "client", "reporter", "pic", "units", "area", "rootCause", "subRootCause", "closedDate", "comments"]) {
+  for (const k of ["detected", "type", "ref", "description", "product", "client", "reporter", "pic", "units", "area", "rootCause", "subRootCause", "rootCauseDetail", "teamLead", "members", "closedDate", "comments"]) {
     const el = $("#f_" + k); if (!el) continue;
     if (el.tagName === "SELECT" && v[k] && ![...el.options].some(o => o.value === v[k])) el.insertAdjacentHTML("beforeend", `<option>${esc(v[k])}</option>`);
     el.value = v[k] ?? "";
   }
   setRadio("severity", v.severity); setRadio("phase", v.phase); setRadio("status", v.status || "OPEN");
   FLAGS.forEach(([k]) => { $("#flag_" + k).checked = !!(v.flags && v.flags[k]); });
-  draftAttachments = (v.attachments || []).slice();
+  draftAttachments = (v.attachments || []).map(a => ({ ...a }));
   renderAttachments();
+  renderActions("ca", v.containment || []);
+  renderActions("pca", v.pca || []);
+  renderLinkedReports(t);
   $("#updDetails").open = !!t;
   $("#updHint").hidden = !!t;
   $("#saveBtn").textContent = t ? "Save changes" : "Create ticket";
@@ -862,6 +1182,40 @@ function syncClosed() {
   const closed = getRadio("status") === "CLOSE";
   $("#closedField").hidden = !closed;
   if (closed && !$("#f_closedDate").value) $("#f_closedDate").value = todayISO();
+  const open = [...readActions("ca"), ...readActions("pca")].filter(a => a.status !== "Closed").length;
+  $("#actWarn").hidden = !(closed && open);
+  $("#actWarn").textContent = `${open} action${open === 1 ? " is" : "s are"} still open. You can still close the ticket.`;
+}
+
+/* ---------- containment & corrective actions ---------- */
+function actionRow(a = {}) {
+  const st = a.status === "Closed" ? "Closed" : "Open";
+  return `<div class="act-row">
+    <input class="act-text" type="text" placeholder="Action" value="${esc(a.text)}" aria-label="Action">
+    <input class="act-owner" type="text" placeholder="Owner" list="dl_people" value="${esc(a.owner)}" aria-label="Owner">
+    <input class="act-due" type="date" value="${esc(a.due)}" aria-label="Due date" title="Due date">
+    <select class="act-status" data-status="${st}" aria-label="Status"><option${st === "Open" ? " selected" : ""}>Open</option><option${st === "Closed" ? " selected" : ""}>Closed</option></select>
+    <button type="button" data-rmact aria-label="Remove action">×</button>
+  </div>`;
+}
+function renderActions(kind, list) {
+  const box = $("#" + kind + "List");
+  box.innerHTML = list.length ? list.map(actionRow).join("") : `<div class="act-empty">None yet.</div>`;
+}
+function readActions(kind) {
+  return $$("#" + kind + "List .act-row").map(r => ({
+    text: $(".act-text", r).value.trim(), owner: $(".act-owner", r).value.trim(),
+    due: $(".act-due", r).value, status: $(".act-status", r).value
+  })).filter(a => a.text);
+}
+function renderLinkedReports(t) {
+  const box = $("#linkedReps");
+  const list = t ? reports.filter(r => r.ticketId === t.id) : [];
+  box.hidden = !list.length;
+  box.innerHTML = list.length ? `<span class="muted">In the SCAR / RCA reports tab:</span>` + list.map(r => {
+    const main = r.file ? attUrl(r.file) : r.link;
+    return `<span><a href="${esc(main)}" target="_blank" rel="noopener">${esc(r.title)}</a>${r.pdf ? ` · <a href="${esc(attUrl(r.pdf))}" target="_blank" rel="noopener">PDF</a>` : ""}</span>`;
+  }).join("") : "";
 }
 function closeDialog() { $("#dlg").close(); editing = null; draftAttachments = []; }
 
@@ -877,6 +1231,9 @@ async function submitForm(e) {
     rootCause: val("f_rootCause"), subRootCause: val("f_subRootCause"), status: getRadio("status") || "OPEN",
     closedDate: getRadio("status") === "CLOSE" ? val("f_closedDate") : "", comments: val("f_comments"),
     flags: Object.fromEntries(FLAGS.map(([k]) => [k, $("#flag_" + k).checked]).filter(([, v]) => v)),
+    rootCauseDetail: val("f_rootCauseDetail"), teamLead: val("f_teamLead"),
+    members: val("f_members").split(",").map(x => x.trim()).filter(Boolean).join(", "),
+    containment: readActions("ca"), pca: readActions("pca"),
     attachments: draftAttachments
   };
   let missing = [];
@@ -905,7 +1262,8 @@ function renderAttachments() {
   box.innerHTML = draftAttachments.map((a, i) => {
     const url = attUrl(a);
     const thumb = a.kind === "image" && url ? `<a href="${esc(url)}" target="_blank" rel="noopener"><img src="${esc(url)}" alt="${esc(a.name)}"></a>` : "";
-    return `<div class="att">${thumb}<div style="min-width:0"><div class="kind">${esc(a.kind)}</div><a href="${esc(url)}" target="_blank" rel="noopener" title="${esc(a.name)}">${esc(a.name || url)}</a></div><button type="button" data-rm="${i}" aria-label="Remove ${esc(a.name)}">×</button></div>`;
+    const pdf = a.pdf ? `<a class="pdf" href="${esc(attUrl(a.pdf))}" target="_blank" rel="noopener">PDF</a>` : canConvert(a) ? `<button class="btn small" type="button" data-conv="${i}">Convert to PDF</button>` : "";
+    return `<div class="att">${thumb}<div style="min-width:0"><div class="kind">${esc(a.kind)}</div><a href="${esc(url)}" target="_blank" rel="noopener" title="${esc(a.name)}">${esc(a.name || url)}</a></div>${pdf}<button type="button" data-rm="${i}" aria-label="Remove ${esc(a.name)}">×</button></div>`;
   }).join("");
 }
 function updateUploadUI() {
@@ -919,18 +1277,12 @@ async function addFiles(files) {
     const kind = file.type.startsWith("image/") ? "image" : "file";
     const name = file.name || (kind === "image" ? `screenshot-${todayISO()}.png` : "file");
     try {
-      if (mode === "server") {
-        toast(`Uploading ${name}…`, 60000);
-        const r = await api("POST", "api/uploads", file, { "Content-Type": file.type || "application/octet-stream", "X-Filename": encodeURIComponent(name) });
-        draftAttachments.push({ kind, name, url: r.url, size: r.size });
-        toast(`${name} attached. Save to keep it on the ticket.`);
-      } else {
-        if (file.size > LOCAL_FILE_LIMIT) { toast(`${name} is over 1.5 MB. Add a link to it instead.`, 4500); continue; }
-        draftAttachments.push({ kind, name, dataUrl: await readAsDataURL(file), size: file.size });
-      }
+      if (mode === "server") toast(`Uploading ${name}…`, 60000);
+      draftAttachments.push({ kind, ...(await storeFile(file, name)) });
+      if (mode === "server") toast(`${name} attached. Save to keep it on the ticket.`);
     } catch (err) {
       const code = err && err.code;
-      toast(code === "http_413" ? `${name} is too large (50 MB max). Add a link to it instead.` : `Couldn't upload ${name}: ${(err && err.message) || "unknown error"}`, 5000);
+      toast(code === "http_413" ? `${name} is too large (50 MB max). Add a link to it instead.` : code === "too_big_local" ? err.message : `Couldn't upload ${name}: ${(err && err.message) || "unknown error"}`, 5000);
     }
   }
   renderAttachments();
@@ -1037,10 +1389,11 @@ async function runImport() {
   pendingImport = null; $("#importBox").hidden = true; render();
 }
 async function exportExcel() {
-  const head = ["No.", "Issue detected", "Ticket type", "SCAR / bug # (NV)", "Quality issue description", "Severity", "Status", "Product name", "Product phase", "Client", "Reporter", "PIC from FXN", "Factory area", "Units impacted", "Root cause", "Sub-root cause", "Closed on", "Days open", ...FLAGS.map(f => f[1]), "Report", "Comments"];
+  const head = ["No.", "Issue detected", "Ticket type", "SCAR / bug # (NV)", "Quality issue description", "Severity", "Status", "Product name", "Product phase", "Client", "Reporter", "PIC from FXN", "Factory area", "Units impacted", "Root cause", "Sub-root cause", "Root cause details", "Team lead", "Members involved", "Containment actions", "Permanent corrective actions", "Closed on", "Days open", ...FLAGS.map(f => f[1]), "Report", "Comments"];
+  const acts = list => (list || []).map(a => `[${a.status}] ${a.text}${a.owner || a.due ? ` (${[a.owner, a.due].filter(Boolean).join(", ")})` : ""}`).join("\n");
   const rows = filtered().sort((a, b) => (a.no || 0) - (b.no || 0)).map(t => [
     qid(t.no), t.detected, t.type, t.ref, t.description, t.severity, t.status, t.product, t.phase, t.client, t.reporter, t.pic, t.area, t.units,
-    t.rootCause, t.subRootCause, t.closedDate, ageOf(t), ...FLAGS.map(([k]) => (t.flags && t.flags[k] ? "Y" : "N")),
+    t.rootCause, t.subRootCause, t.rootCauseDetail, t.teamLead, t.members, acts(t.containment), acts(t.pca), t.closedDate, ageOf(t), ...FLAGS.map(([k]) => (t.flags && t.flags[k] ? "Y" : "N")),
     (t.attachments || []).map(a => a.dataUrl ? `(in browser) ${a.name}` : /^https?:/.test(a.url) ? a.url : `(uploaded) ${a.name}`).join("\n"), t.comments
   ]);
   const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
@@ -1071,6 +1424,8 @@ function bindUI() {
     if (a.dataset.act === "import") $("#importFile").click();
     if (a.dataset.act === "import-cancel") { pendingImport = null; $("#importBox").hidden = true; }
     if (a.dataset.act === "import-go") runImport();
+    if (a.dataset.act === "add-report") openReport(null);
+    if (a.dataset.act === "import-ppt") $("#pptInput").click();
   });
   $("#chartControls").addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b) return;
@@ -1082,12 +1437,74 @@ function bindUI() {
   $("#importFile").addEventListener("change", e => { const f = e.target.files[0]; if (f) handleImportFile(f); e.target.value = ""; });
   $("#exportBtn").addEventListener("click", exportExcel);
 
+  // actions editor
+  $("#ticketForm").addEventListener("click", e => {
+    const add = e.target.closest("[data-addact]");
+    if (add) {
+      const box = $("#" + add.dataset.addact + "List");
+      const empty = $(".act-empty", box); if (empty) empty.remove();
+      box.insertAdjacentHTML("beforeend", actionRow());
+      $(".act-row:last-child .act-text", box).focus();
+    }
+    const rm = e.target.closest("[data-rmact]");
+    if (rm) { const box = rm.closest(".act-list"); rm.closest(".act-row").remove(); if (!$(".act-row", box)) box.innerHTML = `<div class="act-empty">None yet.</div>`; syncClosed(); }
+    const conv = e.target.closest("[data-conv]");
+    if (conv) {
+      const a = draftAttachments[+conv.dataset.conv];
+      conv.disabled = true; conv.textContent = "Converting…";
+      convertToPdf(a).then(pdf => { a.pdf = pdf; toast("PDF ready. Save to keep it on the ticket."); }, err => toast(err.message || "Couldn't convert", 6000)).finally(renderAttachments);
+    }
+  });
+  $("#ticketForm").addEventListener("change", e => { if (e.target.classList.contains("act-status")) { e.target.dataset.status = e.target.value; syncClosed(); } });
+
+  // reports
+  ["#rSearch", "#rType", "#rPdf"].forEach(sel => $(sel).addEventListener("input", renderReports));
+  $("#addReportBtn").addEventListener("click", () => openReport(null));
+  $("#pptImportBtn").addEventListener("click", () => $("#pptInput").click());
+  $("#pptInput").addEventListener("change", e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) importPowerPoints(f); });
+  $("#convertAllBtn").addEventListener("click", convertAll);
+  $("#repWrap").addEventListener("click", async e => {
+    const ed = e.target.closest("[data-editrep]"); if (ed) return openReport(reports.find(r => r.id === ed.dataset.editrep));
+    const ot = e.target.closest("[data-openticket]"); if (ot) return openTicket(tickets.find(t => t.id === ot.dataset.openticket));
+    const cv = e.target.closest("[data-convrow]");
+    if (cv) {
+      cv.disabled = true; cv.textContent = "Converting…";
+      try { const pdf = await convertRow(findRow(cv.dataset.convrow)); toast(`PDF ready: ${pdf.name}`); }
+      catch (err) { toast(err.message || "Couldn't convert", 6000); renderReports(); }
+    }
+  });
+  $("#reportForm").addEventListener("submit", submitReport);
+  $("#reportForm").addEventListener("click", async e => {
+    if (e.target.closest("[data-rclose]")) { $("#rdlg").close(); return; }
+    const f = e.target.closest("[data-rfile]"); if (f) return reportFileAction(f.dataset.rfile, f);
+    if (e.target.id === "rDel") $("#rDelZone").innerHTML = `<span class="confirm-del">Delete this report? <button class="btn danger small" type="button" id="rDelYes">Delete</button><button class="btn small" type="button" id="rDelNo">Keep</button></span>`;
+    if (e.target.id === "rDelNo") $("#rDelZone").innerHTML = `<button class="btn danger small" type="button" id="rDel">Delete</button>`;
+    if (e.target.id === "rDelYes") {
+      try { await deleteReport(editingReport.id); toast("Report deleted"); $("#rdlg").close(); } catch (err) { $("#rErr").textContent = writeError(err); }
+    }
+  });
+  $("#r_fileInput").addEventListener("change", async e => {
+    const file = e.target.files[0]; e.target.value = ""; if (!file) return;
+    try {
+      toast(`Uploading ${file.name}…`, 60000);
+      const stored = await storeFile(file, file.name);
+      if (/\.pdf$/i.test(file.name)) draftRPdf = stored; else { draftRFile = stored; draftRPdf = null; }
+      if (!$("#r_title").value.trim()) $("#r_title").value = file.name.replace(/\.(pptx?|pdf)$/i, "").replace(/[_]+/g, " ").trim();
+      if (!$("#r_ref").value.trim()) $("#r_ref").value = guessRef(file.name);
+      toast(`${file.name} uploaded`);
+    } catch (err) { $("#rErr").textContent = err.code === "too_big_local" ? err.message : `Couldn't upload: ${err.message || "unknown error"}`; }
+    renderReportFiles();
+  });
+
   $("#ticketForm").addEventListener("submit", submitForm);
   $("#dlgClose").addEventListener("click", closeDialog);
   $("#cancelBtn").addEventListener("click", closeDialog);
   $("#dlg").addEventListener("cancel", () => { editing = null; });
   $$('input[name="status"]').forEach(r => r.addEventListener("change", syncClosed));
-  $("#ticketForm").addEventListener("input", e => { const f = e.target.closest(".field.invalid"); if (f) f.classList.remove("invalid"); });
+  $("#ticketForm").addEventListener("input", e => {
+    const f = e.target.closest(".field.invalid"); if (f) f.classList.remove("invalid");
+    if (e.target.closest(".act-row")) syncClosed();
+  });
   $("#addLinkBtn").addEventListener("click", addLink);
   $("#linkUrl").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addLink(); } });
   $("#uploadBtn").addEventListener("click", () => $("#uploadInput").click());

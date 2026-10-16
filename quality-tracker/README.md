@@ -14,6 +14,18 @@ and fonts are all in this folder, and tickets are saved in `data/` next to these
 If you got the zip, your issues from `FXN_HT_Quality_Issue_tracker` are already loaded.
 To load them into an empty tracker, click **Import Excel** and pick the workbook.
 
+## SCAR / RCA reports and PDF
+
+The **SCAR / RCA reports** tab lists every report in one place: PowerPoints and links you add there,
+plus the reports attached to tickets. Use **Import PowerPoints** to add several .pptx files at once
+(the SCAR number and type are guessed from the file name; check them with **Edit**), or **+ Add report**
+for one report with a link, a PowerPoint or a PDF. Link a report to its ticket and it shows on the ticket too.
+
+**Convert to PDF** turns an uploaded PowerPoint into a PDF on this computer. It needs **Microsoft PowerPoint**
+(Windows) or **LibreOffice** (free, any system) installed on the computer running the tracker; the start
+window says which one it found. Restart the tracker after installing one. Reports that are only SharePoint
+links can't be converted: download the PowerPoint and import it first.
+
 ## Update to a newer version
 
 Unzip the new version over this folder and replace the files when asked. Your `data/` folder is not in
@@ -26,8 +38,9 @@ The daily damage trend is a separate app, **FXN HT Incoming Damage**, in its own
 | What | Where |
 |---|---|
 | Tickets | `data/tickets.json` |
-| Uploaded reports, images | `data/uploads/` |
-| One copy of the tickets per day | `data/backups/` |
+| SCAR / RCA report list | `data/reports.json` |
+| Uploaded reports, PDFs, images | `data/uploads/` |
+| One copy of tickets and reports per day | `data/backups/` |
 
 To back up or move the tracker, copy the whole folder. **Export Excel** also saves the current list as a spreadsheet.
 
