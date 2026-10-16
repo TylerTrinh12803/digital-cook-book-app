@@ -246,6 +246,7 @@ details > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
 .att .pdf { font-size: .78rem; font-weight: 600; }
 .att .btn { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: .8rem; padding: 3px 9px; line-height: 1.4; }
 .att .btn:hover { border-color: var(--muted); }
+a.btn { display: inline-block; text-decoration: none; }
 .linked-reps { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; font-size: .86rem; }
 .toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 9px 16px; border-radius: var(--radius); font-size: .9rem; z-index: 50; max-width: calc(100vw - 32px); box-shadow: 0 6px 20px rgb(0 0 0 / .25); }
 .import-box { margin-top: 12px; }
@@ -344,7 +345,7 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
     <div class="rep-head">
       <div>
         <h2>SCAR / RCA reports</h2>
-        <p>Every SCAR, RCA and 8D report in one place: PowerPoints and links you add here, plus the reports attached to tickets. For a report that is a SharePoint link, download the PowerPoint, use <b>Upload PowerPoint</b> on that report, then <b>Convert to PDF</b>.</p>
+        <p>Every SCAR, RCA and 8D report in one place: PowerPoints and links you add here, plus the reports attached to tickets. For a report that is a SharePoint link, download the PowerPoint, use <b>Upload PowerPoint</b> on that report, then <b>Download as PDF</b>.</p>
       </div>
       <div class="controls">
         <button class="btn" type="button" id="pptImportBtn">Import PowerPoints</button>
@@ -515,6 +516,7 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
 
 <script src="vendor/chart.umd.min.js"></script>
 <script src="vendor/xlsx.full.min.js"></script>
+<script src="vendor/exceljs.min.js"></script>
 <script>
 (() => {
 "use strict";
@@ -539,7 +541,7 @@ let mode = "starting"; // starting | server (start script running) | local (page
 let lastSig = "";
 let view = "tickets", chartKind = "openclose";
 let sort = { key: "detected", dir: "desc" };
-let ocMode = "flow", paretoDim = "rootCause", paretoMetric = "count", paretoBlank = false;
+let ocMode = "flow", paretoDim = "rootCause", paretoBlank = false;
 let chart = null;
 let editing = null; // ticket being edited (copy) or null for new
 let draftAttachments = [];
@@ -641,6 +643,12 @@ async function convertToPdf(file) {
   return api("POST", "api/convert", JSON.stringify({ url: file.url }), { "Content-Type": "application/json" });
 }
 // Only PowerPoints uploaded to the tracker can be converted; files behind web links (SharePoint) can't be reached.
+// Saves a stored file (PDF) to the viewer's Downloads folder under its own name.
+function downloadFile(f) {
+  const a = Object.assign(document.createElement("a"), { href: attUrl(f), download: f.name || "report.pdf" });
+  document.body.appendChild(a); a.click(); a.remove();
+}
+const pdfLinks = f => `<a class="btn primary small" href="${esc(attUrl(f))}" download="${esc(f.name || "report.pdf")}">Download PDF</a><a href="${esc(attUrl(f))}" target="_blank" rel="noopener">View</a>`;
 const canConvert = f => mode === "server" && converters.length > 0 && !!f && !!f.url && !/^https?:/i.test(f.url) && isPpt(f.name);
 async function saveTicket(t) {
   t.updatedAt = new Date().toISOString();
@@ -687,14 +695,14 @@ function restoreUI() {
   try {
     const s = JSON.parse(lsGet(UI_KEY) || "{}");
     if (s.view) view = s.view; if (s.chartKind) chartKind = s.chartKind;
-    if (s.paretoDim) paretoDim = s.paretoDim; if (s.paretoMetric) paretoMetric = s.paretoMetric;
+    if (s.paretoDim) paretoDim = s.paretoDim;
     if (s.ocMode) ocMode = s.ocMode; if (s.sort) sort = s.sort;
   } catch {}
   if (location.hash === "#analysis") view = "analysis";
   if (location.hash === "#pareto") { view = "analysis"; chartKind = "pareto"; }
   if (location.hash === "#reports") view = "reports";
 }
-function saveUI() { lsSet(UI_KEY, JSON.stringify({ view, chartKind, paretoDim, paretoMetric, ocMode, sort })); }
+function saveUI() { lsSet(UI_KEY, JSON.stringify({ view, chartKind, paretoDim, ocMode, sort })); }
 
 function fillStaticOptions() {
   $("#f_area").insertAdjacentHTML("beforeend", AREAS.map(a => `<option>${esc(a)}</option>`).join(""));
@@ -959,16 +967,15 @@ const CHARTS = {
   rca: { title: "RCAs per month", note: () => "Tickets of type RCA, by month raised and current status.", controls: () => "", build: rows => typeByMonth(rows, "RCA") },
   pareto: {
     title: "Pareto",
-    note: () => `${{ rootCause: "Root causes", subRootCause: "Sub-root causes", area: "Factory areas" }[paretoDim]} ranked by ${paretoMetric === "count" ? "number of tickets" : "units impacted"}. The line is the cumulative share; causes left of 80% are the vital few.`,
+    note: () => `${{ rootCause: "Root causes", subRootCause: "Sub-root causes", area: "Factory areas" }[paretoDim]} ranked by number of tickets. The line is the cumulative share; causes left of 80% are the vital few.`,
     controls: () => `<div class="seg" role="group" aria-label="Group by">${[["rootCause", "Root cause"], ["subRootCause", "Sub-root cause"], ["area", "Factory area"]].map(([k, l]) => `<button type="button" data-pd="${k}" aria-pressed="${paretoDim === k}">${l}</button>`).join("")}</div>
-      <div class="seg" role="group" aria-label="Measure">${[["count", "Tickets"], ["units", "Units"]].map(([k, l]) => `<button type="button" data-pm="${k}" aria-pressed="${paretoMetric === k}">${l}</button>`).join("")}</div>
       <label style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="pBlank" ${paretoBlank ? "checked" : ""}> Include “not yet determined”</label>`,
     build(rows) {
       const map = new Map();
       rows.forEach(t => {
         let k = (t[paretoDim] || "").trim();
         if (!k) { if (!paretoBlank) return; k = "Not yet determined"; }
-        map.set(k, (map.get(k) || 0) + (paretoMetric === "count" ? 1 : unitsNum(t.units)));
+        map.set(k, (map.get(k) || 0) + 1);
       });
       const items = [...map.entries()].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
       const total = items.reduce((s, [, v]) => s + v, 0);
@@ -976,7 +983,7 @@ const CHARTS = {
       const vital = cum.map((c, i) => i === 0 || cum[i - 1] < 80);
       const accent = css("--accent"), soft = css("--muted");
       const ds = [
-        { type: "bar", label: paretoMetric === "count" ? "Tickets" : "Units impacted", data: items.map(([, v]) => v), backgroundColor: vital.map(v => v ? accent : soft), borderRadius: 2, maxBarThickness: 56, order: 2, yAxisID: "y" },
+        { type: "bar", label: "Tickets", data: items.map(([, v]) => v), backgroundColor: vital.map(v => v ? accent : soft), borderRadius: 2, maxBarThickness: 56, order: 2, yAxisID: "y" },
         { type: "line", label: "Cumulative %", data: cum, borderColor: css("--series-backlog"), backgroundColor: css("--series-backlog"), pointRadius: 3, borderWidth: 2, tension: 0, yAxisID: "y2", order: 1 }
       ];
       const o = baseOptions({ y2: true, totals: { show: true, stacked: false } });
@@ -1015,7 +1022,7 @@ function renderChart() {
   chart = new Chart($("#chart"), { type: "bar", data: built.data, options: built.options });
   if (chartKind === "pareto") {
     pt.hidden = false;
-    pt.innerHTML = `<table><thead><tr><th>${{ rootCause: "Root cause", subRootCause: "Sub-root cause", area: "Factory area" }[paretoDim]}</th><th>${paretoMetric === "count" ? "Tickets" : "Units"}</th><th>Share</th><th>Cumulative</th></tr></thead><tbody>${
+    pt.innerHTML = `<table><thead><tr><th>${{ rootCause: "Root cause", subRootCause: "Sub-root cause", area: "Factory area" }[paretoDim]}</th><th>Tickets</th><th>Share</th><th>Cumulative</th></tr></thead><tbody>${
       built.items.map(([k, v], i) => `<tr class="${built.vital[i] ? "vital" : ""}"><td>${esc(k)}</td><td class="mono">${v.toLocaleString()}</td><td class="mono">${(v / built.total * 100).toFixed(1)}%</td><td class="mono">${built.cum[i].toFixed(1)}%</td></tr>`).join("")}</tbody></table>`;
   }
 }
@@ -1064,10 +1071,10 @@ function renderReports() {
       x.file ? `<a href="${esc(attUrl(x.file))}" target="_blank" rel="noopener" title="${esc(x.file.name)}">${esc(isPpt(x.file.name) ? "PowerPoint" : "File")}</a>` : "",
       canUpload ? `<button class="btn small" type="button" data-uprow="${esc(key)}" title="Upload the PowerPoint for this report">${x.file ? "Replace PowerPoint" : "Upload PowerPoint"}</button>` : ""
     ].filter(Boolean).join("")}</div>`;
-    const pdf = x.pdf ? `<a href="${esc(attUrl(x.pdf))}" target="_blank" rel="noopener">Open PDF</a>`
+    const pdf = x.pdf ? `<div class="file-line">${pdfLinks(x.pdf)}</div>`
       : !x.file || !isPpt(x.file.name) ? `<span class="muted">Upload the PowerPoint first</span>`
-      : canConvert(x.file) ? `<button class="btn primary small" type="button" data-convrow="${esc(key)}">Convert to PDF</button>`
-      : `<button class="btn small" type="button" disabled title="${mode === "server" ? "PowerPoint or LibreOffice is needed on the computer running the tracker" : "Open the tracker with the start file to convert"}">Convert to PDF</button>`;
+      : canConvert(x.file) ? `<button class="btn primary small" type="button" data-convrow="${esc(key)}" title="Convert the PowerPoint and save the PDF to your computer">Download as PDF</button>`
+      : `<button class="btn small" type="button" disabled title="${mode === "server" ? "PowerPoint or LibreOffice is needed on the computer running the tracker" : "Open the tracker with the start file to convert"}">Download as PDF</button>`;
     const action = x.src === "lib" ? `<button class="btn small" type="button" data-editrep="${esc(x.id)}">Edit</button>` : `<button class="btn small" type="button" data-openticket="${esc(x.tid)}">Open ticket</button>`;
     return `<tr>
       <td><span class="type ${esc(x.type)}">${esc(x.type || "—")}</span></td>
@@ -1106,7 +1113,7 @@ async function uploadToRow(file) {
       a.pptx = stored; delete a.pdf;
       await saveTicket(t);
     }
-    toast(`PowerPoint added to “${x.title}”${canConvert(stored) ? ". Click Convert to PDF." : "."}`, 5000);
+    toast(`PowerPoint added to “${x.title}”${canConvert(stored) ? ". Click Download as PDF." : "."}`, 5000);
   } catch (err) { toast(err.code === "too_big_local" ? err.message : `Couldn't upload: ${err.message || "unknown error"}`, 6000); }
 }
 async function convertAll() {
@@ -1163,9 +1170,9 @@ function renderReportFiles() {
     ? `<a href="${esc(attUrl(draftRFile))}" target="_blank" rel="noopener">${esc(draftRFile.name)}</a><button class="btn small" type="button" data-rfile="pick">Replace</button><button class="btn small" type="button" data-rfile="remove">Remove</button>`
     : `<button class="btn small" type="button" data-rfile="pick">Upload PowerPoint</button><span class="muted">.pptx or .ppt${mode === "server" ? ", up to 50 MB" : ", up to 1.5 MB in this browser"}</span>`;
   $("#r_pdfLine").innerHTML = draftRPdf
-    ? `<a href="${esc(attUrl(draftRPdf))}" target="_blank" rel="noopener">${esc(draftRPdf.name)}</a><button class="btn small" type="button" data-rfile="rmpdf">Remove</button>`
+    ? `${pdfLinks(draftRPdf)}<span class="muted">${esc(draftRPdf.name)}</span><button class="btn small" type="button" data-rfile="rmpdf">Remove</button>`
     : draftRFile && isPpt(draftRFile.name)
-      ? (canConvert(draftRFile) ? `<button class="btn small" type="button" data-rfile="convert">Convert to PDF</button>` : `<span class="muted">Converting needs the tracker server with PowerPoint or LibreOffice on that computer.</span>`)
+      ? (canConvert(draftRFile) ? `<button class="btn primary small" type="button" data-rfile="convert">Download as PDF</button>` : `<span class="muted">Converting needs the tracker server with PowerPoint or LibreOffice on that computer.</span>`)
       : `<span class="muted">Upload a PowerPoint to convert it, or upload a PDF directly.</span>`;
 }
 async function reportFileAction(act, btn) {
@@ -1174,7 +1181,7 @@ async function reportFileAction(act, btn) {
   if (act === "rmpdf") draftRPdf = null;
   if (act === "convert") {
     btn.disabled = true; btn.textContent = "Converting…";
-    try { draftRPdf = await convertToPdf(draftRFile); toast("PDF ready. Save to keep it on the report."); }
+    try { draftRPdf = await convertToPdf(draftRFile); downloadFile(draftRPdf); toast("PDF downloaded. Save to keep it on the report too."); }
     catch (err) { $("#rErr").textContent = err.message || "Couldn't convert"; }
   }
   renderReportFiles();
@@ -1317,7 +1324,7 @@ function renderAttachments() {
     const ppt = a.kind === "file" ? a : a.pptx;
     const upload = a.kind === "link" ? (a.pptx ? `<a class="pdf" href="${esc(attUrl(a.pptx))}" target="_blank" rel="noopener">PowerPoint</a>` : "") +
       `<button class="btn small" type="button" data-upatt="${i}">${a.pptx ? "Replace" : "Upload PowerPoint"}</button>` : "";
-    const pdf = upload + (a.pdf ? `<a class="pdf" href="${esc(attUrl(a.pdf))}" target="_blank" rel="noopener">PDF</a>` : canConvert(ppt) ? `<button class="btn small" type="button" data-conv="${i}">Convert to PDF</button>` : "");
+    const pdf = upload + (a.pdf ? `<a class="btn small" href="${esc(attUrl(a.pdf))}" download="${esc(a.pdf.name || "report.pdf")}">Download PDF</a>` : canConvert(ppt) ? `<button class="btn small" type="button" data-conv="${i}">Download as PDF</button>` : "");
     return `<div class="att">${thumb}<div style="min-width:0"><div class="kind">${esc(a.kind)}</div><a href="${esc(url)}" target="_blank" rel="noopener" title="${esc(a.name)}">${esc(a.name || url)}</a></div>${pdf}<button type="button" data-rm="${i}" aria-label="Remove ${esc(a.name)}">×</button></div>`;
   }).join("");
 }
@@ -1443,22 +1450,251 @@ async function runImport() {
   } catch (err) { toast(`Imported ${done} tickets, then stopped. ${writeError(err)}`, 6000); }
   pendingImport = null; $("#importBox").hidden = true; render();
 }
+/* ---------- Excel export (styled, via ExcelJS) ---------- */
+const XL = {
+  ink: "FF152027", muted: "FF586771", line: "FFD3DCDF", head: "FF0B6872", white: "FFFFFFFF",
+  band: { Ticket: "FFD6ECEE", Issue: "FFE4E9EE", "Investigation & closure": "FFF1E8D8" },
+  sev: { S0: ["FFC62F2F", "FFFFFFFF"], S1: ["FFFCE4B6", "FF8A5300"], S2: ["FFDCE6F4", "FF2F5A90"] },
+  status: { Open: ["FFFBE0E0", "FFB42727"], Monitor: ["FFFCEFD2", "FF8F5D00"], Closed: ["FFDDF2E7", "FF1B6E48"] }
+};
+const xlDate = iso => { if (!/^\d{4}-\d{2}-\d{2}/.test(iso || "")) return null; const [y, m, d] = iso.slice(0, 10).split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
+const xlFill = argb => ({ type: "pattern", pattern: "solid", fgColor: { argb } });
+const xlBorder = { top: { style: "thin", color: { argb: XL.line } }, bottom: { style: "thin", color: { argb: XL.line } }, left: { style: "thin", color: { argb: XL.line } }, right: { style: "thin", color: { argb: XL.line } } };
+const memberList = t => String(t.members || "").split(",").map(x => x.trim()).filter(Boolean);
+const fileLink = f => !f ? null : f.dataUrl ? null : /^https?:/i.test(f.url) ? f.url : new URL(f.url, location.href).href;
+
+// Writes one sheet: a title, a subtitle, an optional row of column groups, a header row with filters,
+// then the rows. cols: [{ header, key, width, wrap, kind: "date"|"num"|"link"|"sev"|"status", group }]
+function xlSheet(wb, name, { title, subtitle, cols, rows, tab, freezeCols = 1 }) {
+  const ws = wb.addWorksheet(name, { properties: { tabColor: { argb: tab } }, views: [{ showGridLines: false }] });
+  const n = cols.length, hasGroups = cols.some(c => c.group);
+  ws.columns = cols.map(c => ({ key: c.key, width: c.width }));
+  ws.getCell(1, 1).value = title;
+  ws.getCell(1, 1).font = { size: 16, bold: true, color: { argb: XL.ink } };
+  ws.getCell(2, 1).value = subtitle;
+  ws.getCell(2, 1).font = { size: 10, color: { argb: XL.muted } };
+  ws.getRow(1).height = 24;
+  let hr = 4;
+  if (hasGroups) {
+    // A colored band naming each group of columns above the header row.
+    let start = 0;
+    for (let i = 1; i <= n; i++) {
+      if (i === n || cols[i].group !== cols[start].group) {
+        ws.mergeCells(3, start + 1, 3, i);
+        const c = ws.getCell(3, start + 1);
+        c.value = cols[start].group.toUpperCase();
+        c.font = { bold: true, size: 9, color: { argb: XL.ink } };
+        c.fill = xlFill(XL.band[cols[start].group]);
+        c.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+        start = i;
+      }
+    }
+    ws.getRow(3).height = 18;
+  } else hr = 3;
+  const head = ws.getRow(hr);
+  cols.forEach((c, i) => {
+    const cell = head.getCell(i + 1);
+    cell.value = c.header;
+    cell.font = { bold: true, color: { argb: XL.white } };
+    cell.fill = xlFill(XL.head);
+    cell.alignment = { vertical: "middle", wrapText: true };
+    cell.border = xlBorder;
+  });
+  head.height = 30;
+  rows.forEach((r, ri) => {
+    const row = ws.getRow(hr + 1 + ri);
+    let lines = 1;
+    cols.forEach((c, ci) => {
+      const cell = row.getCell(ci + 1), v = r[c.key];
+      cell.border = xlBorder;
+      cell.alignment = { vertical: "top", wrapText: !!c.wrap };
+      if (v == null || v === "") return;
+      if (c.kind === "date") { const d = xlDate(v); cell.value = d || v; if (d) cell.numFmt = "dd-mmm-yyyy"; return; }
+      if (c.kind === "link") {
+        if (v.url) { cell.value = { text: v.text, hyperlink: v.url }; cell.font = { color: { argb: "FF1F5FBF" }, underline: true }; }
+        else cell.value = v.text;
+        return;
+      }
+      cell.value = v;
+      if (c.kind === "num") cell.alignment = { vertical: "top", horizontal: "right" };
+      if (c.kind === "sev" && XL.sev[v]) { cell.fill = xlFill(XL.sev[v][0]); cell.font = { bold: true, color: { argb: XL.sev[v][1] } }; cell.alignment = { vertical: "top", horizontal: "center" }; }
+      if (c.kind === "status" && XL.status[v]) { cell.fill = xlFill(XL.status[v][0]); cell.font = { bold: true, color: { argb: XL.status[v][1] } }; cell.alignment = { vertical: "top", horizontal: "center" }; }
+      if (c.wrap) {
+        // Estimate the wrapped height, capped at 5 lines so rows never turn into big blocks;
+        // the full text stays in the cell.
+        const est = String(v).split("\n").reduce((s, p) => s + Math.max(1, Math.ceil(p.length / (c.width * 1.15))), 0);
+        lines = Math.max(lines, Math.min(est, 5));
+      }
+    });
+    if (r._style) r._style(row);
+    row.height = Math.max(18, lines * 15 + 4);
+  });
+  ws.autoFilter = { from: { row: hr, column: 1 }, to: { row: hr, column: n } };
+  ws.views = [{ state: "frozen", xSplit: freezeCols, ySplit: hr, showGridLines: false }];
+  ws.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 1 };
+  ws.pageSetup.printTitlesRow = `${hr}:${hr}`;
+  return ws;
+}
+
 async function exportExcel() {
-  const head = ["No.", "Issue detected", "Ticket type", "SCAR / bug # (NV)", "Quality issue description", "Severity", "Status", "Product name", "Product phase", "Client", "Reporter", "PIC from FXN", "Factory area", "Units impacted", "Root cause", "Sub-root cause", "Root cause details", "Team lead", "Members involved", "Containment actions", "Permanent corrective actions", "Closed on", "Days open", ...FLAGS.map(f => f[1]), "Report", "Comments"];
-  const acts = list => (list || []).map(a => `[${a.status}] ${a.text}${a.owner || a.due ? ` (${[a.owner, a.due].filter(Boolean).join(", ")})` : ""}`).join("\n");
-  const rows = filtered().sort((a, b) => (a.no || 0) - (b.no || 0)).map(t => [
-    qid(t.no), t.detected, t.type, t.ref, t.description, t.severity, t.status, t.product, t.phase, t.client, t.reporter, t.pic, t.area, t.units,
-    t.rootCause, t.subRootCause, t.rootCauseDetail, t.teamLead, t.members, acts(t.containment), acts(t.pca), t.closedDate, ageOf(t), ...FLAGS.map(([k]) => (t.flags && t.flags[k] ? "Y" : "N")),
-    (t.attachments || []).map(a => a.dataUrl ? `(in browser) ${a.name}` : /^https?:/.test(a.url) ? a.url : `(uploaded) ${a.name}`).join("\n"), t.comments
-  ]);
-  const ws = XLSX.utils.aoa_to_sheet([head, ...rows]);
-  ws["!cols"] = head.map((h, i) => ({ wch: i === 4 || i === head.length - 1 ? 50 : 14 }));
-  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Quality Issue List");
-  const filename = `FXN_HT_Quality_Issues_${todayISO()}.xlsx`;
-  const data = XLSX.write(wb, { type: "array", bookType: "xlsx" });
-  const url = URL.createObjectURL(new Blob([data], { type: "application/octet-stream" }));
-  const a = Object.assign(document.createElement("a"), { href: url, download: filename }); document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  if (typeof ExcelJS === "undefined") { toast("The Excel library didn't load. Reload the page and try again.", 5000); return; }
+  const btn = $("#exportBtn"); btn.disabled = true;
+  try {
+    const list = filtered().sort((a, b) => (a.no || 0) - (b.no || 0));
+    const today = todayISO();
+    const active = [["Search", $("#fSearch").value.trim()], ["Status", $("#fStatus").value], ["Severity", $("#fSev").value], ["Type", $("#fType").value],
+      ["Phase", $("#fPhase").value], ["Area", $("#fArea").value], ["Product", $("#fProduct").value]].filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`);
+    const stamp = `Exported ${fmtDate(today)} · ${list.length} ticket${list.length === 1 ? "" : "s"}${active.length ? " · Filtered by " + active.join(", ") : ""}`;
+    const closedOf = l => (l && l.length) ? `${l.filter(a => a.status === "Closed").length} of ${l.length} closed` : "";
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "FXN HT Quality Tracker"; wb.created = new Date();
+
+    // 1. Quality Issues: one row per ticket. Long lists (members, actions, reports) live on their own sheets.
+    const G1 = "Ticket", G2 = "Issue", G3 = "Investigation & closure";
+    xlSheet(wb, "Quality Issues", {
+      title: "FXN HT Quality Issue Tracker", subtitle: stamp, tab: XL.head, freezeCols: 1,
+      cols: [
+        { group: G1, header: "No.", key: "no", width: 9 },
+        { group: G1, header: "Detected", key: "detected", width: 13, kind: "date" },
+        { group: G1, header: "Type", key: "type", width: 8 },
+        { group: G1, header: "SCAR / Bug #", key: "ref", width: 17, wrap: true },
+        { group: G1, header: "Severity", key: "severity", width: 9, kind: "sev" },
+        { group: G1, header: "Status", key: "status", width: 11, kind: "status" },
+        { group: G1, header: "Days open", key: "days", width: 9, kind: "num" },
+        { group: G1, header: "Closed on", key: "closed", width: 13, kind: "date" },
+        { group: G2, header: "Quality issue description", key: "description", width: 46, wrap: true },
+        { group: G2, header: "Product", key: "product", width: 20 },
+        { group: G2, header: "Phase", key: "phase", width: 7 },
+        { group: G2, header: "Client", key: "client", width: 10 },
+        { group: G2, header: "Factory area", key: "area", width: 14 },
+        { group: G2, header: "Units impacted", key: "units", width: 10, kind: "num" },
+        { group: G2, header: "Reporter", key: "reporter", width: 13 },
+        { group: G2, header: "PIC from FXN", key: "pic", width: 18, wrap: true },
+        { group: G3, header: "Root cause", key: "rootCause", width: 22, wrap: true },
+        { group: G3, header: "Sub-root cause", key: "sub", width: 22, wrap: true },
+        { group: G3, header: "Root cause details", key: "rcDetail", width: 38, wrap: true },
+        { group: G3, header: "Team lead", key: "lead", width: 16 },
+        { group: G3, header: "Team size", key: "team", width: 8, kind: "num" },
+        { group: G3, header: "Containment actions", key: "ca", width: 14 },
+        { group: G3, header: "Corrective actions", key: "pca", width: 14 },
+        { group: G3, header: "Impact", key: "impact", width: 26, wrap: true },
+        { group: G3, header: "Report", key: "report", width: 16, kind: "link" },
+        { group: G3, header: "PDF", key: "pdf", width: 9, kind: "link" },
+        { group: G3, header: "Comments", key: "comments", width: 40, wrap: true }
+      ],
+      rows: list.map(t => {
+        const reps = reportRows().filter(x => x.ticket && x.ticket.id === t.id);
+        const first = reps.find(x => x.link) || reps[0];
+        const pdfRow = reps.find(x => x.pdf);
+        const days = ageOf(t);
+        return {
+          no: qid(t.no), detected: t.detected, type: t.type, ref: t.ref, severity: t.severity, status: STATUS_LABEL[t.status] || t.status, days, closed: t.status === "CLOSE" ? t.closedDate : "",
+          description: t.description, product: t.product, phase: t.phase, client: t.client, area: t.area,
+          units: /^\d+$/.test(String(t.units || "").trim()) ? Number(t.units) : t.units, reporter: t.reporter, pic: t.pic,
+          rootCause: t.rootCause, sub: t.subRootCause, rcDetail: t.rootCauseDetail, lead: t.teamLead,
+          team: memberList(t).length + (t.teamLead ? 1 : 0) || "",
+          ca: closedOf(t.containment), pca: closedOf(t.pca),
+          impact: FLAGS.filter(([k]) => t.flags && t.flags[k]).map(([, l]) => l).join(", "),
+          report: first ? { text: reps.length > 1 ? `Open report (+${reps.length - 1})` : "Open report", url: first.link || fileLink(first.file) } : "",
+          pdf: pdfRow ? { text: "PDF", url: fileLink(pdfRow.pdf) } : "",
+          comments: t.comments,
+          // Highlight tickets that have been open for over 30 days.
+          _style: row => { if (t.status !== "CLOSE" && days > 30) row.getCell(7).font = { bold: true, color: { argb: "FFB42727" } }; }
+        };
+      })
+    });
+
+    // 2. Actions: one row per containment / corrective action.
+    const actRows = [];
+    list.forEach(t => [["Containment", t.containment], ["Permanent corrective", t.pca]].forEach(([kind, l]) => (l || []).forEach(a => {
+      const overdue = a.status !== "Closed" && a.due && a.due < today;
+      actRows.push({ no: qid(t.no), issue: t.description, tstatus: STATUS_LABEL[t.status] || t.status, kind, text: a.text, owner: a.owner, due: a.due, status: a.status || "Open", overdue: overdue ? "Overdue" : "",
+        _style: row => { if (overdue) row.getCell(9).font = { bold: true, color: { argb: "FFB42727" } }; } });
+    })));
+    xlSheet(wb, "Actions", {
+      title: "Containment & permanent corrective actions", subtitle: `${stamp} · ${actRows.length} action${actRows.length === 1 ? "" : "s"}`, tab: "FFC97A06", freezeCols: 1,
+      cols: [
+        { header: "Ticket", key: "no", width: 9 }, { header: "Issue", key: "issue", width: 40, wrap: true }, { header: "Ticket status", key: "tstatus", width: 11, kind: "status" },
+        { header: "Action type", key: "kind", width: 20 }, { header: "Action", key: "text", width: 44, wrap: true }, { header: "Owner", key: "owner", width: 16 },
+        { header: "Due", key: "due", width: 13, kind: "date" }, { header: "Status", key: "status", width: 10, kind: "status" }, { header: "Overdue", key: "overdue", width: 10 }
+      ],
+      rows: actRows
+    });
+
+    // 3. Team: one row per person per ticket, so long member lists stay readable and filterable by name.
+    const teamRows = [];
+    list.forEach(t => {
+      if (t.teamLead) teamRows.push({ no: qid(t.no), issue: t.description, tstatus: STATUS_LABEL[t.status] || t.status, role: "Team lead", name: t.teamLead });
+      memberList(t).forEach(m => teamRows.push({ no: qid(t.no), issue: t.description, tstatus: STATUS_LABEL[t.status] || t.status, role: "Member", name: m }));
+    });
+    xlSheet(wb, "Team", {
+      title: "Team lead & members by ticket", subtitle: `${stamp} · filter the Name column to see everything one person is on`, tab: "FF3F6EA8", freezeCols: 1,
+      cols: [
+        { header: "Ticket", key: "no", width: 9 }, { header: "Issue", key: "issue", width: 44, wrap: true }, { header: "Ticket status", key: "tstatus", width: 11, kind: "status" },
+        { header: "Role", key: "role", width: 11 }, { header: "Name", key: "name", width: 22 }
+      ],
+      rows: teamRows
+    });
+
+    // 4. Reports: every SCAR / RCA report for the exported tickets, plus reports not linked to a ticket.
+    const ids = new Set(list.map(t => t.id));
+    const repRows = reportRows().filter(x => !x.ticket || ids.has(x.ticket.id)).map(x => ({
+      no: x.ticket ? qid(x.ticket.no) : "", type: x.type, ref: x.ref, title: x.title,
+      link: x.link ? { text: "SharePoint / link", url: x.link } : "",
+      ppt: x.file ? { text: x.file.name, url: fileLink(x.file) } : "",
+      pdf: x.pdf ? { text: "PDF", url: fileLink(x.pdf) } : ""
+    })).sort((a, b) => b.no.localeCompare(a.no));
+    xlSheet(wb, "Reports", {
+      title: "SCAR / RCA reports", subtitle: `${stamp} · uploaded PowerPoint and PDF links open while the tracker is running`, tab: "FF22855A", freezeCols: 1,
+      cols: [
+        { header: "Ticket", key: "no", width: 9 }, { header: "Type", key: "type", width: 8 }, { header: "SCAR / RCA #", key: "ref", width: 17 },
+        { header: "Report", key: "title", width: 52, wrap: true }, { header: "Link", key: "link", width: 18, kind: "link" },
+        { header: "PowerPoint", key: "ppt", width: 30, kind: "link" }, { header: "PDF", key: "pdf", width: 9, kind: "link" }
+      ],
+      rows: repRows
+    });
+
+    // 5. Summary: counts by status, severity, type, area and root cause.
+    const sum = wb.addWorksheet("Summary", { properties: { tabColor: { argb: XL.muted } }, views: [{ showGridLines: false }] });
+    sum.columns = [{ width: 30 }, { width: 10 }, { width: 10 }, { width: 4 }, { width: 30 }, { width: 10 }, { width: 10 }];
+    sum.getCell("A1").value = "Summary"; sum.getCell("A1").font = { size: 16, bold: true, color: { argb: XL.ink } };
+    sum.getCell("A2").value = stamp; sum.getCell("A2").font = { size: 10, color: { argb: XL.muted } };
+    const table = (r0, c0, title, groups) => {
+      ["" + title, "Tickets", "Not closed"].forEach((h, i) => {
+        const cell = sum.getCell(r0, c0 + i); cell.value = h;
+        cell.font = { bold: true, color: { argb: XL.white } }; cell.fill = xlFill(XL.head); cell.border = xlBorder;
+      });
+      groups.forEach(([label, items], i) => {
+        const r = r0 + 1 + i;
+        label = STATUS_LABEL[label] || label;
+        [label || "Not set", items.length, items.filter(t => t.status !== "CLOSE").length].forEach((v, j) => {
+          const cell = sum.getCell(r, c0 + j); cell.value = v; cell.border = xlBorder;
+          if (j === 0 && XL.status[label]) cell.font = { bold: true, color: { argb: XL.status[label][1] } };
+          if (j === 0 && XL.sev[label]) cell.font = { bold: true, color: { argb: XL.sev[label][0] === "FFC62F2F" ? "FFC62F2F" : XL.sev[label][1] } };
+        });
+      });
+      return r0 + groups.length + 2;
+    };
+    const by = (key, order) => {
+      const m = new Map(); list.forEach(t => { const k = t[key] || ""; if (!m.has(k)) m.set(k, []); m.get(k).push(t); });
+      const keys = order ? order.filter(k => m.has(k)).concat([...m.keys()].filter(k => !order.includes(k))) : [...m.keys()].sort((a, b) => m.get(b).length - m.get(a).length);
+      return keys.map(k => [k, m.get(k)]);
+    };
+    let left = 4, right = 4;
+    left = table(left, 1, "Status", by("status", ["OPEN", "MONITOR", "CLOSE"]));
+    left = table(left, 1, "Severity", by("severity", ["S0", "S1", "S2"]));
+    left = table(left, 1, "Type", by("type", ["SCAR", "RCA", "Other"]));
+    right = table(right, 5, "Factory area", by("area"));
+    right = table(right, 5, "Root cause", by("rootCause"));
+
+    const data = await wb.xlsx.writeBuffer();
+    const filename = `FXN_HT_Quality_Issues_${today}.xlsx`;
+    const url = URL.createObjectURL(new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: filename }); document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast(`Saved ${filename}`);
+  } catch (err) { toast(`Couldn't make the Excel file: ${err.message}`, 6000); }
+  finally { btn.disabled = false; }
 }
 
 /* ---------- events ---------- */
@@ -1484,7 +1720,7 @@ function bindUI() {
   });
   $("#chartControls").addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b) return;
-    if (b.dataset.oc) ocMode = b.dataset.oc; if (b.dataset.pd) paretoDim = b.dataset.pd; if (b.dataset.pm) paretoMetric = b.dataset.pm;
+    if (b.dataset.oc) ocMode = b.dataset.oc; if (b.dataset.pd) paretoDim = b.dataset.pd;
     saveUI(); renderChart();
   });
   $("#chartControls").addEventListener("change", e => { if (e.target.id === "pBlank") { paretoBlank = e.target.checked; renderChart(); } });
@@ -1510,7 +1746,7 @@ function bindUI() {
     if (conv) {
       const a = draftAttachments[+conv.dataset.conv];
       conv.disabled = true; conv.textContent = "Converting…";
-      convertToPdf(a.kind === "file" ? a : a.pptx).then(pdf => { a.pdf = pdf; toast("PDF ready. Save to keep it on the ticket."); }, err => toast(err.message || "Couldn't convert", 6000)).finally(renderAttachments);
+      convertToPdf(a.kind === "file" ? a : a.pptx).then(pdf => { a.pdf = pdf; downloadFile(pdf); toast("PDF downloaded. Save the ticket to keep it there too."); }, err => toast(err.message || "Couldn't convert", 6000)).finally(renderAttachments);
     }
   });
   $("#ticketForm").addEventListener("change", e => { if (e.target.classList.contains("act-status")) { e.target.dataset.status = e.target.value; syncClosed(); } });
@@ -1530,7 +1766,7 @@ function bindUI() {
     const cv = e.target.closest("[data-convrow]");
     if (cv) {
       cv.disabled = true; cv.textContent = "Converting…";
-      try { const pdf = await convertRow(findRow(cv.dataset.convrow)); toast(`PDF ready: ${pdf.name}`); }
+      try { const pdf = await convertRow(findRow(cv.dataset.convrow)); downloadFile(pdf); toast(`Downloaded ${pdf.name}`); }
       catch (err) { toast(err.message || "Couldn't convert", 6000); renderReports(); }
     }
   });

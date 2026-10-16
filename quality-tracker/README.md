@@ -21,18 +21,31 @@ plus the reports attached to tickets. Use **Import PowerPoints** to add several 
 (the SCAR number and type are guessed from the file name; check them with **Edit**), or **+ Add report**
 for one report with a link, a PowerPoint or a PDF. Link a report to its ticket and it shows on the ticket too.
 
-Each report converts in two steps:
+Each report becomes a PDF in two steps:
 
 1. **Upload PowerPoint**: for a report that is a SharePoint link, download the PowerPoint from SharePoint and
    upload it into that report (in the reports tab, or on the ticket under Report). It's kept with the report;
    **Replace PowerPoint** swaps in a newer version.
-2. **Convert to PDF**: makes the PDF, which then opens from **Open PDF** on the report and on its ticket.
+2. **Download as PDF**: converts the PowerPoint and saves the PDF to your Downloads folder. After that the
+   report (and its ticket) shows **Download PDF** to save it again, and **View** to open it in the browser.
 
 A PowerPoint uploaded straight onto a ticket, or added with Import PowerPoints, skips step 1.
 
 Conversion turns the PowerPoint into a PDF on this computer. It needs **Microsoft PowerPoint**
 (Windows) or **LibreOffice** (free, any system) installed on the computer running the tracker; the start
 window says which one it found. Restart the tracker after installing one.
+
+## Export to Excel
+
+**Export Excel** saves the tickets that match the current filters as a formatted workbook:
+
+| Sheet | What's on it |
+|---|---|
+| Quality Issues | One row per ticket, grouped into Ticket / Issue / Investigation & closure, with filters on every column, frozen headers, color-coded severity and status, and days open in red past 30 days |
+| Actions | One row per containment or permanent corrective action, with owner, due date, status and overdue flag |
+| Team | One row per person per ticket (team lead or member), so long member lists stay tidy and you can filter by name |
+| Reports | Every SCAR / RCA report with its link, PowerPoint and PDF |
+| Summary | Counts by status, severity, type, factory area and root cause |
 
 ## Update to a newer version
 
