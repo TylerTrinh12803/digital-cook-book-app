@@ -113,7 +113,23 @@ button.kpi[aria-pressed="true"] { background: var(--accent-soft); box-shadow: in
 /* table */
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); margin-top: 12px; }
 .table-scroll { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; min-width: 980px; }
+table { border-collapse: collapse; width: 100%; min-width: 1080px; }
+/* progress */
+.prog { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+.prog-bar { flex: 1; height: 8px; border-radius: 999px; background: var(--sunken); overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); }
+.prog-bar span { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+.prog.done .prog-bar span { background: var(--st-close); }
+.prog-txt { font: 500 .82rem/1 var(--font-mono); font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: right; }
+.prog-sub { display: block; margin-top: 4px; font-size: .72rem; color: var(--muted); white-space: nowrap; }
+.prog.big .prog-bar { height: 12px; }
+.prog.big .prog-txt { font-size: 1rem; }
+.prog-head { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.prog-head .prog { flex: 1 1 240px; }
+.prog-steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 6px 16px; }
+.prog-steps label, .prog-approve { display: flex; gap: 8px; align-items: center; font-size: .88rem; }
+.prog-steps small, .prog-approve small { color: var(--muted); font-family: var(--font-mono); font-size: .72rem; margin-left: auto; }
+.prog-approve { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-weight: 600; }
+.prog-note { margin: 8px 0 0; font-size: .78rem; color: var(--muted); }
 th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; background: var(--sunken); position: relative; }
 th button { all: unset; cursor: pointer; }
@@ -410,6 +426,20 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
       <details id="updDetails">
         <summary>Investigation &amp; closure <span class="muted" id="updHint">(fill in once the RCA is done)</span></summary>
         <fieldset style="margin-top:10px">
+          <legend>Progress</legend>
+          <div class="prog-head">
+            <div class="radio-row" role="radiogroup" aria-label="Track progress as">
+              <label><input type="radio" name="pmodel" value="8D">8D (D1–D8)</label>
+              <label><input type="radio" name="pmodel" value="RCA">RCA</label>
+            </div>
+            <div class="prog big" id="progLive"></div>
+          </div>
+          <div class="prog-steps" id="prog8D"></div>
+          <div class="prog-steps" id="progRCA"><label><input type="checkbox" id="p_rca"> RCA created<small>85%</small></label></div>
+          <label class="prog-approve"><input type="checkbox" id="p_approved"> <span id="approveLabel">NVIDIA approved closure</span><small id="approveShare">+5%</small></label>
+          <p class="prog-note" id="progNote"></p>
+        </fieldset>
+        <fieldset style="margin-top:12px">
           <legend>Root cause &amp; status</legend>
           <div class="grid">
             <label class="field"><span>Root cause</span><select id="f_rootCause" name="rootCause"><option value="">Not yet determined</option></select></label>
@@ -806,15 +836,52 @@ function pickKPI(pick) {
   view = "tickets"; saveUI(); render();
 }
 
+/* ---------- progress ---------- */
+// 8D (SCARs): each discipline is 95/8 %, all eight = 95%, the customer approving closure adds the last 5%.
+// RCA: creating the RCA is 85%, the customer agreeing to close adds the last 15%.
+const D8 = ["D1 Form the team", "D2 Describe the problem", "D3 Contain the problem", "D4 Find the root cause",
+  "D5 Choose corrective actions", "D6 Implement & verify actions", "D7 Prevent recurrence", "D8 Close & recognize the team"];
+const progressModel = t => (t.progress && t.progress.model) || (t.type === "SCAR" ? "8D" : "RCA");
+function progressOf(t) {
+  const p = t.progress || {};
+  if (progressModel(t) === "8D") return (p.d || []).filter(Boolean).length * 95 / 8 + (p.approved ? 5 : 0);
+  return (p.rcaDone ? 85 : 0) + (p.approved ? 15 : 0);
+}
+function progressText(t) {
+  const p = t.progress || {}, who = t.client || "Customer";
+  const work = progressModel(t) === "8D" ? `8D · ${(p.d || []).filter(Boolean).length} of 8 D's` : `RCA · ${p.rcaDone ? "created" : "not created"}`;
+  return `${work} · ${p.approved ? `${who} approved` : `waiting on ${who}`}`;
+}
+function progressBar(t, big) {
+  const pct = progressOf(t), r = Math.round(pct);
+  return `<div class="prog${big ? " big" : ""}${r >= 100 ? " done" : ""}" role="progressbar" aria-valuenow="${r}" aria-valuemin="0" aria-valuemax="100" title="${esc(progressText(t))}"><div class="prog-bar"><span style="width:${pct}%"></span></div><span class="prog-txt">${r}%</span></div>`;
+}
+function readProgress() {
+  return { model: getRadio("pmodel") || "RCA", d: D8.map((_, i) => $("#p_d" + i).checked), rcaDone: $("#p_rca").checked, approved: $("#p_approved").checked };
+}
+let progModelTouched = false;
+function syncProgress() {
+  const t = { type: $("#f_type").value, client: $("#f_client").value.trim(), progress: readProgress() };
+  const is8D = t.progress.model === "8D", who = t.client || "Customer";
+  $("#prog8D").hidden = !is8D; $("#progRCA").hidden = is8D;
+  $("#approveLabel").textContent = `${who} ${is8D ? "approved closure" : "agreed to close"}`;
+  $("#approveShare").textContent = is8D ? "+5%" : "+15%";
+  $("#progNote").textContent = is8D
+    ? `Each D is ${(95 / 8).toFixed(1)}%; all eight D's make 95%. ${who} approving closure adds the last 5%.`
+    : `Creating the RCA is 85%. ${who} agreeing to close adds the last 15%.`;
+  $("#progLive").outerHTML = progressBar(t, true).replace('<div class="prog', '<div id="progLive" class="prog');
+}
+
 const COLS = [
   ["sev", "Sev"], ["no", "No."], ["detected", "Detected"], ["type", "SCAR / RCA"], ["description", "Issue"],
-  ["status", "Status"], ["area", "Area"], ["rootCause", "Root cause"], ["pic", "PIC (FXN)"], ["units", "Units"], ["age", "Days"]
+  ["status", "Status"], ["progress", "Progress"], ["area", "Area"], ["rootCause", "Root cause"], ["pic", "PIC (FXN)"], ["units", "Units"], ["age", "Days"]
 ];
 function sortVal(t, k) {
   if (k === "sev") return t.severity || "S9";
   if (k === "no") return t.no || 0;
   if (k === "units") return unitsNum(t.units);
   if (k === "age") return ageOf(t);
+  if (k === "progress") return progressOf(t);
   if (k === "status") return ({ OPEN: 0, MONITOR: 1, CLOSE: 2 })[t.status] ?? 3;
   return String(t[k] || "").toLowerCase();
 }
@@ -848,6 +915,7 @@ function renderTable() {
       <td><span class="type ${esc(t.type)}">${esc(t.type || "—")}</span>${t.ref ? `<div class="mono muted">${esc(t.ref)}</div>` : ""}</td>
       <td class="desc">${esc(t.description)}<div class="sub">${esc([t.product, t.phase, t.client].filter(Boolean).join(" · "))}</div></td>
       <td><span class="chip st-${esc(t.status)}">${esc(STATUS_LABEL[t.status] || t.status)}</span>${actSummary(t)}</td>
+      <td>${progressBar(t)}<span class="prog-sub">${esc(progressText(t))}</span></td>
       <td>${esc(t.area)}</td>
       <td>${t.rootCause ? esc(t.rootCause) + (t.subRootCause ? `<div class="sub muted">${esc(t.subRootCause)}</div>` : "") : `<span class="muted">Pending</span>`}</td>
       <td>${esc(t.pic)}</td>
@@ -1225,6 +1293,13 @@ function openTicket(t) {
   renderActions("ca", v.containment || []);
   renderActions("pca", v.pca || []);
   renderLinkedReports(t);
+  $("#prog8D").innerHTML = D8.map((d, i) => `<label><input type="checkbox" id="p_d${i}"> ${esc(d)}<small>${(95 / 8).toFixed(1)}%</small></label>`).join("");
+  const pr = v.progress || {};
+  setRadio("pmodel", progressModel(v));
+  D8.forEach((_, i) => { $("#p_d" + i).checked = !!(pr.d && pr.d[i]); });
+  $("#p_rca").checked = !!pr.rcaDone; $("#p_approved").checked = !!pr.approved;
+  progModelTouched = !!pr.model;
+  syncProgress();
   $("#updDetails").open = !!t;
   $("#updHint").hidden = !!t;
   $("#saveBtn").textContent = t ? "Save changes" : "Create ticket";
@@ -1292,7 +1367,7 @@ async function submitForm(e) {
     flags: Object.fromEntries(FLAGS.map(([k]) => [k, $("#flag_" + k).checked]).filter(([, v]) => v)),
     rootCauseDetail: val("f_rootCauseDetail"), teamLead: val("f_teamLead"),
     members: val("f_members").split(",").map(x => x.trim()).filter(Boolean).join(", "),
-    containment: readActions("ca"), pca: readActions("pca"),
+    containment: readActions("ca"), pca: readActions("pca"), progress: readProgress(),
     attachments: draftAttachments
   };
   let missing = [];
@@ -1454,6 +1529,7 @@ function numberRows(rows, existing) {
 }
 // Copies what was added in the tracker (not in the Excel sheet) from an old ticket onto its replacement.
 function carryOver(oldT, t) {
+  if (oldT.progress) t.progress = oldT.progress;
   for (const k of ["rootCauseDetail", "teamLead", "members"]) if (oldT[k] && !t[k]) t[k] = oldT[k];
   if (oldT.containment && oldT.containment.length) t.containment = oldT.containment;
   if (oldT.pca && oldT.pca.length) t.pca = oldT.pca;
@@ -1569,6 +1645,7 @@ function xlSheet(wb, name, { title, subtitle, cols, rows, tab, freezeCols = 1 })
       }
       cell.value = v;
       if (c.kind === "num") cell.alignment = { vertical: "top", horizontal: "right" };
+      if (c.kind === "pct") { cell.numFmt = "0%"; cell.alignment = { vertical: "top", horizontal: "right" }; }
       if (c.kind === "sev" && XL.sev[v]) { cell.fill = xlFill(XL.sev[v][0]); cell.font = { bold: true, color: { argb: XL.sev[v][1] } }; cell.alignment = { vertical: "top", horizontal: "center" }; }
       if (c.kind === "status" && XL.status[v]) { cell.fill = xlFill(XL.status[v][0]); cell.font = { bold: true, color: { argb: XL.status[v][1] } }; cell.alignment = { vertical: "top", horizontal: "center" }; }
       if (c.wrap) {
@@ -1582,6 +1659,13 @@ function xlSheet(wb, name, { title, subtitle, cols, rows, tab, freezeCols = 1 })
     row.height = Math.max(18, lines * 15 + 4);
   });
   ws.autoFilter = { from: { row: hr, column: 1 }, to: { row: hr, column: n } };
+  // Percent columns get an in-cell data bar.
+  cols.forEach((c, i) => {
+    if (c.kind !== "pct" || !rows.length) return;
+    const col = ws.getColumn(i + 1).letter;
+    ws.addConditionalFormatting({ ref: `${col}${hr + 1}:${col}${hr + rows.length}`, rules: [{ type: "dataBar", minLength: 0, maxLength: 100, gradient: false,
+      cfvo: [{ type: "num", value: 0 }, { type: "num", value: 1 }], color: { argb: "FF5FB3BB" } }] });
+  });
   ws.views = [{ state: "frozen", xSplit: freezeCols, ySplit: hr, showGridLines: false }];
   ws.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0, paperSize: 1 };
   ws.pageSetup.printTitlesRow = `${hr}:${hr}`;
@@ -1614,6 +1698,8 @@ async function exportExcel() {
         { group: G1, header: "Status", key: "status", width: 11, kind: "status" },
         { group: G1, header: "Days open", key: "days", width: 9, kind: "num" },
         { group: G1, header: "Closed on", key: "closed", width: 13, kind: "date" },
+        { group: G1, header: "Progress", key: "progress", width: 11, kind: "pct" },
+        { group: G1, header: "Progress detail", key: "progressDetail", width: 30, wrap: true },
         { group: G2, header: "Quality issue description", key: "description", width: 46, wrap: true },
         { group: G2, header: "Product", key: "product", width: 20 },
         { group: G2, header: "Phase", key: "phase", width: 7 },
@@ -1641,6 +1727,7 @@ async function exportExcel() {
         const days = ageOf(t);
         return {
           no: qid(t.no), detected: t.detected, type: t.type, ref: t.ref, severity: t.severity, status: STATUS_LABEL[t.status] || t.status, days, closed: t.status === "CLOSE" ? t.closedDate : "",
+          progress: Math.round(progressOf(t)) / 100, progressDetail: progressText(t),
           description: t.description, product: t.product, phase: t.phase, client: t.client, area: t.area,
           units: /^\d+$/.test(String(t.units || "").trim()) ? Number(t.units) : t.units, reporter: t.reporter, pic: t.pic,
           rootCause: t.rootCause, sub: t.subRootCause, rcDetail: t.rootCauseDetail, lead: t.teamLead,
@@ -1804,7 +1891,12 @@ function bindUI() {
       convertToPdf(a.kind === "file" ? a : a.pptx).then(pdf => { a.pdf = pdf; downloadFile(pdf); toast("PDF downloaded. Save the ticket to keep it there too."); }, err => toast(err.message || "Couldn't convert", 6000)).finally(renderAttachments);
     }
   });
-  $("#ticketForm").addEventListener("change", e => { if (e.target.classList.contains("act-status")) { e.target.dataset.status = e.target.value; syncClosed(); } });
+  $("#ticketForm").addEventListener("change", e => {
+    if (e.target.name === "pmodel") progModelTouched = true;
+    if (e.target.id === "f_type" && !progModelTouched) setRadio("pmodel", e.target.value === "SCAR" ? "8D" : "RCA");
+    if (e.target.name === "pmodel" || e.target.id === "f_type" || /^p_/.test(e.target.id)) syncProgress();
+    if (e.target.classList.contains("act-status")) { e.target.dataset.status = e.target.value; syncClosed(); }
+  });
 
   // reports
   ["#rSearch", "#rType"].forEach(sel => $(sel).addEventListener("input", renderReports));
@@ -1856,6 +1948,7 @@ function bindUI() {
   $("#ticketForm").addEventListener("input", e => {
     const f = e.target.closest(".field.invalid"); if (f) f.classList.remove("invalid");
     if (e.target.closest(".act-row")) syncClosed();
+    if (e.target.id === "f_client") syncProgress();
   });
   $("#addLinkBtn").addEventListener("click", addLink);
   $("#linkUrl").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); addLink(); } });

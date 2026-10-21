@@ -14,6 +14,19 @@ and fonts are all in this folder, and tickets are saved in `data/` next to these
 If you got the zip, your issues from `FXN_HT_Quality_Issue_tracker` are already loaded.
 To load them into an empty tracker, click **Import Excel** and pick the workbook.
 
+## Progress per ticket
+
+Every ticket shows a progress bar in the list (sort by the Progress column) and in its form under
+Investigation & closure > Progress. SCAR tickets track as an **8D** and RCA / other tickets as an **RCA**;
+switch with the 8D / RCA toggle in the ticket if needed.
+
+| Tracked as | Work | Customer closure |
+|---|---|---|
+| 8D | Each of D1–D8 ticked adds 11.9% (95% for all eight) | NVIDIA approving closure adds the last 5% |
+| RCA | RCA created = 85% | NVIDIA agreeing to close adds the last 15% |
+
+The Excel export has a Progress column (with an in-cell bar) and a Progress detail column.
+
 ## Import a new Excel sheet
 
 Click **Import Excel** and pick the workbook. The tracker reads the sheet with a "Quality issue description"
