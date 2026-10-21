@@ -1414,41 +1414,93 @@ function parseWorkbook(buf) {
   }
   return null;
 }
+const importKey = t => `${t.detected}|${norm(t.description)}`;
+function showImportBox(html) { const box = $("#importBox"); box.hidden = !html; box.innerHTML = html ? `<div class="chart-panel" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">${html}</div>` : ""; }
 async function handleImportFile(file) {
-  const box = $("#importBox");
   try {
     const parsed = parseWorkbook(await file.arrayBuffer());
-    if (!parsed) { box.hidden = false; box.innerHTML = `<div class="chart-panel"><b>No issue list found.</b> The workbook needs a sheet with a “Quality issue description” column header. <button class="btn small" type="button" data-act="import-cancel">Close</button></div>`; return; }
-    const key = t => `${t.detected}|${norm(t.description)}`;
-    const have = new Set(tickets.map(key));
-    const fresh = parsed.rows.filter(t => !have.has(key(t)));
-    pendingImport = fresh;
-    box.hidden = false;
-    box.innerHTML = `<div class="chart-panel" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span><b>${esc(file.name)}</b>, sheet “${esc(parsed.sheet)}”: ${parsed.rows.length} issues found, ${fresh.length} new${parsed.rows.length - fresh.length ? `, ${parsed.rows.length - fresh.length} already in the tracker and skipped` : ""}.</span><span class="grow" style="flex:1"></span>
-      <button class="btn" type="button" data-act="import-cancel">Cancel</button><button class="btn primary" type="button" data-act="import-go" ${fresh.length ? "" : "disabled"}>Import ${fresh.length} tickets</button></div>`;
+    if (!parsed) return showImportBox(`<span><b>No issue list found.</b> The workbook needs a sheet with a “Quality issue description” column header.</span><span style="flex:1"></span><button class="btn small" type="button" data-act="import-cancel">Close</button>`);
+    const have = new Set(tickets.map(importKey));
+    const fresh = parsed.rows.filter(t => !have.has(importKey(t)));
+    pendingImport = { fresh, all: parsed.rows, file: file.name, sheet: parsed.sheet };
+    showImportOptions();
   } catch (err) {
-    box.hidden = false; box.innerHTML = `<div class="chart-panel"><b>Couldn't read that file.</b> ${esc(err.message)} <button class="btn small" type="button" data-act="import-cancel">Close</button></div>`;
+    showImportBox(`<span><b>Couldn't read that file.</b> ${esc(err.message)}</span><span style="flex:1"></span><button class="btn small" type="button" data-act="import-cancel">Close</button>`);
   }
 }
-async function runImport() {
+function showImportOptions() {
+  const { fresh, all, file, sheet } = pendingImport;
+  showImportBox(`<span><b>${esc(file)}</b>, sheet “${esc(sheet)}”: ${all.length} issues found${tickets.length ? `, ${fresh.length} not in the tracker yet` : ""}.</span><span style="flex:1"></span>
+    <button class="btn" type="button" data-act="import-cancel">Cancel</button>
+    ${tickets.length ? `<button class="btn danger" type="button" data-act="import-replace" ${all.length ? "" : "disabled"}>Replace all tickets…</button>` : ""}
+    <button class="btn primary" type="button" data-act="import-go" ${fresh.length ? "" : "disabled"}>Add ${fresh.length} new ticket${fresh.length === 1 ? "" : "s"}</button>`);
+}
+function confirmReplace() {
+  const { all, file } = pendingImport;
+  const matches = all.filter(r => tickets.some(t => importKey(t) === importKey(r))).length;
+  showImportBox(`<div style="flex:1 1 420px;min-width:0"><b>Replace all ${tickets.length} tickets with the ${all.length} in ${esc(file)}?</b>
+      <div class="muted" style="font-size:.85rem;margin-top:4px">The current tickets are cleared and the new sheet is loaded. A backup of the current tickets is saved first${mode === "server" ? " in data/backups" : " in this browser"}.</div>
+      <label style="display:flex;gap:6px;align-items:flex-start;margin-top:8px;font-size:.88rem"><input type="checkbox" id="keepDetails" checked style="margin-top:3px">
+        <span>Keep the team, actions, root cause details, uploaded PowerPoints/PDFs and photos added in the tracker for tickets that are in both (same detected date and description: ${matches} of ${all.length}).</span></label></div>
+    <button class="btn" type="button" data-act="import-back">Back</button>
+    <button class="btn danger" type="button" data-act="import-replace-yes">Yes, replace all</button>`);
+}
+// Numbers the imported rows, keeping the sheet's own No. where it's free.
+function numberRows(rows, existing) {
+  const used = new Set(existing.map(t => t.no));
+  let next = Math.max(0, ...existing.map(t => t.no || 0), ...rows.map(t => t.no || 0));
+  const now = new Date().toISOString();
+  return rows.map(row => { let no = row.no; if (!no || used.has(no)) no = ++next; used.add(no); return { id: newId(), createdAt: now, updatedAt: now, ...row, no }; });
+}
+// Copies what was added in the tracker (not in the Excel sheet) from an old ticket onto its replacement.
+function carryOver(oldT, t) {
+  for (const k of ["rootCauseDetail", "teamLead", "members"]) if (oldT[k] && !t[k]) t[k] = oldT[k];
+  if (oldT.containment && oldT.containment.length) t.containment = oldT.containment;
+  if (oldT.pca && oldT.pca.length) t.pca = oldT.pca;
+  const atts = (t.attachments || []).map(a => ({ ...a }));
+  for (const o of oldT.attachments || []) {
+    const same = o.kind === "link" && atts.find(a => a.kind === "link" && a.url === o.url);
+    if (same) { if (o.pptx) same.pptx = o.pptx; if (o.pdf) same.pdf = o.pdf; }
+    else if (o.kind !== "link") atts.push(o);
+    // The link changed in the new sheet: keep the uploaded PowerPoint (and its PDF) as its own attachment.
+    else if (o.pptx) atts.push({ ...o.pptx, kind: "file", ...(o.pdf ? { pdf: o.pdf } : {}) });
+    else if (o.pdf) atts.push({ ...o.pdf, kind: "file" });
+  }
+  t.attachments = atts;
+}
+async function runImport(kind) {
   if (!pendingImport) return;
-  const used = new Set(tickets.map(t => t.no));
-  let next = Math.max(0, ...tickets.map(t => t.no || 0), ...pendingImport.map(t => t.no || 0));
-  const btn = $('[data-act="import-go"]'); if (btn) { btn.disabled = true; btn.textContent = "Importing…"; }
-  let done = 0;
-  try {
-    for (const row of pendingImport) {
-      let no = row.no; if (!no || used.has(no)) no = ++next; used.add(no);
-      const t = { id: newId(), createdAt: new Date().toISOString(), ...row, no };
-      t.updatedAt = t.createdAt;
-      if (mode === "server") await putTicket(t);
-      tickets.push(t);
-      done++;
-    }
+  const { fresh, all, file } = pendingImport;
+  $$("#importBox button").forEach(b => (b.disabled = true));
+  if (kind === "replace") {
+    const keep = $("#keepDetails") ? $("#keepDetails").checked : false;
+    const made = numberRows(all, []);
+    const oldByKey = new Map(tickets.map(t => [importKey(t), t]));
+    const idMap = new Map();
+    made.forEach(t => { const o = oldByKey.get(importKey(t)); if (o) { idMap.set(o.id, t.id); if (keep) carryOver(o, t); } });
+    try {
+      if (mode === "server") await api("PUT", "api/tickets", JSON.stringify(made), { "Content-Type": "application/json" });
+      else lsSet(LS_KEY + "-before-replace", JSON.stringify(tickets));
+      tickets = made;
+      if (mode === "local") persistLocal();
+      // Point reports in the reports tab at the matching new tickets.
+      for (const r of reports.filter(r => r.ticketId && idMap.has(r.ticketId))) await saveReport({ ...r, ticketId: idMap.get(r.ticketId) });
+      $("#fStatus").value = ""; $("#fType").value = "";
+      toast(`Replaced with ${made.length} tickets from ${file}. The old list was backed up.`, 5000);
+    } catch (err) { toast(`Nothing was replaced. ${writeError(err)}`, 6000); }
+  } else {
+    let done = 0;
+    try {
+      for (const t of numberRows(fresh, tickets)) {
+        if (mode === "server") await putTicket(t);
+        tickets.push(t);
+        done++;
+      }
+      toast(`Added ${done} tickets`);
+    } catch (err) { toast(`Added ${done} tickets, then stopped. ${writeError(err)}`, 6000); }
     if (mode === "local") persistLocal();
-    toast(`Imported ${done} tickets`);
-  } catch (err) { toast(`Imported ${done} tickets, then stopped. ${writeError(err)}`, 6000); }
-  pendingImport = null; $("#importBox").hidden = true; render();
+  }
+  pendingImport = null; showImportBox(""); lastSig = ""; render();
 }
 /* ---------- Excel export (styled, via ExcelJS) ---------- */
 const XL = {
@@ -1713,8 +1765,11 @@ function bindUI() {
     const a = e.target.closest("[data-act]"); if (!a) return;
     if (a.dataset.act === "new") openTicket(null);
     if (a.dataset.act === "import") $("#importFile").click();
-    if (a.dataset.act === "import-cancel") { pendingImport = null; $("#importBox").hidden = true; }
-    if (a.dataset.act === "import-go") runImport();
+    if (a.dataset.act === "import-cancel") { pendingImport = null; showImportBox(""); }
+    if (a.dataset.act === "import-go") runImport("add");
+    if (a.dataset.act === "import-replace") confirmReplace();
+    if (a.dataset.act === "import-back") showImportOptions();
+    if (a.dataset.act === "import-replace-yes") runImport("replace");
     if (a.dataset.act === "add-report") openReport(null);
     if (a.dataset.act === "import-ppt") $("#pptInput").click();
   });

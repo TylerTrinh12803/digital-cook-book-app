@@ -220,6 +220,8 @@ class Handler(SimpleHTTPRequestHandler):
 
     # ---- PUT / POST / DELETE ----
     def do_PUT(self):
+        if self.route() == "/api/tickets":
+            return self.replace_tickets()
         name, did = self.doc_route()
         if not name:
             return self.error_json(HTTPStatus.NOT_FOUND, "Not found")
@@ -239,6 +241,24 @@ class Handler(SimpleHTTPRequestHandler):
             docs[did] = doc
             save(name, docs)
         self.send_json(doc)
+
+    def replace_tickets(self):
+        """Replace every ticket at once (Import Excel > Replace all). The old list is backed up first."""
+        raw = self.read_body(MAX_UPLOAD)
+        if raw is None:
+            return self.error_json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "Too many tickets in one go")
+        try:
+            rows = json.loads(raw.decode("utf-8"))
+            assert isinstance(rows, list) and all(isinstance(r, dict) and ID_RE.match(str(r.get("id", ""))) for r in rows)
+        except Exception:
+            return self.error_json(HTTPStatus.BAD_REQUEST, "Send a list of tickets, each with an id")
+        with lock:
+            os.makedirs(BACKUP_DIR, exist_ok=True)
+            backup = "tickets-before-replace-%s.json" % time.strftime("%Y-%m-%d_%H%M%S")
+            if os.path.exists(COLLECTIONS["tickets"]):
+                shutil.copy2(COLLECTIONS["tickets"], os.path.join(BACKUP_DIR, backup))
+            save("tickets", {r["id"]: r for r in rows})
+        self.send_json({"count": len(rows), "backup": "data/backups/" + backup})
 
     def do_DELETE(self):
         name, did = self.doc_route()

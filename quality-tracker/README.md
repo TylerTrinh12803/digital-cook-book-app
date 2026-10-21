@@ -14,6 +14,20 @@ and fonts are all in this folder, and tickets are saved in `data/` next to these
 If you got the zip, your issues from `FXN_HT_Quality_Issue_tracker` are already loaded.
 To load them into an empty tracker, click **Import Excel** and pick the workbook.
 
+## Import a new Excel sheet
+
+Click **Import Excel** and pick the workbook. The tracker reads the sheet with a "Quality issue description"
+column and offers two choices:
+
+- **Add new tickets**: adds only the issues that aren't in the tracker yet (matched on detected date and description).
+- **Replace all tickets…**: clears the current tickets and loads the whole sheet instead. You confirm first, and
+  the current tickets are backed up to `data/backups/tickets-before-replace-<date>.json`. With **Keep the team,
+  actions…** ticked (the default), anything added in the tracker for tickets that are in both (team lead, members,
+  containment and corrective actions, root cause details, uploaded PowerPoints, PDFs and photos) carries over, and
+  reports in the SCAR / RCA reports tab stay linked to those tickets. Everything else comes from the new sheet.
+
+To undo a replace, close the tracker, copy the backup over `data/tickets.json`, and start it again.
+
 ## SCAR / RCA reports and PDF
 
 The **SCAR / RCA reports** tab lists every report in one place: PowerPoints and links you add there,
