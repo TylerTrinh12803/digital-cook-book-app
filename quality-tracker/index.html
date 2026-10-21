@@ -130,6 +130,17 @@ table { border-collapse: collapse; width: 100%; min-width: 1080px; }
 .prog-steps small, .prog-approve small { color: var(--muted); font-family: var(--font-mono); font-size: .72rem; margin-left: auto; }
 .prog-approve { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-weight: 600; }
 .prog-note { margin: 8px 0 0; font-size: .78rem; color: var(--muted); }
+/* analysis: top-5 lists */
+.lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 540px), 1fr)); gap: 12px; margin-top: 12px; }
+.list-box { margin-top: 0; min-width: 0; display: flex; flex-direction: column; }
+.list-box header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
+.list-box h3 { margin: 0; font: 600 1.2rem/1.1 var(--font-display); text-transform: uppercase; letter-spacing: .03em; }
+.list-box header .muted { font-size: .82rem; margin-right: auto; }
+.list-box table { min-width: 560px; }
+.list-box td, .list-box th { padding: 8px 10px; }
+.list-box .desc { max-width: 260px; }
+.list-box .prog { min-width: 100px; }
+.list-empty { padding: 28px 14px; text-align: center; color: var(--muted); font-size: .9rem; }
 th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; background: var(--sunken); position: relative; }
 th button { all: unset; cursor: pointer; }
@@ -353,6 +364,16 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
       <div class="canvas-box" id="canvasBox"><canvas id="chart" aria-label="Chart" role="img"></canvas></div>
       <div class="chart-empty" id="chartEmpty" hidden></div>
       <div class="pareto-table" id="paretoTable" hidden></div>
+    </div>
+    <div class="lists">
+      <section class="panel list-box" aria-labelledby="openListTitle">
+        <header><h3 id="openListTitle">Open &amp; in progress</h3><span class="muted" id="openListNote"></span><button class="btn small" type="button" data-seeall="open">See all</button></header>
+        <div class="table-scroll" id="openList"></div>
+      </section>
+      <section class="panel list-box" aria-labelledby="closedListTitle">
+        <header><h3 id="closedListTitle">Recently closed</h3><span class="muted" id="closedListNote"></span><button class="btn small" type="button" data-seeall="closed">See all</button></header>
+        <div class="table-scroll" id="closedList"></div>
+      </section>
     </div>
   </section>
 
@@ -1078,6 +1099,7 @@ function renderChart() {
   $("#chartTitle").textContent = def.title;
   $("#chartNote").textContent = def.note();
   $("#chartControls").innerHTML = def.controls();
+  renderAnalysisLists();
   if (chart) { chart.destroy(); chart = null; }
   const rows = filtered({ ignoreStatus: true });
   const pt = $("#paretoTable"); pt.hidden = true;
@@ -1093,6 +1115,30 @@ function renderChart() {
     pt.innerHTML = `<table><thead><tr><th>${{ rootCause: "Root cause", subRootCause: "Sub-root cause", area: "Factory area" }[paretoDim]}</th><th>Tickets</th><th>Share</th><th>Cumulative</th></tr></thead><tbody>${
       built.items.map(([k, v], i) => `<tr class="${built.vital[i] ? "vital" : ""}"><td>${esc(k)}</td><td class="mono">${v.toLocaleString()}</td><td class="mono">${(v / built.total * 100).toFixed(1)}%</td><td class="mono">${built.cum[i].toFixed(1)}%</td></tr>`).join("")}</tbody></table>`;
   }
+}
+/* ---------- analysis: top 5 open / recently closed ---------- */
+const SEV_RANK = { S0: 0, S1: 1, S2: 2 };
+function miniTable(list, last) {
+  return `<table><thead><tr><th>Sev</th><th>No.</th><th>Issue</th><th>Status</th><th>Progress</th><th>${last.head}</th></tr></thead><tbody>${list.map(t => `<tr data-id="${esc(t.id)}" tabindex="0">
+    <td class="sevcell s-${esc(t.severity)}"><span class="stripe"></span><span class="sev-tag">${esc(t.severity)}</span></td>
+    <td class="mono">${qid(t.no)}</td>
+    <td class="desc">${esc(t.description)}<div class="sub">${esc([t.type, t.ref, t.area].filter(Boolean).join(" · "))}</div></td>
+    <td><span class="chip st-${esc(t.status)}">${esc(STATUS_LABEL[t.status] || t.status)}</span></td>
+    <td>${progressBar(t)}</td>
+    <td class="mono">${last.cell(t)}</td></tr>`).join("")}</tbody></table>`;
+}
+function renderAnalysisLists() {
+  const rows = filtered({ ignoreStatus: true });
+  // Most urgent first: highest severity, then open the longest.
+  const open = rows.filter(t => t.status !== "CLOSE")
+    .sort((a, b) => (SEV_RANK[a.severity] ?? 9) - (SEV_RANK[b.severity] ?? 9) || ageOf(b) - ageOf(a));
+  // Tickets closed without a "Closed on" date sort by their detected date instead.
+  const closedOn = t => t.closedDate || t.detected || "";
+  const closed = rows.filter(t => t.status === "CLOSE").sort((a, b) => closedOn(b).localeCompare(closedOn(a)) || (b.no || 0) - (a.no || 0));
+  $("#openListNote").textContent = open.length ? `Top ${Math.min(5, open.length)} of ${open.length}, most urgent first` : "";
+  $("#closedListNote").textContent = closed.length ? `Latest ${Math.min(5, closed.length)} of ${closed.length}` : "";
+  $("#openList").innerHTML = open.length ? miniTable(open.slice(0, 5), { head: "Days open", cell: t => ageOf(t) }) : `<div class="list-empty">No open or monitor tickets in this selection.</div>`;
+  $("#closedList").innerHTML = closed.length ? miniTable(closed.slice(0, 5), { head: "Closed", cell: t => t.closedDate ? esc(fmtDate(t.closedDate)) : `<span class="muted" title="Set “Closed on” in the ticket">Date not set</span>` }) : `<div class="list-empty">No closed tickets in this selection.</div>`;
 }
 function showChartEmpty(msg) { $("#canvasBox").hidden = true; const e = $("#chartEmpty"); e.hidden = false; e.textContent = msg; }
 
@@ -1859,6 +1905,21 @@ function bindUI() {
     if (a.dataset.act === "import-replace-yes") runImport("replace");
     if (a.dataset.act === "add-report") openReport(null);
     if (a.dataset.act === "import-ppt") $("#pptInput").click();
+  });
+  $("#view-analysis").addEventListener("click", e => {
+    const row = e.target.closest(".list-box tr[data-id]");
+    if (row) return openTicket(tickets.find(t => t.id === row.dataset.id));
+    const all = e.target.closest("[data-seeall]");
+    if (all) {
+      $("#fType").value = "";
+      $("#fStatus").value = all.dataset.seeall === "closed" ? "CLOSE" : "";
+      sort = all.dataset.seeall === "closed" ? { key: "detected", dir: "desc" } : { key: "status", dir: "asc" };
+      view = "tickets"; saveUI(); render();
+    }
+  });
+  $("#view-analysis").addEventListener("keydown", e => {
+    const row = e.target.closest(".list-box tr[data-id]");
+    if (row && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openTicket(tickets.find(t => t.id === row.dataset.id)); }
   });
   $("#chartControls").addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b) return;

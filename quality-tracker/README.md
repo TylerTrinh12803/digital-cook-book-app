@@ -14,6 +14,16 @@ and fonts are all in this folder, and tickets are saved in `data/` next to these
 If you got the zip, your issues from `FXN_HT_Quality_Issue_tracker` are already loaded.
 To load them into an empty tracker, click **Import Excel** and pick the workbook.
 
+## Analysis
+
+The Analysis tab has the charts (open vs closed, tickets / SCARs / RCAs per month, Pareto) and, under them,
+two boxes that follow the filters:
+
+- **Open & in progress**: the top 5 Open and Monitor tickets, most urgent first (highest severity, then open longest), with progress.
+- **Recently closed**: the 5 most recently closed tickets by their "Closed on" date.
+
+Click a row to open the ticket, or **See all** for the full list on the Tickets tab.
+
 ## Progress per ticket
 
 Every ticket shows a progress bar in the list (sort by the Progress column) and in its form under
