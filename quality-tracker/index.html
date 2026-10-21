@@ -863,12 +863,15 @@ function pickKPI(pick) {
 const D8 = ["D1 Form the team", "D2 Describe the problem", "D3 Contain the problem", "D4 Find the root cause",
   "D5 Choose corrective actions", "D6 Implement & verify actions", "D7 Prevent recurrence", "D8 Close & recognize the team"];
 const progressModel = t => (t.progress && t.progress.model) || (t.type === "SCAR" ? "8D" : "RCA");
+// A closed ticket always counts as 100%, whatever is ticked.
 function progressOf(t) {
+  if (t.status === "CLOSE") return 100;
   const p = t.progress || {};
   if (progressModel(t) === "8D") return (p.d || []).filter(Boolean).length * 95 / 8 + (p.approved ? 5 : 0);
   return (p.rcaDone ? 85 : 0) + (p.approved ? 15 : 0);
 }
 function progressText(t) {
+  if (t.status === "CLOSE") return "Ticket closed";
   const p = t.progress || {}, who = t.client || "Customer";
   const work = progressModel(t) === "8D" ? `8D · ${(p.d || []).filter(Boolean).length} of 8 D's` : `RCA · ${p.rcaDone ? "created" : "not created"}`;
   return `${work} · ${p.approved ? `${who} approved` : `waiting on ${who}`}`;
@@ -882,7 +885,7 @@ function readProgress() {
 }
 let progModelTouched = false;
 function syncProgress() {
-  const t = { type: $("#f_type").value, client: $("#f_client").value.trim(), progress: readProgress() };
+  const t = { type: $("#f_type").value, client: $("#f_client").value.trim(), status: getRadio("status"), progress: readProgress() };
   const is8D = t.progress.model === "8D", who = t.client || "Customer";
   $("#prog8D").hidden = !is8D; $("#progRCA").hidden = is8D;
   $("#approveLabel").textContent = `${who} ${is8D ? "approved closure" : "agreed to close"}`;
@@ -890,6 +893,7 @@ function syncProgress() {
   $("#progNote").textContent = is8D
     ? `Each D is ${(95 / 8).toFixed(1)}%; all eight D's make 95%. ${who} approving closure adds the last 5%.`
     : `Creating the RCA is 85%. ${who} agreeing to close adds the last 15%.`;
+  if (t.status === "CLOSE") $("#progNote").textContent = `This ticket is closed, so it counts as 100%. ` + $("#progNote").textContent;
   $("#progLive").outerHTML = progressBar(t, true).replace('<div class="prog', '<div id="progLive" class="prog');
 }
 
@@ -1360,6 +1364,7 @@ function setRadio(name, val) { $$(`input[name="${name}"]`).forEach(r => (r.check
 function getRadio(name) { const r = $(`input[name="${name}"]:checked`); return r ? r.value : ""; }
 function syncClosed() {
   const closed = getRadio("status") === "CLOSE";
+  if ($("#p_d0")) syncProgress();
   $("#closedField").hidden = !closed;
   if (closed && !$("#f_closedDate").value) $("#f_closedDate").value = todayISO();
   const open = [...readActions("ca"), ...readActions("pca")].filter(a => a.status !== "Closed").length;

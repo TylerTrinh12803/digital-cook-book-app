@@ -35,6 +35,8 @@ switch with the 8D / RCA toggle in the ticket if needed.
 | 8D | Each of D1–D8 ticked adds 11.9% (95% for all eight) | NVIDIA approving closure adds the last 5% |
 | RCA | RCA created = 85% | NVIDIA agreeing to close adds the last 15% |
 
+A ticket marked **Closed** always shows 100%. The checklist is kept, so a reopened ticket goes back to its real progress.
+
 The Excel export has a Progress column (with an in-cell bar) and a Progress detail column.
 
 ## Import a new Excel sheet
