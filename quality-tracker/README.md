@@ -14,6 +14,18 @@ and fonts are all in this folder, and tickets are saved in `data/` next to these
 If you got the zip, your issues from `FXN_HT_Quality_Issue_tracker` are already loaded.
 To load them into an empty tracker, click **Import Excel** and pick the workbook.
 
+## Drafts and deleting
+
+- **Save as draft** (in a new ticket) keeps an unfinished ticket without the required fields; it only needs a
+  description. Drafts get no QI number and aren't counted anywhere official (summary tiles, charts, Analysis
+  boxes, ticket list, reports tab or Excel export) until they're created.
+- The **Drafts** section at the top of the Tickets tab lists them with how many required fields are left.
+  **Continue** opens one; **Create ticket** checks the required fields and gives it the next QI number.
+- **Delete ticket** (in a ticket), **Delete** (on a draft) and **Delete** (on a report) open an "are you sure?"
+  window; the delete button only works after you tick the confirmation box. A copy of everything deleted is
+  kept in `data/backups/deleted-tickets.json` (and `deleted-reports.json`).
+- Drafts are kept when you replace all tickets from a new Excel sheet.
+
 ## Analysis
 
 The Analysis tab has the charts (open vs closed, tickets / SCARs / RCAs per month, Pareto) and, under them,

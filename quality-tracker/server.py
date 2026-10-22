@@ -73,6 +73,22 @@ def daily_backup():
             shutil.copy2(path, target)
 
 
+def keep_deleted(name, doc):
+    """Keep a copy of every deleted ticket or report in data/backups/deleted-<name>.json, in case it's needed again."""
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    path = os.path.join(BACKUP_DIR, "deleted-%s.json" % name)
+    rows = []
+    if os.path.exists(path):
+        try:
+            with open(path, encoding="utf-8") as f:
+                rows = json.load(f)
+        except ValueError:
+            rows = []
+    rows.append(dict(doc, deletedAt=time.strftime("%Y-%m-%dT%H:%M:%S")))
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(rows, f, indent=1, ensure_ascii=False)
+
+
 def safe_name(name):
     name = os.path.basename(name or "file").strip()
     name = re.sub(r"[^\w.\- ()]+", "_", name)[:120]
@@ -266,8 +282,10 @@ class Handler(SimpleHTTPRequestHandler):
             return self.error_json(HTTPStatus.NOT_FOUND, "Not found")
         with lock:
             docs = load(name)
-            if docs.pop(did, None) is not None:
+            gone = docs.pop(did, None)
+            if gone is not None:
                 save(name, docs)
+                keep_deleted(name, gone)
         self.send_response(HTTPStatus.NO_CONTENT)
         self.end_headers()
 

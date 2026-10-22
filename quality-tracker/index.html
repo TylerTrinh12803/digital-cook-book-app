@@ -36,6 +36,9 @@
   --series-close: #22855a;
   --series-backlog: #c97a06;
   --danger: #b42727;
+  --on-danger: #ffffff;
+  --draft: #6a4fb3;
+  --draft-soft: #ece7f8;
   --font-display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
   --font-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
@@ -47,7 +50,7 @@
     --accent: #4dbcc7; --accent-ink: #062226; --accent-soft: #173a3f;
     --sev0: #f06a6a; --sev1: #f0a93c; --sev2: #7ba7e0;
     --st-open: #f06a6a; --st-monitor: #f0a93c; --st-close: #4fc48e;
-    --series-open: #4dbcc7; --series-close: #4fc48e; --series-backlog: #f0a93c; --danger: #f06a6a;
+    --series-open: #4dbcc7; --series-close: #4fc48e; --series-backlog: #f0a93c; --danger: #f06a6a; --on-danger: #2a0b0b; --draft: #b7a2f0; --draft-soft: #2a2442;
     color-scheme: dark;
   }
 }
@@ -56,7 +59,7 @@
   --accent: #4dbcc7; --accent-ink: #062226; --accent-soft: #173a3f;
   --sev0: #f06a6a; --sev1: #f0a93c; --sev2: #7ba7e0;
   --st-open: #f06a6a; --st-monitor: #f0a93c; --st-close: #4fc48e;
-  --series-open: #4dbcc7; --series-close: #4fc48e; --series-backlog: #f0a93c; --danger: #f06a6a;
+  --series-open: #4dbcc7; --series-close: #4fc48e; --series-backlog: #f0a93c; --danger: #f06a6a; --on-danger: #2a0b0b; --draft: #b7a2f0; --draft-soft: #2a2442;
   color-scheme: dark;
 }
 [hidden] { display: none !important; }
@@ -130,6 +133,28 @@ table { border-collapse: collapse; width: 100%; min-width: 1080px; }
 .prog-steps small, .prog-approve small { color: var(--muted); font-family: var(--font-mono); font-size: .72rem; margin-left: auto; }
 .prog-approve { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-weight: 600; }
 .prog-note { margin: 8px 0 0; font-size: .78rem; color: var(--muted); }
+/* drafts */
+.drafts { margin-top: 12px; border-color: var(--draft); }
+.drafts header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); background: var(--draft-soft); border-radius: var(--radius) var(--radius) 0 0; }
+.drafts h3 { margin: 0; font: 600 1.2rem/1.1 var(--font-display); text-transform: uppercase; letter-spacing: .03em; color: var(--draft); }
+.drafts header .muted { font-size: .82rem; }
+.draft-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px 16px; align-items: center; padding: 10px 14px; border-top: 1px solid var(--line); }
+.draft-row:first-child { border-top: 0; }
+.draft-main { min-width: 0; }
+.draft-main b { font-weight: 600; }
+.draft-main .sub { color: var(--muted); font-size: .8rem; }
+.draft-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: .78rem; white-space: nowrap; }
+.draft-miss { color: var(--st-monitor); font-weight: 600; }
+.draft-ready { color: var(--st-close); font-weight: 600; }
+.draft-acts { display: flex; gap: 6px; }
+.chip.draft { color: var(--draft); }
+@media (max-width: 640px) { .draft-row { grid-template-columns: 1fr; } .draft-meta { align-items: flex-start; } }
+/* confirm */
+dialog.confirm { width: min(480px, calc(100vw - 24px)); }
+.confirm-msg { margin: 0; line-height: 1.55; }
+.confirm-check { display: flex; gap: 8px; align-items: flex-start; margin-top: 14px; font-weight: 600; font-size: .9rem; }
+.btn.danger-solid { background: var(--danger); border-color: var(--danger); color: var(--on-danger); }
+.btn.danger-solid:disabled { opacity: .45; }
 /* analysis: top-5 lists */
 .lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 540px), 1fr)); gap: 12px; margin-top: 12px; }
 .list-box { margin-top: 0; min-width: 0; display: flex; flex-direction: column; }
@@ -240,7 +265,6 @@ details > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
 .attach-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
 .attach-add input[type="url"], .attach-add input[type="text"] { flex: 1 1 180px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; min-width: 0; }
 .drop-hint { font-size: .8rem; color: var(--muted); margin-top: 6px; }
-.confirm-del { display: inline-flex; gap: 6px; align-items: center; font-size: .86rem; color: var(--danger); flex-wrap: wrap; }
 .meta-line { font-size: .78rem; color: var(--muted); }
 
 /* actions editor */
@@ -341,6 +365,10 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
 
   <!-- Tickets view -->
   <section id="view-tickets" role="tabpanel" aria-labelledby="tab-tickets">
+    <section class="panel drafts" id="draftsBox" aria-labelledby="draftsTitle" hidden>
+      <header><h3 id="draftsTitle">Drafts (<span id="draftCount">0</span>)</h3><span class="muted">Not official yet: drafts aren't counted in the numbers, charts or exports until you create the ticket.</span></header>
+      <div id="draftList"></div>
+    </section>
     <div class="panel">
       <div class="table-scroll" id="tableWrap"></div>
     </div>
@@ -518,6 +546,7 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
       <span class="grow"></span>
       <span class="err" id="formErr"></span>
       <button class="btn" type="button" id="cancelBtn">Cancel</button>
+      <button class="btn" type="button" id="draftBtn">Save as draft</button>
       <button class="btn primary" type="submit" id="saveBtn">Create ticket</button>
     </div>
   </form>
@@ -529,6 +558,18 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
 <datalist id="dl_pic"></datalist>
 <datalist id="dl_rc"></datalist>
 <datalist id="dl_people"></datalist>
+
+<!-- Are-you-sure dialog -->
+<dialog id="confirmDlg" class="confirm" aria-labelledby="confirmTitle">
+  <div class="dlg">
+    <div class="dlg-head"><h2 id="confirmTitle">Delete?</h2></div>
+    <div class="dlg-body">
+      <p class="confirm-msg" id="confirmMsg"></p>
+      <label class="confirm-check"><input type="checkbox" id="confirmTick"> <span>Yes, I'm sure. I understand this can't be undone here.</span></label>
+    </div>
+    <div class="dlg-foot"><span class="grow"></span><button class="btn" type="button" id="confirmNo">Cancel</button><button class="btn danger-solid" type="button" id="confirmYes" disabled>Delete</button></div>
+  </div>
+</dialog>
 
 <!-- Report dialog -->
 <dialog id="rdlg" aria-labelledby="rdlgTitle">
@@ -766,7 +807,7 @@ function filtered({ ignoreStatus = false, ignoreType = false } = {}) {
   const q = $("#fSearch").value.trim().toLowerCase();
   const st = ignoreStatus ? "" : $("#fStatus").value, sev = $("#fSev").value, ty = ignoreType ? "" : $("#fType").value;
   const ph = $("#fPhase").value, ar = $("#fArea").value, pr = $("#fProduct").value;
-  return tickets.filter(t =>
+  return tickets.filter(t => !t.draft &&
     (!st || t.status === st) && (!sev || t.severity === sev) && (!ty || t.type === ty) &&
     (!ph || t.phase === ph) && (!ar || t.area === ar) && (!pr || t.product === pr) &&
     (!q || [qid(t.no), t.ref, t.description, t.reporter, t.pic, t.client, t.product, t.area, t.rootCause, t.subRootCause, t.rootCauseDetail, t.teamLead, t.members, t.comments]
@@ -917,10 +958,55 @@ function actSummary(t) {
 }
 function ageOf(t) { if (!t.detected) return 0; return daysBetween(t.detected, t.status === "CLOSE" && t.closedDate ? t.closedDate : todayISO()); }
 
+/* ---------- drafts & delete confirmation ---------- */
+const official = () => tickets.filter(t => !t.draft);
+const FIELD_LABEL = { detected: "Issue detected", type: "Ticket type", description: "Description", severity: "Severity", product: "Product name",
+  phase: "Product phase", client: "Client", reporter: "Reporter", pic: "PIC from FXN", units: "Units impacted", area: "Factory area" };
+const missingFields = t => REQUIRED.map(([k]) => k).filter(k => !t[k]).map(k => FIELD_LABEL[k]);
+function renderDrafts() {
+  const drafts = tickets.filter(t => t.draft).sort((a, b) => (b.updatedAt || "").localeCompare(a.updatedAt || ""));
+  $("#draftsBox").hidden = !drafts.length;
+  $("#draftCount").textContent = drafts.length;
+  $("#draftList").innerHTML = drafts.map(t => {
+    const miss = missingFields(t);
+    return `<div class="draft-row">
+      <div class="draft-main"><b>${esc(t.description || "No description yet")}</b><div class="sub">${esc([t.type, t.ref, t.severity, t.area, t.product].filter(Boolean).join(" · ") || "Nothing else filled in yet")}</div></div>
+      <div class="draft-meta">${miss.length ? `<span class="draft-miss" title="${esc("Still needed: " + miss.join(", "))}">${miss.length} required field${miss.length > 1 ? "s" : ""} left</span>` : `<span class="draft-ready">Ready to create</span>`}<span class="muted">Saved ${esc(fmtDate((t.updatedAt || t.createdAt || "").slice(0, 10)))}</span></div>
+      <div class="draft-acts"><button class="btn primary small" type="button" data-draft-open="${esc(t.id)}">Continue</button><button class="btn danger small" type="button" data-draft-del="${esc(t.id)}">Delete</button></div>
+    </div>`;
+  }).join("");
+}
+// A proper "are you sure?" step: the delete button only works once the box is ticked.
+function askConfirm({ title, message, confirmText }) {
+  return new Promise(resolve => {
+    const d = $("#confirmDlg"), yes = $("#confirmYes"), no = $("#confirmNo"), tick = $("#confirmTick");
+    $("#confirmTitle").textContent = title; $("#confirmMsg").innerHTML = message; yes.textContent = confirmText;
+    tick.checked = false; yes.disabled = true;
+    const onTick = () => { yes.disabled = !tick.checked; };
+    const finish = ok => { tick.removeEventListener("change", onTick); yes.onclick = no.onclick = d.oncancel = null; if (d.open) d.close(); resolve(ok); };
+    tick.addEventListener("change", onTick);
+    yes.onclick = () => finish(true); no.onclick = () => finish(false); d.oncancel = e => { e.preventDefault(); finish(false); };
+    d.showModal(); no.focus();
+  });
+}
+async function confirmDelete(t) {
+  const name = t.draft ? "this draft" : qid(t.no);
+  const ok = await askConfirm({
+    title: t.draft ? "Delete this draft?" : `Delete ${qid(t.no)}?`,
+    message: `<b>${esc(t.description || "Untitled draft")}</b><br>${t.draft ? "The draft and everything filled in on it will be removed." :
+      "The ticket and everything on it (team, actions, progress, attached reports and PDFs) will be removed for everyone. Reports in the SCAR / RCA reports tab stay, but lose their link to it."}${mode === "server" ? " A copy is kept in the tracker's data/backups folder." : ""}`,
+    confirmText: t.draft ? "Delete draft" : `Delete ${qid(t.no)}`
+  });
+  if (!ok) return false;
+  try { await deleteTicket(t.id); toast(`${t.draft ? "Draft" : qid(t.no)} deleted`); return true; }
+  catch (err) { toast(writeError(err), 6000); return false; }
+}
+
 function renderTable() {
   const wrap = $("#tableWrap");
   if (mode === "starting") { wrap.innerHTML = `<div class="empty"><p>Loading tickets…</p></div>`; $("#countLine").textContent = ""; return; }
-  if (!tickets.length) {
+  renderDrafts();
+  if (!official().length) {
     wrap.innerHTML = `<div class="empty"><h2>No tickets yet</h2><p>Each quality issue becomes a ticket here: severity, product, area, who found it and who owns it. Add root cause, report and status as the investigation moves.</p>
       <div class="row"><button class="btn primary" type="button" data-act="new">+ New ticket</button>${typeof XLSX !== "undefined" ? `<button class="btn" type="button" data-act="import">Import the Excel tracker</button>` : ""}</div></div>`;
     $("#countLine").textContent = "";
@@ -947,7 +1033,7 @@ function renderTable() {
       <td class="mono">${esc(t.units)}</td>
       <td class="mono">${ageOf(t)}</td>
     </tr>`).join("")}</tbody></table>${rows.length ? "" : `<div class="empty"><p>No tickets match these filters.</p></div>`}`;
-  $("#countLine").textContent = `Showing ${rows.length} of ${tickets.length} tickets. Click a row to update root cause, report or status.`;
+  $("#countLine").textContent = `Showing ${rows.length} of ${official().length} tickets. Click a row to update root cause, report or status.`;
 }
 
 /* ---------- charts ---------- */
@@ -1151,7 +1237,7 @@ function guessType(name) { const n = name.toUpperCase(); return /SCAR/.test(n) ?
 function guessRef(name) { const m = name.match(/SCAR[-_ ]?\d{3,}/i) || name.match(/BUG\s*#?\s*\d{5,}/i); return m ? m[0].toUpperCase().replace(/[_ ]/, "-") : ""; }
 function reportRows() {
   const out = reports.map(r => ({ src: "lib", r, id: r.id, type: r.type, ref: r.ref, title: r.title, ticket: tickets.find(t => t.id === r.ticketId), file: r.file, link: r.link, pdf: r.pdf, notes: r.notes, added: r.addedAt || "" }));
-  tickets.forEach(t => (t.attachments || []).forEach((a, i) => {
+  official().forEach(t => (t.attachments || []).forEach((a, i) => {
     if (a.kind === "image") return;
     const isPdfFile = a.kind === "file" && /\.pdf$/i.test(a.name || "");
     out.push({ src: "ticket", tid: t.id, idx: i, type: t.type, ref: t.ref, title: a.name || "Report", ticket: t, file: a.kind === "file" ? a : a.pptx || null, link: a.kind === "link" ? a.url : "", pdf: isPdfFile ? a : a.pdf, added: t.createdAt || "" });
@@ -1329,8 +1415,9 @@ function openTicket(t) {
   $("#formErr").textContent = "";
   const last = tickets.slice().sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""))[0] || {};
   const v = t || { detected: todayISO(), status: "OPEN", product: last.product || "", client: last.client || "", phase: last.phase || "" };
-  $("#dlgTitle").textContent = t ? `${qid(t.no)}` : "New ticket";
-  $("#dlgStatusChip").innerHTML = t ? `<span class="chip st-${esc(t.status)}">${esc(STATUS_LABEL[t.status] || t.status)}</span>` : "";
+  const isDraft = !!(t && t.draft);
+  $("#dlgTitle").textContent = isDraft ? "Draft ticket" : t ? `${qid(t.no)}` : "New ticket";
+  $("#dlgStatusChip").innerHTML = isDraft ? `<span class="chip draft">Draft</span>` : t ? `<span class="chip st-${esc(t.status)}">${esc(STATUS_LABEL[t.status] || t.status)}</span>` : "";
   for (const k of ["detected", "type", "ref", "description", "product", "client", "reporter", "pic", "units", "area", "rootCause", "subRootCause", "rootCauseDetail", "teamLead", "members", "closedDate", "comments"]) {
     const el = $("#f_" + k); if (!el) continue;
     if (el.tagName === "SELECT" && v[k] && ![...el.options].some(o => o.value === v[k])) el.insertAdjacentHTML("beforeend", `<option>${esc(v[k])}</option>`);
@@ -1352,8 +1439,10 @@ function openTicket(t) {
   syncProgress();
   $("#updDetails").open = !!t;
   $("#updHint").hidden = !!t;
-  $("#saveBtn").textContent = t ? "Save changes" : "Create ticket";
-  $("#delZone").innerHTML = t ? `<button class="btn danger small" type="button" id="delBtn">Delete</button>` : "";
+  $("#saveBtn").textContent = t && !isDraft ? "Save changes" : "Create ticket";
+  $("#draftBtn").hidden = !!t && !isDraft;
+  $("#draftBtn").textContent = isDraft ? "Save draft" : "Save as draft";
+  $("#delZone").innerHTML = t ? `<button class="btn danger small" type="button" id="delBtn">${isDraft ? "Delete draft" : "Delete ticket"}</button>` : "";
   $("#metaLine").textContent = t ? [t.createdAt && `Created ${fmtDate(t.createdAt.slice(0, 10))}`, t.updatedAt && `last updated ${fmtDate(t.updatedAt.slice(0, 10))}`].filter(Boolean).join(", ") : "";
   syncClosed();
   updateUploadUI();
@@ -1402,14 +1491,30 @@ function renderLinkedReports(t) {
     return `<span><a href="${esc(main)}" target="_blank" rel="noopener">${esc(r.title)}</a>${r.pdf ? ` · <a href="${esc(attUrl(r.pdf))}" target="_blank" rel="noopener">PDF</a>` : ""}</span>`;
   }).join("") : "";
 }
+async function saveDraft() {
+  const data = collectForm();
+  $$(".field.invalid").forEach(el => el.classList.remove("invalid"));
+  // Product and client are pre-filled on a new ticket, so the description is what makes a draft worth keeping.
+  if (!data.description) {
+    $("#f_description").closest(".field").classList.add("invalid");
+    $("#formErr").textContent = "Add at least a description before saving a draft."; return;
+  }
+  const t = editing ? { ...editing, ...data, draft: true } : { id: newId(), createdAt: new Date().toISOString(), ...data, draft: true };
+  const btn = $("#draftBtn"); btn.disabled = true;
+  try {
+    await saveTicket(t);
+    toast("Draft saved. It's under Drafts on the Tickets tab.", 4000);
+    closeDialog();
+  } catch (err) { $("#formErr").textContent = writeError(err); }
+  finally { btn.disabled = false; }
+}
 function closeDialog() { $("#dlg").close(); editing = null; draftAttachments = []; }
 
 const REQUIRED = [["detected", "f_detected"], ["type", "f_type"], ["description", "f_description"], ["severity", "sevField"], ["product", "f_product"], ["phase", "phaseField"], ["client", "f_client"], ["reporter", "f_reporter"], ["pic", "f_pic"], ["units", "f_units"], ["area", "f_area"]];
 
-async function submitForm(e) {
-  e.preventDefault();
+function collectForm() {
   const val = id => $("#" + id).value.trim();
-  const data = {
+  return {
     detected: val("f_detected"), type: val("f_type"), ref: val("f_ref"), description: val("f_description"),
     severity: getRadio("severity"), product: val("f_product"), phase: getRadio("phase"), client: val("f_client"),
     reporter: val("f_reporter"), pic: val("f_pic"), units: val("f_units"), area: val("f_area"),
@@ -1421,6 +1526,10 @@ async function submitForm(e) {
     containment: readActions("ca"), pca: readActions("pca"), progress: readProgress(),
     attachments: draftAttachments
   };
+}
+async function submitForm(e) {
+  e.preventDefault();
+  const data = collectForm();
   let missing = [];
   REQUIRED.forEach(([k, id]) => {
     const host = $("#" + id).closest(".field") || $("#" + id);
@@ -1429,11 +1538,15 @@ async function submitForm(e) {
     if (bad) missing.push(host.querySelector("span").textContent.replace("*", "").trim());
   });
   if (missing.length) { $("#formErr").textContent = `Fill in: ${missing.join(", ")}`; return; }
-  const t = editing ? { ...editing, ...data } : { id: newId(), no: Math.max(0, ...tickets.map(x => x.no || 0)) + 1, createdAt: new Date().toISOString(), ...data };
+  // A new ticket, or a draft being made official, gets the next QI number now.
+  const fromDraft = !!(editing && editing.draft);
+  const nextNo = () => Math.max(0, ...official().map(x => x.no || 0)) + 1;
+  const t = editing ? { ...editing, ...data } : { id: newId(), createdAt: new Date().toISOString(), ...data };
+  if (!editing || fromDraft) { delete t.draft; t.no = nextNo(); t.createdAt = new Date().toISOString(); }
   const btn = $("#saveBtn"); btn.disabled = true;
   try {
     await saveTicket(t);
-    toast(editing ? `${qid(t.no)} updated` : `${qid(t.no)} created`);
+    toast(editing && !fromDraft ? `${qid(t.no)} updated` : `${qid(t.no)} created`);
     closeDialog();
   } catch (err) { $("#formErr").textContent = writeError(err); }
   finally { btn.disabled = false; }
@@ -1546,7 +1659,7 @@ async function handleImportFile(file) {
   try {
     const parsed = parseWorkbook(await file.arrayBuffer());
     if (!parsed) return showImportBox(`<span><b>No issue list found.</b> The workbook needs a sheet with a “Quality issue description” column header.</span><span style="flex:1"></span><button class="btn small" type="button" data-act="import-cancel">Close</button>`);
-    const have = new Set(tickets.map(importKey));
+    const have = new Set(official().map(importKey));
     const fresh = parsed.rows.filter(t => !have.has(importKey(t)));
     pendingImport = { fresh, all: parsed.rows, file: file.name, sheet: parsed.sheet };
     showImportOptions();
@@ -1602,13 +1715,14 @@ async function runImport(kind) {
   if (kind === "replace") {
     const keep = $("#keepDetails") ? $("#keepDetails").checked : false;
     const made = numberRows(all, []);
-    const oldByKey = new Map(tickets.map(t => [importKey(t), t]));
+    const oldByKey = new Map(official().map(t => [importKey(t), t]));
+    const drafts = tickets.filter(t => t.draft); // drafts aren't from the sheet, so a replace keeps them
     const idMap = new Map();
     made.forEach(t => { const o = oldByKey.get(importKey(t)); if (o) { idMap.set(o.id, t.id); if (keep) carryOver(o, t); } });
     try {
-      if (mode === "server") await api("PUT", "api/tickets", JSON.stringify(made), { "Content-Type": "application/json" });
+      if (mode === "server") await api("PUT", "api/tickets", JSON.stringify(made.concat(drafts)), { "Content-Type": "application/json" });
       else lsSet(LS_KEY + "-before-replace", JSON.stringify(tickets));
-      tickets = made;
+      tickets = made.concat(drafts);
       if (mode === "local") persistLocal();
       // Point reports in the reports tab at the matching new tickets.
       for (const r of reports.filter(r => r.ticketId && idMap.has(r.ticketId))) await saveReport({ ...r, ticketId: idMap.get(r.ticketId) });
@@ -1987,9 +2101,10 @@ function bindUI() {
   $("#reportForm").addEventListener("click", async e => {
     if (e.target.closest("[data-rclose]")) { $("#rdlg").close(); return; }
     const f = e.target.closest("[data-rfile]"); if (f) return reportFileAction(f.dataset.rfile, f);
-    if (e.target.id === "rDel") $("#rDelZone").innerHTML = `<span class="confirm-del">Delete this report? <button class="btn danger small" type="button" id="rDelYes">Delete</button><button class="btn small" type="button" id="rDelNo">Keep</button></span>`;
-    if (e.target.id === "rDelNo") $("#rDelZone").innerHTML = `<button class="btn danger small" type="button" id="rDel">Delete</button>`;
-    if (e.target.id === "rDelYes") {
+    if (e.target.id === "rDel") {
+      const ok = await askConfirm({ title: "Delete this report?", confirmText: "Delete report",
+        message: `<b>${esc(editingReport.title)}</b><br>The report is removed from the SCAR / RCA reports tab and from its ticket.${mode === "server" ? " A copy is kept in the tracker's data/backups folder." : ""}` });
+      if (!ok) return;
       try { await deleteReport(editingReport.id); toast("Report deleted"); $("#rdlg").close(); } catch (err) { $("#rErr").textContent = writeError(err); }
     }
   });
@@ -2037,14 +2152,13 @@ function bindUI() {
     if (files.length) { e.preventDefault(); $("#updDetails").open = true; addFiles(files); }
   });
   $("#delZone").addEventListener("click", async e => {
-    if (e.target.id === "delBtn") {
-      $("#delZone").innerHTML = `<span class="confirm-del">Delete ${esc(qid(editing.no))} for everyone? <button class="btn danger small" type="button" id="delYes">Delete</button><button class="btn small" type="button" id="delNo">Keep</button></span>`;
-    } else if (e.target.id === "delNo") {
-      $("#delZone").innerHTML = `<button class="btn danger small" type="button" id="delBtn">Delete</button>`;
-    } else if (e.target.id === "delYes") {
-      const id = editing.id, n = editing.no;
-      try { await deleteTicket(id); toast(`${qid(n)} deleted`); closeDialog(); } catch (err) { $("#formErr").textContent = writeError(err); }
-    }
+    if (e.target.id !== "delBtn" || !editing) return;
+    if (await confirmDelete(editing)) closeDialog();
+  });
+  $("#draftBtn").addEventListener("click", saveDraft);
+  $("#draftsBox").addEventListener("click", e => {
+    const open = e.target.closest("[data-draft-open]"); if (open) return openTicket(tickets.find(t => t.id === open.dataset.draftOpen));
+    const del = e.target.closest("[data-draft-del]"); if (del) confirmDelete(tickets.find(t => t.id === del.dataset.draftDel));
   });
   const rerender = () => { if (view === "analysis") renderChart(); };
   matchMedia("(prefers-color-scheme: dark)").addEventListener("change", rerender);
