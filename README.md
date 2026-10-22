@@ -65,6 +65,19 @@ The site is published straight from this repo: **Settings → Pages → Deploy f
 - `index.html` at the top of the repo just forwards visitors to `cookbook/`, where the app lives.
 - `js/config.js` → `siteUrl` must stay `https://tylertrinh12803.github.io/digital-cook-book-app/cookbook` (update it if the repo is renamed or moved).
 
+## PDF editor
+
+**`pdf-editor/index.html`** is a separate tool in this repo: a PDF editor that runs in the browser, so you don't need Adobe. Once this is on `main` it lives at https://tylertrinh12803.github.io/digital-cook-book-app/pdf-editor/ (or double-click the file to open it locally).
+
+- **Edit text:** click any existing line to reword it. The old words get covered and a text box opens in their place.
+- **Add text, images, signatures** (drawn once, remembered on that device), freehand drawing, highlights, white-out, boxes, circles and lines.
+- **Pages:** reorder, rotate, delete, add blank pages, or add pages from another PDF.
+- **Download** saves a new copy named `yourfile-edited.pdf`. Your files never leave your computer.
+
+Shortcuts: V select, E edit text, T add text, D draw, H highlight, W white-out, R box, O circle, L line, Ctrl+Z / Ctrl+Shift+Z undo/redo, Delete removes the selected item, arrow keys nudge it. You can also paste an image or drag a PDF onto the window.
+
+Limits: new text uses the standard PDF fonts (Helvetica, Times, Courier), so reworded text in an unusual font won't match it exactly, and characters outside Western European alphabets are saved as "?". Password-protected PDFs need the password removed first.
+
 ## Old version
 
 The first version used Electron and a MySQL database, which made the project too big to upload. This version is a plain website instead, with no server or database, and is under 1 MB.
