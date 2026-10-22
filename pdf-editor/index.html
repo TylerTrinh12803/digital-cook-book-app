@@ -659,10 +659,42 @@ function getTextItems(pg) {
         if (size < 2 || it.width <= 0) continue;
         out.push({ str: it.str, x: e - pg.x0, base: top - f, w: it.width, size, fontName: it.fontName, fam: (tc.styles[it.fontName] || {}).fontFamily || '' });
       }
-      return { items: out, page: p };
+      return { items: joinLines(out), page: p };
     })());
   }
   return textCache.get(k);
+}
+// Many PDFs store each word (or letter) as its own piece. Join pieces that share a baseline into one line,
+// but keep pieces apart when a wide gap separates them, as in table columns.
+function joinLines(items) {
+  const sorted = [...items].sort((a, b) => a.base - b.base || a.x - b.x);
+  const rows = [];
+  for (const it of sorted) {
+    const row = rows[rows.length - 1];
+    if (row && Math.abs(it.base - row.base) < Math.min(it.size, row.size) * 0.35) row.items.push(it);
+    else rows.push({ base: it.base, size: it.size, items: [it] });
+  }
+  const lines = [];
+  for (const row of rows) {
+    row.items.sort((a, b) => a.x - b.x);
+    let cur = null;
+    for (const it of row.items) {
+      const size = cur ? Math.max(cur.size, it.size) : it.size;
+      const gap = cur ? it.x - (cur.x + cur.w) : 0;
+      if (cur && gap < size * 1.5 && gap > -size * 0.5) {
+        const needsSpace = gap > size * 0.12 && !/\s$/.test(cur.str) && !/^\s/.test(it.str);
+        cur.str += (needsSpace ? ' ' : '') + it.str;
+        cur.w = Math.max(cur.w, it.x + it.w - cur.x);
+        cur.base = Math.max(cur.base, it.base);
+        cur.size = size;
+        if (it.w > cur.mainW) { cur.mainW = it.w; cur.fontName = it.fontName; cur.fam = it.fam; }
+      } else {
+        cur = { ...it, mainW: it.w };
+        lines.push(cur);
+      }
+    }
+  }
+  return lines.map(l => ({ ...l, str: l.str.replace(/\s+/g, ' ').trim() })).filter(l => l.str);
 }
 async function buildTextLayer(pg) {
   const slot = slotOf(pg); if (!slot) return;
