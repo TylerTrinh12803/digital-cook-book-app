@@ -72,11 +72,12 @@ The site is published straight from this repo: **Settings → Pages → Deploy f
 - **Edit text:** click any existing line to reword it. The old words get covered and a text box opens in their place.
 - **Add text, images, signatures** (drawn once, remembered on that device), freehand drawing, highlights, white-out, boxes, circles and lines.
 - **Pages:** reorder, rotate, delete, add blank pages, or add pages from another PDF.
+- **Convert** saves the PDF (with your edits) as a Word `.docx` or PowerPoint `.pptx` file, either as editable text or as an exact picture of each page. It also turns Word and PowerPoint files into PDFs: open a `.docx` or `.pptx` and it becomes a PDF you can check, edit and download.
 - **Download** saves a new copy named `yourfile-edited.pdf`. Your files never leave your computer.
 
 Shortcuts: V select, E edit text, T add text, D draw, H highlight, W white-out, R box, O circle, L line, Ctrl+Z / Ctrl+Shift+Z undo/redo, Delete removes the selected item, arrow keys nudge it. You can also paste an image or drag a PDF onto the window.
 
-Limits: new text uses the standard PDF fonts (Helvetica, Times, Courier), so reworded text in an unusual font won't match it exactly, and characters outside Western European alphabets are saved as "?". Password-protected PDFs need the password removed first.
+Limits: new text uses the standard PDF fonts (Helvetica, Times, Courier), so reworded text in an unusual font won't match it exactly, and characters outside Western European alphabets are saved as "?". Password-protected PDFs need the password removed first. Converting needs an internet connection the first time (it downloads the converter). Older `.doc` / `.ppt` files must be re-saved as `.docx` / `.pptx` first, and charts and SmartArt in PowerPoint files are left out. Editable-text exports keep words and their size and weight, but not pictures or colors; use the exact-look option for those.
 
 ## Old version
 

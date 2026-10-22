@@ -143,7 +143,7 @@ body[data-tool="edittext"] .ann-text{cursor:text}
 
 /* modal */
 .modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:16px;background:rgba(10,14,20,.5)}
-.dialog{width:min(560px,100%);background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.35);padding:18px;display:grid;gap:12px}
+.dialog{width:min(560px,100%);max-height:100%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.35);padding:18px;display:grid;gap:12px}
 .dialog h2{margin:0;font-size:16px;font-weight:600}
 .dialog p{margin:0;color:var(--muted);font-size:13px}
 .pad{position:relative;background:#fff;border:1px solid var(--line);border-radius:8px;aspect-ratio:5/2;max-width:100%;touch-action:none}
@@ -157,6 +157,25 @@ body[data-tool="edittext"] .ann-text{cursor:text}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;max-width:calc(100% - 32px);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:13px;box-shadow:0 8px 24px var(--shadow)}
 .drop{position:fixed;inset:10px;z-index:35;display:grid;place-items:center;border:2px dashed var(--accent);border-radius:14px;background:color-mix(in srgb,var(--bg) 88%,transparent);font-size:16px;font-weight:500;color:var(--accent);pointer-events:none;text-align:center;padding:16px}
 .busy{position:fixed;inset:0;z-index:45;display:grid;place-items:center;background:rgba(10,14,20,.25);color:#fff;font-weight:500}
+
+/* convert dialog */
+.conv{width:min(600px,100%)}
+.conv h3{margin:0;font-size:13.5px;font-weight:600}
+.conv-sec{display:grid;gap:10px;padding-top:14px;border-top:1px solid var(--line)}
+.modes{border:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.modes legend{padding:0;margin-bottom:6px;font:500 11px var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.modes label{display:flex;gap:9px;align-items:flex-start;padding:9px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer;background:var(--raise)}
+.modes label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.modes input{margin-top:3px;accent-color:var(--accent)}
+.modes b,.fmt b{display:block;font-weight:500}
+.modes small,.fmt small{display:block;color:var(--muted);font-size:12px;line-height:1.35}
+.fmt-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fmt{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--raise);text-align:left}
+.fmt:hover{border-color:var(--accent)}
+.fmt-ico{flex:none;width:30px;height:36px;display:grid;place-items:center;border-radius:4px;border:1.5px solid var(--accent);font:600 12px var(--mono);color:var(--accent)}
+@media (max-width:520px){ .modes,.fmt-row{grid-template-columns:1fr} }
+.conv-host{position:fixed;left:-30000px;top:0;pointer-events:none;background:#fff;color:#000}
+.conv-host [data-mat]::before{content:none!important}
 
 @media (max-width:760px){
   .side{position:absolute;left:0;top:0;bottom:0;z-index:20;box-shadow:4px 0 24px var(--shadow);transform:translateX(-105%);transition:transform .2s ease}
@@ -178,6 +197,7 @@ body[data-tool="edittext"] .ann-text{cursor:text}
   </div>
   <button class="btn only-narrow" id="pagesBtn" type="button" aria-label="Show pages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="11" height="14" rx="1"/><path d="M9 21h10V8"/></svg></button>
   <button class="btn" id="openBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Open<span class="lbl-wide"> PDF</span></span></button>
+  <button class="btn" id="convBtn" type="button" aria-label="Convert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/></svg><span class="lbl-wide">Convert</span></button>
   <button class="btn primary" id="saveBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m-5-5 5 5 5-5M5 20h14"/></svg><span>Download</span></button>
 </header>
 
@@ -223,11 +243,35 @@ body[data-tool="edittext"] .ann-text{cursor:text}
   </div>
 </div>
 
-<div class="drop" id="drop" hidden>Drop a PDF to open it, or an image to place it on the page</div>
+<div class="modal" id="convModal" hidden>
+  <div class="dialog conv" role="dialog" aria-modal="true" aria-labelledby="convTitle">
+    <h2 id="convTitle">Convert</h2>
+    <div class="conv-sec">
+      <h3>Save this PDF as Word or PowerPoint</h3>
+      <fieldset class="modes"><legend>Keep</legend>
+        <label><input type="radio" name="convMode" id="modeText" value="text" checked><span><b>Editable text</b><small>Words you can change. Pictures, drawings and colors are left out.</small></span></label>
+        <label><input type="radio" name="convMode" id="modePics" value="pictures"><span><b>Exact look</b><small>Each page becomes a picture. Looks the same, but the text can't be edited.</small></span></label>
+      </fieldset>
+      <div class="fmt-row">
+        <button class="fmt" type="button" data-fmt="docx"><span class="fmt-ico">DOC</span><span><b>Save as Word</b><small>.docx file</small></span></button>
+        <button class="fmt" type="button" data-fmt="pptx"><span class="fmt-ico">PPT</span><span><b>Save as PowerPoint</b><small>.pptx file, one slide per page</small></span></button>
+      </div>
+      <p>Your edits are included.</p>
+    </div>
+    <div class="conv-sec">
+      <h3>Turn a Word or PowerPoint file into a PDF</h3>
+      <p>The file opens here as a PDF so you can check or edit it. Then click Download to save it. Works with .docx and .pptx files.</p>
+      <div class="dlg-row"><button class="btn" id="convOpen" type="button">Choose a .docx or .pptx file</button><span class="spacer"></span><button class="btn small" id="convClose" type="button">Close</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="drop" id="drop" hidden>Drop a PDF, Word or PowerPoint file to open it, or an image to place it on the page</div>
 <div class="toast" id="toast" role="status" hidden></div>
 <div class="busy" id="busy" hidden>Working…</div>
 
-<input type="file" id="openInput" accept="application/pdf,.pdf" hidden>
+<input type="file" id="openInput" accept="application/pdf,.pdf,.docx,.pptx,.doc,.ppt" hidden>
+<input type="file" id="officeInput" accept=".docx,.pptx,.doc,.ppt,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" hidden>
 <input type="file" id="mergeInput" accept="application/pdf,.pdf" multiple hidden>
 <input type="file" id="imageInput" accept="image/*" hidden>
 
@@ -342,7 +386,7 @@ function updateUndo() { $('#undoBtn').disabled = hi <= 0; $('#redoBtn').disabled
 /* ---------- toast / busy ---------- */
 let toastT;
 function toast(msg, ms = 3200) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, ms); }
-const busy = on => { $('#busy').hidden = !on; };
+const busy = (on, text = 'Working…') => { $('#busy').textContent = text; $('#busy').hidden = !on; };
 
 /* ---------- loading PDFs ---------- */
 async function addPdf(bytes, name, replace) {
@@ -372,12 +416,13 @@ async function addPdf(bytes, name, replace) {
 }
 
 async function openFile(file) {
+  if (OFFICE.test(file.name)) return importOffice(file);
   if (S.editing) finishEdit();
   busy(true);
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (await addPdf(bytes, file.name, true)) {
-      S.fileName = file.name; S.isSample = false; updateFileLabel();
+      S.fileName = file.name; S.isSample = false; S.fromOffice = false; updateFileLabel();
       S.fit = true; S.scale = fitScale(); renderAll(); resetHistory();
       $('#desk').scrollTop = 0;
       toast(`Opened ${file.name} · ${S.pages.length} page${S.pages.length === 1 ? '' : 's'}`);
@@ -650,19 +695,38 @@ function getTextItems(pg) {
     textCache.set(k, (async () => {
       const p = await S.sources[pg.src].doc.getPage(pg.index + 1);
       const tc = await p.getTextContent();
-      const top = pg.y0 + pg.h, out = [];
-      for (const it of tc.items) {
-        if (!it.str || !it.str.trim()) continue;
-        const [a, b, c, d, e, f] = it.transform;
-        if (Math.abs(b) > 0.01 || Math.abs(c) > 0.01 || a <= 0 || d <= 0) continue; // skip rotated or mirrored text
-        const size = d;
-        if (size < 2 || it.width <= 0) continue;
-        out.push({ str: it.str, x: e - pg.x0, base: top - f, w: it.width, size, fontName: it.fontName, fam: (tc.styles[it.fontName] || {}).fontFamily || '' });
-      }
-      return { items: joinLines(out), page: p };
+      return { items: joinLines(textPieces(tc, pg.x0, pg.y0 + pg.h)), page: p };
     })());
   }
   return textCache.get(k);
+}
+function textPieces(tc, x0, top) {
+  const out = [];
+  for (const it of tc.items) {
+    if (!it.str || !it.str.trim()) continue;
+    const [a, b, c, d, e, f] = it.transform;
+    if (Math.abs(b) > 0.01 || Math.abs(c) > 0.01 || a <= 0 || d <= 0) continue; // skip rotated or mirrored text
+    const size = d;
+    if (size < 2 || it.width <= 0) continue;
+    out.push({ str: it.str, x: e - x0, base: top - f, w: it.width, size, fontName: it.fontName, fam: (tc.styles[it.fontName] || {}).fontFamily || '' });
+  }
+  return out;
+}
+// Which standard font, weight and slant best match a piece of PDF text.
+function fontInfo(page, it) {
+  let name = '', bold = false, italic = false, serif = null, mono = false;
+  try {
+    const fo = page.commonObjs.get(it.fontName);
+    name = fo.name || ''; bold = !!(fo.bold || fo.black); italic = !!fo.italic;
+    if (fo.isSerifFont != null) serif = fo.isSerifFont;
+    mono = !!fo.isMonospace;
+  } catch (_) { /* font not loaded yet */ }
+  const probe = (name + ' ' + it.fam).toLowerCase();
+  if (/bold|black|heavy|semibold|demi/.test(name.toLowerCase())) bold = true;
+  if (/italic|oblique/.test(name.toLowerCase())) italic = true;
+  if (/courier|mono/.test(probe)) mono = true;
+  if (serif == null) serif = /times|serif|georgia|garamond|roman|book|cambria|minion/.test(probe) && !/sans/.test(probe);
+  return { font: mono ? 'Courier' : serif ? 'Times' : 'Helvetica', bold, italic };
 }
 // Many PDFs store each word (or letter) as its own piece. Join pieces that share a baseline into one line,
 // but keep pieces apart when a wide gap separates them, as in table columns.
@@ -684,12 +748,13 @@ function joinLines(items) {
       if (cur && gap < size * 1.5 && gap > -size * 0.5) {
         const needsSpace = gap > size * 0.12 && !/\s$/.test(cur.str) && !/^\s/.test(it.str);
         cur.str += (needsSpace ? ' ' : '') + it.str;
+        cur.parts.push({ ...it, sp: needsSpace });
         cur.w = Math.max(cur.w, it.x + it.w - cur.x);
         cur.base = Math.max(cur.base, it.base);
         cur.size = size;
         if (it.w > cur.mainW) { cur.mainW = it.w; cur.fontName = it.fontName; cur.fam = it.fam; }
       } else {
-        cur = { ...it, mainW: it.w };
+        cur = { ...it, mainW: it.w, parts: [{ ...it, sp: false }] };
         lines.push(cur);
       }
     }
@@ -730,19 +795,7 @@ async function sampleBg(pg, it) {
 async function editItem(pg, i, cx, cy) {
   const { items, page } = await getTextItems(pg);
   const it = items[i]; if (!it) return;
-  let name = '', bold = false, italic = false, serif = null, mono = false;
-  try {
-    const fo = page.commonObjs.get(it.fontName);
-    name = fo.name || ''; bold = !!(fo.bold || fo.black); italic = !!fo.italic;
-    if (fo.isSerifFont != null) serif = fo.isSerifFont;
-    mono = !!fo.isMonospace;
-  } catch (_) { /* font not loaded yet */ }
-  const probe = (name + ' ' + it.fam).toLowerCase();
-  if (/bold|black|heavy|semibold|demi/.test(name.toLowerCase())) bold = true;
-  if (/italic|oblique/.test(name.toLowerCase())) italic = true;
-  if (/courier|mono/.test(probe)) mono = true;
-  if (serif == null) serif = /times|serif|georgia|garamond|roman|book|cambria|minion/.test(probe) && !/sans/.test(probe);
-  const font = mono ? 'Courier' : serif ? 'Times' : 'Helvetica';
+  const { font, bold, italic } = fontInfo(page, it);
   const size = r2(it.size);
   const pad = Math.max(0.6, size * 0.06);
   const wo = { id: uid(), type: 'whiteout', color: await sampleBg(pg, it),
@@ -1288,8 +1341,8 @@ async function buildPdf() {
 const downloadsCap = (window.claude && typeof window.claude.use === 'function')
   ? Promise.resolve(window.claude.use('downloads')).catch(() => null) : Promise.resolve(null);
 
-async function saveFile(bytes, filename) {
-  const blob = new Blob([bytes], { type: 'application/pdf' });
+async function saveFile(bytes, filename, type = 'application/pdf') {
+  const blob = bytes instanceof Blob ? bytes : new Blob([bytes], { type });
   if (window.claude && typeof window.claude.use === 'function') {
     const dl = await downloadsCap;
     if (!dl) { toast("Downloading isn't available in this view. Open the page in a browser tab to save files.", 6000); return false; }
@@ -1310,7 +1363,7 @@ $('#saveBtn').onclick = async () => {
   const btn = $('#saveBtn'); btn.disabled = true; busy(true);
   try {
     const { bytes, replaced } = await buildPdf();
-    const name = S.fileName.replace(/\.pdf$/i, '') + '-edited.pdf';
+    const name = S.fromOffice ? S.fileName : S.fileName.replace(/\.pdf$/i, '') + '-edited.pdf';
     busy(false);
     if (await saveFile(bytes, name)) {
       S.dirty = false;
@@ -1335,7 +1388,7 @@ window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('drop', e => {
   e.preventDefault(); dragDepth = 0; $('#drop').hidden = true;
   const files = [...e.dataTransfer.files];
-  const pdf = files.find(isPdf), img = files.find(f => f.type.startsWith('image/'));
+  const pdf = files.find(f => isPdf(f) || OFFICE.test(f.name)), img = files.find(f => f.type.startsWith('image/'));
   if (pdf) openFile(pdf); else if (img) addImageBlob(img);
 });
 window.addEventListener('paste', e => {
@@ -1346,7 +1399,7 @@ window.addEventListener('paste', e => {
 
 /* ---------- keyboard ---------- */
 window.addEventListener('keydown', e => {
-  if (S.editing || !$('#sigModal').hidden) return;
+  if (S.editing || !$('#sigModal').hidden || !$('#convModal').hidden) return;
   if (/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
   const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
   if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
@@ -1365,6 +1418,1006 @@ window.addEventListener('keydown', e => {
   if (t) { e.preventDefault(); setTool(t[0]); }
 });
 window.addEventListener('beforeunload', e => { if (S.dirty && !S.isSample) { e.preventDefault(); e.returnValue = ''; } });
+
+/* ---------- converting: shared helpers ---------- */
+const LIBS = {
+  jszip: 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',
+  docx: 'https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js',
+  pptx: 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js',
+};
+const libLoads = {};
+function loadLib(k) {
+  if (!libLoads[k]) {
+    libLoads[k] = new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = LIBS[k];
+      s.onload = () => res();
+      s.onerror = () => { delete libLoads[k]; rej(new Error('Could not load the converter')); };
+      document.head.append(s);
+    });
+  }
+  return libLoads[k];
+}
+const OFFICE = /\.(docx|pptx|doc|ppt)$/i;
+const MIME = {
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+};
+const XHTML = 'http://www.w3.org/1999/xhtml';
+const K = 0.75; // CSS px to PDF points
+const ASCR = { Helvetica: 0.81, Times: 0.805, Courier: 0.735 }; // baseline position inside a text box, as a share of its height
+const WFONT = { Helvetica: 'Arial', Times: 'Times New Roman', Courier: 'Courier New' };
+// Stand-ins for characters the standard PDF fonts don't have.
+const SUBST = { ' ': ' ', '‐': '-', '‑': '-', '−': '-', '≤': '<=', '≥': '>=', '→': '->', '←': '<-',
+  '●': '•', '▪': '•', '■': '•', '◦': 'o', '○': 'o', '✓': 'v', '✔': 'v', '­': '' };
+
+function famOf(ff) {
+  const all = (ff || '').toLowerCase(), first = all.split(',')[0];
+  if (/courier|mono|consolas|menlo/.test(first)) return 'Courier';
+  if (/sans/.test(first)) return 'Helvetica';
+  if (/times|serif|georgia|garamond|cambria|book|roman|minion|palatino|baskerville|didot|bodoni|caslon|constantia/.test(first)) return 'Times';
+  return 'Helvetica';
+}
+function parseCss(c) {
+  const m = /rgba?\(([^)]+)\)/.exec(c || '');
+  if (!m) return null;
+  const v = m[1].split(/[\s,/]+/).filter(Boolean).map(parseFloat);
+  return { r: v[0], g: v[1], b: v[2], a: v.length > 3 ? v[3] : 1 };
+}
+const hexA = h => ({ r: parseInt(h.slice(1, 3), 16), g: parseInt(h.slice(3, 5), 16), b: parseInt(h.slice(5, 7), 16), a: h.length > 7 ? parseInt(h.slice(7, 9), 16) / 255 : 1 });
+const cssRgb = c => PDFLib.rgb(c.r / 255, c.g / 255, c.b / 255);
+const b64ToBytes = b64 => { const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };
+function bytesToB64(u) { let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }
+const xmlEsc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f￾￿]/g, '');
+const twip = pt => Math.round(pt * 20);
+function alpha(n) { let s = ''; while (n > 0) { n--; s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26); } return s || 'A'; }
+function roman(n) {
+  const t = [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
+  let s = ''; for (const [v, r] of t) while (n >= v) { s += r; n -= v; } return s;
+}
+function makeHost() { const h = document.createElement('div'); h.className = 'conv-host'; h.setAttribute('aria-hidden', 'true'); document.body.append(h); return h; }
+async function settleImages(root) {
+  await Promise.all([...root.querySelectorAll('img')].map(im => (im.complete ? Promise.resolve() : new Promise(r => { im.onload = im.onerror = r; }))
+    .then(() => (im.naturalWidth && im.decode ? im.decode().catch(() => {}) : null))));
+  if (document.fonts && document.fonts.ready) await document.fonts.ready;
+}
+// Draw every piece of text in one of the three standard fonts, so what we measure on screen matches the PDF.
+function normalizeFonts(root) {
+  const els = [root, ...root.querySelectorAll('*')].filter(e => e.namespaceURI === XHTML);
+  const fams = els.map(e => famOf(getComputedStyle(e).fontFamily));
+  els.forEach((e, i) => e.style.setProperty('font-family', CSSFONT[fams[i]], 'important'));
+}
+// List numbers and bullets drawn with CSS ::before aren't real text. Turn them into spans so they can be measured and drawn.
+function materializePseudo(root) {
+  const counters = {}, plan = [];
+  const apply = (val, fn) => {
+    if (!val || val === 'none') return;
+    const t = val.trim().split(/\s+/);
+    for (let i = 0; i < t.length; i++) {
+      const name = t[i], num = /^-?\d+$/.test(t[i + 1] || '') ? +t[++i] : null;
+      fn(name, num);
+    }
+  };
+  const fmt = (n, style) => {
+    switch ((style || 'decimal').trim()) {
+      case 'none': return '';
+      case 'disc': case 'circle': case 'square': return '•';
+      case 'lower-alpha': case 'lower-latin': return alpha(n).toLowerCase();
+      case 'upper-alpha': case 'upper-latin': return alpha(n);
+      case 'lower-roman': return roman(n).toLowerCase();
+      case 'upper-roman': return roman(n);
+      case 'decimal-leading-zero': return String(n).padStart(2, '0');
+      default: return String(n);
+    }
+  };
+  const unesc = s => s.replace(/\\([0-9a-fA-F]{1,6})\s?/g, (_, h) => String.fromCodePoint(parseInt(h, 16))).replace(/\\(.)/g, '$1');
+  for (const el of [root, ...root.querySelectorAll('*')]) {
+    if (el.namespaceURI !== XHTML) continue;
+    const cs = getComputedStyle(el);
+    apply(cs.counterReset, (n, v) => { counters[n] = v ?? 0; });
+    apply(cs.counterSet, (n, v) => { counters[n] = v ?? 0; });
+    apply(cs.counterIncrement, (n, v) => { counters[n] = (counters[n] || 0) + (v ?? 1); });
+    const ps = getComputedStyle(el, '::before');
+    const c = ps.content;
+    if (!c || c === 'none' || c === 'normal' || ps.display === 'none') continue;
+    apply(ps.counterReset, (n, v) => { counters[n] = v ?? 0; });
+    apply(ps.counterSet, (n, v) => { counters[n] = v ?? 0; });
+    apply(ps.counterIncrement, (n, v) => { counters[n] = (counters[n] || 0) + (v ?? 1); });
+    let text = '';
+    const re = /"((?:[^"\\]|\\.)*)"|counter\(\s*([^,)\s]+)\s*(?:,\s*([^)]+))?\)/g;
+    let m;
+    while ((m = re.exec(c))) text += m[1] != null ? unesc(m[1]) : fmt(counters[m[2]] || 0, m[3]);
+    text = text.replace(/[-]/g, '•');
+    if (text.trim()) plan.push([el, text, ps]);
+  }
+  for (const [el, text, ps] of plan) {
+    const sp = document.createElement('span');
+    sp.textContent = text.replace(/\t/g, ' ');
+    for (const k of ['display', 'width', 'minWidth', 'paddingLeft', 'paddingRight', 'marginLeft', 'marginRight', 'fontSize', 'fontWeight', 'fontStyle', 'color', 'verticalAlign', 'whiteSpace', 'textIndent']) sp.style[k] = ps[k];
+    sp.style.setProperty('font-family', CSSFONT[famOf(ps.fontFamily)], 'important');
+    el.setAttribute('data-mat', '');
+    el.prepend(sp);
+  }
+}
+
+/* Read what the browser laid out: words, pictures, fills, borders and shapes, in drawing order, in px. */
+function collect(root, ox, oy) {
+  const items = [], range = document.createRange();
+  const tw = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+  for (let node = root; node; node = tw.nextNode()) {
+    if (node.nodeType === 3) { words(node); continue; }
+    const el = node;
+    if (el.namespaceURI !== XHTML) continue;
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+    const r = el.getBoundingClientRect();
+    if (el.dataset.geom) {
+      items.push({ k: 'shape', geom: el.dataset.geom, flip: el.dataset.flip || '', x: r.left - ox, y: r.top - oy, w: r.width, h: r.height,
+        fill: el.dataset.fill ? hexA(el.dataset.fill) : null, stroke: el.dataset.stroke ? hexA(el.dataset.stroke) : null, sw: parseFloat(el.dataset.sw || '0') });
+      continue;
+    }
+    if (el.tagName === 'IMG') {
+      if (r.width > 0 && r.height > 0 && el.naturalWidth) items.push({ k: 'img', el, x: r.left - ox, y: r.top - oy, w: r.width, h: r.height });
+      continue;
+    }
+    const inline = cs.display === 'inline';
+    const bg = parseCss(cs.backgroundColor);
+    if (bg && bg.a > 0.04) {
+      for (const b of (inline ? el.getClientRects() : [r])) if (b.width > 0 && b.height > 0) items.push({ k: 'rect', x: b.left - ox, y: b.top - oy, w: b.width, h: b.height, c: bg });
+    }
+    if (!inline && r.width > 0 && r.height > 0) {
+      // In a collapsed table, neighbouring cells share one border line, so draw it on the cell edge, not inside it.
+      const shared = (el.tagName === 'TD' || el.tagName === 'TH') && getComputedStyle(el.closest('table')).borderCollapse === 'collapse';
+      for (const side of ['Top', 'Right', 'Bottom', 'Left']) {
+        const bw = parseFloat(cs['border' + side + 'Width']), st = cs['border' + side + 'Style'];
+        if (!(bw > 0) || st === 'none' || st === 'hidden') continue;
+        const c = parseCss(cs['border' + side + 'Color']);
+        if (!c || c.a < 0.04) continue;
+        const L = r.left - ox, T = r.top - oy, R = r.right - ox, B = r.bottom - oy, i = shared ? 0 : bw / 2;
+        const p = side === 'Top' ? [L, T + i, R, T + i] : side === 'Bottom' ? [L, B - i, R, B - i]
+          : side === 'Left' ? [L + i, T, L + i, B] : [R - i, T, R - i, B];
+        items.push({ k: 'seg', p, w: bw, c, y: Math.min(p[1], p[3]), h: Math.abs(p[3] - p[1]) });
+      }
+    }
+  }
+  function words(tn) {
+    const p = tn.parentElement;
+    if (!p || p.namespaceURI !== XHTML || !/\S/.test(tn.data)) return;
+    const cs = getComputedStyle(p);
+    if (cs.visibility === 'hidden') return;
+    const c = parseCss(cs.color) || { r: 0, g: 0, b: 0, a: 1 };
+    if (c.a < 0.05) return;
+    const font = famOf(cs.fontFamily), size = parseFloat(cs.fontSize);
+    const bold = cs.fontWeight === 'bold' || parseInt(cs.fontWeight, 10) >= 600, italic = cs.fontStyle !== 'normal';
+    const upper = cs.textTransform === 'uppercase' || cs.fontVariantCaps === 'small-caps' || cs.fontVariantCaps === 'all-small-caps';
+    let under = false;
+    for (let e = p; e; e = e.parentElement) {
+      if ((getComputedStyle(e).textDecorationLine || '').includes('underline')) { under = true; break; }
+      if (e === root) break;
+    }
+    const push = (s, b) => items.push({ k: 'word', s: upper ? s.toUpperCase() : s, x: b.left - ox, y: b.top - oy, w: b.width, h: b.height, font, bold, italic, size, c, under });
+    const re = /\S+/g;
+    let m;
+    while ((m = re.exec(tn.data))) {
+      range.setStart(tn, m.index); range.setEnd(tn, m.index + m[0].length);
+      const rs = [...range.getClientRects()].filter(b => b.width > 0);
+      if (!rs.length) continue;
+      if (rs.length === 1) { push(m[0], rs[0]); continue; }
+      for (let i = 0; i < m[0].length; i++) { // a word split across lines: place it letter by letter
+        range.setStart(tn, m.index + i); range.setEnd(tn, m.index + i + 1);
+        const b = range.getClientRects()[0];
+        if (b && b.width > 0) push(m[0][i], b);
+      }
+    }
+  }
+  return items;
+}
+
+const imgBytesFor = new Map(); // image URL -> {bytes, kind} when we already hold the original file
+function emitCtx(out) { return { out, fonts: {}, sets: {}, imgs: new Map(), replaced: false }; }
+async function stdFont(ctx, fam, b, i) {
+  const n = STD[fam][(b ? 1 : 0) + (i ? 2 : 0)];
+  if (!ctx.fonts[n]) { ctx.fonts[n] = await ctx.out.embedFont(PDFLib.StandardFonts[n]); ctx.sets[n] = new Set(ctx.fonts[n].getCharacterSet()); }
+  return [ctx.fonts[n], ctx.sets[n]];
+}
+async function canvasPng(el) {
+  const c = document.createElement('canvas');
+  c.width = el.naturalWidth; c.height = el.naturalHeight;
+  c.getContext('2d').drawImage(el, 0, 0);
+  const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+  return { kind: 'png', bytes: new Uint8Array(await blob.arrayBuffer()) };
+}
+async function embedImg(ctx, el) {
+  const src = el.currentSrc || el.src;
+  if (ctx.imgs.has(src)) return ctx.imgs.get(src);
+  let data = imgBytesFor.get(src);
+  if (!data) {
+    const m = /^data:image\/(png|jpeg|jpg);base64,(.*)$/i.exec(src);
+    data = m ? { kind: m[1].toLowerCase() === 'png' ? 'png' : 'jpg', bytes: b64ToBytes(m[2]) } : await canvasPng(el);
+  }
+  let emb = null;
+  try { emb = data.kind === 'jpg' ? await ctx.out.embedJpg(data.bytes) : await ctx.out.embedPng(data.bytes); }
+  catch (_) { try { emb = await ctx.out.embedPng((await canvasPng(el)).bytes); } catch (__) { emb = null; } }
+  ctx.imgs.set(src, emb);
+  return emb;
+}
+const GEOM = {
+  triangle: [[0.5, 0], [1, 1], [0, 1]], rtTriangle: [[0, 0], [1, 1], [0, 1]], diamond: [[0.5, 0], [1, 0.5], [0.5, 1], [0, 0.5]],
+  parallelogram: [[0.25, 0], [1, 0], [0.75, 1], [0, 1]], trapezoid: [[0.25, 0], [0.75, 0], [1, 1], [0, 1]],
+  pentagon: [[0.5, 0], [1, 0.38], [0.81, 1], [0.19, 1], [0, 0.38]], hexagon: [[0.25, 0], [0.75, 0], [1, 0.5], [0.75, 1], [0.25, 1], [0, 0.5]],
+  octagon: [[0.29, 0], [0.71, 0], [1, 0.29], [1, 0.71], [0.71, 1], [0.29, 1], [0, 0.71], [0, 0.29]],
+  rightArrow: [[0, 0.25], [0.7, 0.25], [0.7, 0], [1, 0.5], [0.7, 1], [0.7, 0.75], [0, 0.75]],
+  leftArrow: [[1, 0.25], [0.3, 0.25], [0.3, 0], [0, 0.5], [0.3, 1], [0.3, 0.75], [1, 0.75]],
+  upArrow: [[0.25, 1], [0.25, 0.3], [0, 0.3], [0.5, 0], [1, 0.3], [0.75, 0.3], [0.75, 1]],
+  downArrow: [[0.25, 0], [0.25, 0.7], [0, 0.7], [0.5, 1], [1, 0.7], [0.75, 0.7], [0.75, 0]],
+  homePlate: [[0, 0], [0.8, 0], [1, 0.5], [0.8, 1], [0, 1]], chevron: [[0, 0], [0.8, 0], [1, 0.5], [0.8, 1], [0, 1], [0.2, 0.5]],
+  plus: [[0.33, 0], [0.67, 0], [0.67, 0.33], [1, 0.33], [1, 0.67], [0.67, 0.67], [0.67, 1], [0.33, 1], [0.33, 0.67], [0, 0.67], [0, 0.33], [0.33, 0.33]],
+};
+function drawShape(page, it, X, Y) {
+  const o = {};
+  if (it.fill && it.fill.a > 0.02) { o.color = cssRgb(it.fill); if (it.fill.a < 1) o.opacity = it.fill.a; }
+  if (it.stroke && it.sw > 0) { o.borderColor = cssRgb(it.stroke); o.borderWidth = it.sw * K; if (it.stroke.a < 1) o.borderOpacity = it.stroke.a; }
+  if (!o.color && !o.borderColor) return;
+  const w = it.w * K, h = it.h * K, x = X(it.x), y = Y(it.y), fh = it.flip.includes('h'), fv = it.flip.includes('v');
+  if (it.geom === 'line') {
+    if (!o.borderColor) return;
+    page.drawLine({ start: { x: x + (fh ? w : 0), y: y - (fv ? h : 0) }, end: { x: x + (fh ? 0 : w), y: y - (fv ? 0 : h) }, thickness: o.borderWidth, color: o.borderColor, opacity: o.borderOpacity });
+    return;
+  }
+  if (it.geom === 'ellipse') { page.drawEllipse({ x: x + w / 2, y: y - h / 2, xScale: w / 2, yScale: h / 2, ...o }); return; }
+  if (it.geom === 'roundRect' || it.geom === 'snipRoundRect' || it.geom === 'round2SameRect') {
+    const r = Math.min(w, h) * 0.1667;
+    page.drawSvgPath(`M ${r} 0 L ${w - r} 0 Q ${w} 0 ${w} ${r} L ${w} ${h - r} Q ${w} ${h} ${w - r} ${h} L ${r} ${h} Q 0 ${h} 0 ${h - r} L 0 ${r} Q 0 0 ${r} 0 Z`, { x, y, ...o });
+    return;
+  }
+  const pts = GEOM[it.geom];
+  if (!pts) { page.drawRectangle({ x, y: y - h, width: w, height: h, ...o }); return; }
+  page.drawSvgPath(pts.map(([px, py], i) => `${i ? 'L' : 'M'} ${(fh ? 1 - px : px) * w} ${(fv ? 1 - py : py) * h}`).join(' ') + ' Z', { x, y, ...o });
+}
+// Draw collected items onto a PDF page. o.ox/o.oy shift the origin; items whose top is outside [c0, c1) are left for another page.
+async function emitItems(ctx, page, items, o) {
+  const X = x => (x - o.ox) * K, Y = y => o.H - (y - o.oy) * K;
+  const c0 = o.c0 ?? -Infinity, c1 = o.c1 ?? Infinity;
+  for (const it of items) {
+    switch (it.k) {
+      case 'word': {
+        if (it.y < c0 || it.y >= c1) break;
+        const [font, set] = await stdFont(ctx, it.font, it.bold, it.italic);
+        const s = [...it.s].map(ch => {
+          if (set.has(ch.codePointAt(0))) return ch;
+          const alt = SUBST[ch] ?? (/[-]/.test(ch) ? '•' : null);
+          if (alt != null && [...alt].every(a => set.has(a.codePointAt(0)))) return alt;
+          ctx.replaced = true; return '?';
+        }).join('');
+        if (!s) break;
+        const base = it.y + it.h * ASCR[it.font], color = cssRgb(it.c), size = it.size * K;
+        page.drawText(s, { x: X(it.x), y: Y(base), size, font, color, opacity: it.c.a < 1 ? it.c.a : undefined });
+        if (it.under) page.drawLine({ start: { x: X(it.x), y: Y(base + it.size * 0.12) }, end: { x: X(it.x + it.w), y: Y(base + it.size * 0.12) }, thickness: Math.max(0.5, size * 0.06), color });
+        break;
+      }
+      case 'rect': {
+        const y0 = Math.max(it.y, c0), y1 = Math.min(it.y + it.h, c1);
+        if (y1 <= y0) break;
+        page.drawRectangle({ x: X(it.x), y: Y(y1), width: it.w * K, height: (y1 - y0) * K, color: cssRgb(it.c), opacity: it.c.a < 1 ? it.c.a : undefined });
+        break;
+      }
+      case 'seg': {
+        let [x1, y1, x2, y2] = it.p;
+        if (y1 === y2) { if (y1 < c0 || y1 >= c1) break; }
+        else { const a = Math.max(Math.min(y1, y2), c0), b = Math.min(Math.max(y1, y2), c1); if (b <= a) break; y1 = a; y2 = b; }
+        page.drawLine({ start: { x: X(x1), y: Y(y1) }, end: { x: X(x2), y: Y(y2) }, thickness: it.w * K, color: cssRgb(it.c) });
+        break;
+      }
+      case 'img': {
+        if (it.y < c0 || it.y >= c1) break;
+        const emb = await embedImg(ctx, it.el);
+        if (emb) page.drawImage(emb, { x: X(it.x), y: Y(it.y + it.h), width: it.w * K, height: it.h * K });
+        break;
+      }
+      case 'shape':
+        if (it.y < c0 || it.y >= c1) break;
+        drawShape(page, it, X, Y);
+        break;
+    }
+  }
+}
+
+/* ---------- Word (.docx) to PDF ---------- */
+async function docxToPdf(buf) {
+  await loadLib('jszip'); await loadLib('docx');
+  const host = makeHost(), styles = document.createElement('div'), body = document.createElement('div');
+  host.append(styles, body);
+  try {
+    await window.docx.renderAsync(buf, body, styles, { className: 'docx', inWrapper: false, ignoreWidth: false, ignoreHeight: false, breakPages: true,
+      ignoreLastRenderedPageBreak: true, renderHeaders: true, renderFooters: true, renderFootnotes: true, renderEndnotes: true, useBase64URL: true, experimental: true });
+    body.querySelectorAll('img').forEach(im => { im.loading = 'eager'; });
+    await tightenLists(buf, body);
+    await settleImages(body);
+    normalizeFonts(body);
+    materializePseudo(body);
+    const out = await PDFLib.PDFDocument.create(), ctx = emitCtx(out);
+    for (const sec of body.querySelectorAll('section.docx')) {
+      const sr = sec.getBoundingClientRect(), cs = getComputedStyle(sec);
+      const padT = parseFloat(cs.paddingTop) || 0, padB = parseFloat(cs.paddingBottom) || 0;
+      const Hpx = parseFloat(cs.minHeight) || sr.width * 11 / 8.5;
+      const Wpt = sr.width * K, Hpt = Hpx * K;
+      const header = sec.querySelector(':scope > header'), footer = sec.querySelector(':scope > footer');
+      const hItems = header ? collect(header, sr.left, sr.top) : [];
+      let fItems = [], fTop = 0;
+      if (footer) {
+        // Word measures the footer distance to the bottom of the footer's text, not of its reserved box.
+        const fr = footer.getBoundingClientRect(), mb = parseFloat(getComputedStyle(footer).marginBottom) || 0;
+        const used = Math.max(1, ...[...footer.children].map(c => c.getBoundingClientRect().bottom - fr.top));
+        fItems = collect(footer, sr.left, fr.top);
+        fTop = Hpx - (padB + mb) - used;
+      }
+      const content = [...sec.children].filter(c => c !== header && c !== footer);
+      const contentH = Math.max(40, Hpx - padT - padB);
+      content.forEach(c => c.querySelectorAll('img').forEach(im => { if (im.getBoundingClientRect().height > contentH) { im.style.maxHeight = contentH + 'px'; im.style.objectFit = 'contain'; } }));
+      const cItems = content.flatMap(c => collect(c, sr.left, sr.top));
+      const startY = content.length ? Math.max(padT, content[0].getBoundingClientRect().top - sr.top) : padT;
+      const flow = cItems.filter(i => i.k === 'word' || i.k === 'img');
+      const endY = Math.max(startY + 1, ...flow.map(i => i.y + i.h));
+      let s = startY, firstPage = true;
+      do {
+        let e = s + contentH;
+        const cross = flow.filter(i => i.y < e && i.y + i.h > e && i.y > s + 4);
+        if (cross.length) e = Math.min(...cross.map(i => i.y));
+        const page = out.addPage([Wpt, Hpt]);
+        await emitItems(ctx, page, hItems, { ox: 0, oy: 0, H: Hpt });
+        await emitItems(ctx, page, cItems, { ox: 0, oy: s - startY, H: Hpt, c0: firstPage ? -Infinity : s, c1: e });
+        await emitItems(ctx, page, fItems, { ox: 0, oy: -fTop, H: Hpt });
+        s = e; firstPage = false;
+      } while (s < endY - 1);
+    }
+    if (!out.getPageCount()) throw new Error('No pages');
+    return { bytes: await out.save(), replaced: ctx.replaced, skipped: 0 };
+  } finally { host.remove(); }
+}
+
+// Word drops the space between paragraphs of the same style when the style says so (lists, mostly). The renderer doesn't, so do it here.
+async function tightenLists(buf, body) {
+  try {
+    const zip = await JSZip.loadAsync(buf), f = zip.file('word/styles.xml');
+    if (!f) return;
+    const x = new DOMParser().parseFromString(await f.async('string'), 'application/xml');
+    const norm = v => v.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const tight = new Set([...x.getElementsByTagNameNS('*', 'style')].filter(st => st.getElementsByTagNameNS('*', 'contextualSpacing').length).map(st => norm(st.getAttribute('w:styleId') || '')));
+    if (!tight.size) return;
+    const styleOf = el => [...el.classList].find(c => c.startsWith('docx_') && tight.has(norm(c.slice(5))));
+    for (const el of body.querySelectorAll('p')) {
+      const prev = el.previousElementSibling, st = styleOf(el);
+      if (st && prev && prev.tagName === 'P' && prev.classList.contains(st)) { prev.style.marginBottom = '0'; el.style.marginTop = '0'; }
+    }
+  } catch (_) { /* spacing stays as rendered */ }
+}
+
+/* ---------- PowerPoint (.pptx) to PDF ---------- */
+const kid = (el, n) => { if (!el) return null; for (const c of el.children) if (c.localName === n) return c; return null; };
+const kidsOf = (el, n) => (el ? [...el.children].filter(c => c.localName === n) : []);
+const at = (el, ...ns) => ns.reduce((e, n) => kid(e, n), el);
+const emuPt = v => (parseFloat(v) || 0) / 12700;
+const attrsOf = el => { const o = {}; if (el) for (const a of el.attributes) o[a.name] = a.value; return o; };
+const PRST = { black: '000000', white: 'FFFFFF', red: 'FF0000', green: '008000', blue: '0000FF', yellow: 'FFFF00', gray: '808080', grey: '808080', orange: 'FFA500', darkBlue: '00008B', lightGray: 'D3D3D3' };
+function joinPath(dir, t) {
+  if (t.startsWith('/')) return t.slice(1);
+  const parts = dir ? dir.split('/') : [];
+  for (const seg of t.split('/')) { if (seg === '..') parts.pop(); else if (seg && seg !== '.') parts.push(seg); }
+  return parts.join('/');
+}
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2;
+  if (mx === mn) return [0, 0, l];
+  const d = mx - mn, s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+  const h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return [h / 6, s, l];
+}
+function hslToRgb(h, s, l) {
+  if (!s) return [l * 255, l * 255, l * 255];
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+  const f = t => { t = (t + 1) % 1; return t < 1 / 6 ? p + (q - p) * 6 * t : t < 1 / 2 ? q : t < 2 / 3 ? p + (q - p) * (2 / 3 - t) * 6 : p; };
+  return [f(h + 1 / 3) * 255, f(h) * 255, f(h - 1 / 3) * 255];
+}
+function colorOf(holder, C) {
+  if (!holder) return null;
+  const c = [...holder.children].find(x => /Clr$/.test(x.localName));
+  if (!c) return null;
+  const v = c.getAttribute('val');
+  let hex = '000000';
+  switch (c.localName) {
+    case 'srgbClr': hex = v; break;
+    case 'sysClr': hex = c.getAttribute('lastClr') || (v === 'window' ? 'FFFFFF' : '000000'); break;
+    case 'schemeClr': hex = C.theme.colors[C.clrMap[v] || v] || C.theme.colors[v] || '000000'; break;
+    case 'prstClr': hex = PRST[v] || '000000'; break;
+    case 'scrgbClr': hex = ['r', 'g', 'b'].map(k => Math.round(Math.min(1, (+c.getAttribute(k) || 0) / 100000) * 255).toString(16).padStart(2, '0')).join(''); break;
+  }
+  let [r, g, b] = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16) || 0), a = 1;
+  for (const m of c.children) {
+    const val = (+m.getAttribute('val') || 0) / 100000;
+    if (m.localName === 'alpha') a = val;
+    else if (m.localName === 'lumMod' || m.localName === 'lumOff') {
+      const [h, s, l] = rgbToHsl(r, g, b);
+      [r, g, b] = hslToRgb(h, s, Math.max(0, Math.min(1, m.localName === 'lumMod' ? l * val : l + val)));
+    } else if (m.localName === 'tint') [r, g, b] = [r, g, b].map(x => x * val + 255 * (1 - val));
+    else if (m.localName === 'shade') [r, g, b] = [r, g, b].map(x => x * val);
+  }
+  return { hex: '#' + [r, g, b].map(x => Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, '0')).join(''), a };
+}
+const hexStr = c => c.hex + (c.a < 1 ? Math.round(c.a * 255).toString(16).padStart(2, '0') : '');
+const cssColor = c => { const h = hexA(c.hex); return `rgba(${h.r},${h.g},${h.b},${c.a})`; };
+function parseTheme(t) {
+  const colors = {}, fonts = { major: 'Calibri', minor: 'Calibri' };
+  const cs = t && t.getElementsByTagNameNS('*', 'clrScheme')[0];
+  if (cs) for (const c of cs.children) {
+    const v = c.firstElementChild;
+    if (v) colors[c.localName] = v.localName === 'srgbClr' ? v.getAttribute('val') : (v.getAttribute('lastClr') || (v.getAttribute('val') === 'window' ? 'FFFFFF' : '000000'));
+  }
+  const fs = t && t.getElementsByTagNameNS('*', 'fontScheme')[0];
+  if (fs) {
+    fonts.major = at(fs, 'majorFont', 'latin')?.getAttribute('typeface') || fonts.major;
+    fonts.minor = at(fs, 'minorFont', 'latin')?.getAttribute('typeface') || fonts.minor;
+  }
+  return { colors, fonts };
+}
+function readXfrm(xf) {
+  if (!xf) return null;
+  const off = kid(xf, 'off'), ext = kid(xf, 'ext');
+  if (!off || !ext) return null;
+  return { x: emuPt(off.getAttribute('x')), y: emuPt(off.getAttribute('y')), w: emuPt(ext.getAttribute('cx')), h: emuPt(ext.getAttribute('cy')),
+    flip: (xf.getAttribute('flipH') === '1' ? 'h' : '') + (xf.getAttribute('flipV') === '1' ? 'v' : '') };
+}
+function phOf(sp) {
+  const ph = at(sp, 'nvSpPr', 'nvPr', 'ph') || at(sp, 'nvPicPr', 'nvPr', 'ph') || at(sp, 'nvGraphicFramePr', 'nvPr', 'ph');
+  return ph ? { type: ph.getAttribute('type') || 'body', idx: ph.getAttribute('idx') } : null;
+}
+function findPh(x, ph, byIdx) {
+  if (!x) return null;
+  const all = [...x.getElementsByTagNameNS('*', 'sp')];
+  const norm = t => (t === 'ctrTitle' ? 'title' : (t === 'subTitle' || t === 'obj' || t === 'body') ? 'body' : t);
+  let hit = byIdx && ph.idx != null ? all.find(s => phOf(s)?.idx === ph.idx) : null;
+  if (!hit) hit = all.find(s => { const p = phOf(s); return p && norm(p.type) === norm(ph.type); });
+  return hit || null;
+}
+function fillOf(spPr, styleEl, C) {
+  if (kid(spPr, 'noFill')) return null;
+  const sf = kid(spPr, 'solidFill'); if (sf) return colorOf(sf, C);
+  const gf = kid(spPr, 'gradFill'); if (gf) return colorOf(at(gf, 'gsLst', 'gs'), C);
+  const bf = kid(spPr, 'blipFill'); if (bf) return { blip: kid(bf, 'blip') };
+  if (kid(spPr, 'grpFill')) return null;
+  const fr = kid(styleEl, 'fillRef');
+  if (fr && fr.getAttribute('idx') !== '0') return colorOf(fr, C);
+  return null;
+}
+function lineOf(spPr, styleEl, C) {
+  const ln = kid(spPr, 'ln');
+  if (ln && kid(ln, 'noFill')) return null;
+  const w = ln && ln.getAttribute('w') ? emuPt(ln.getAttribute('w')) : 0.75;
+  const c = ln && (colorOf(kid(ln, 'solidFill'), C) || (kid(ln, 'gradFill') ? colorOf(at(kid(ln, 'gradFill'), 'gsLst', 'gs'), C) : null));
+  if (c) return { c, w };
+  const lr = kid(styleEl, 'lnRef');
+  if (lr && lr.getAttribute('idx') !== '0') { const c2 = colorOf(lr, C); if (c2) return { c: c2, w }; }
+  return null;
+}
+function mapBullet(ch, face) {
+  if (!ch) return '•';
+  if (/wingdings|symbol|webdings/i.test(face || '') || /[-]/.test(ch)) return ch === 'o' ? 'o' : '•';
+  return ch;
+}
+function autoNum(n, type = 'arabicPeriod') {
+  const t = type.toLowerCase();
+  let s = String(n);
+  if (t.startsWith('alphalc')) s = alpha(n).toLowerCase(); else if (t.startsWith('alphauc')) s = alpha(n);
+  else if (t.startsWith('romanlc')) s = roman(n).toLowerCase(); else if (t.startsWith('romanuc')) s = roman(n);
+  if (t.endsWith('parenboth')) return '(' + s + ')';
+  if (t.endsWith('parenr')) return s + ')';
+  if (t.endsWith('plain')) return s;
+  return s + '.';
+}
+// Lay out one text body (paragraphs, runs, bullets) as HTML, following PowerPoint's style inheritance.
+function renderText(txBody, chain, ph, styleEl, C, forceColor) {
+  const bps = chain.map(s => at(s, 'txBody', 'bodyPr')).filter(Boolean);
+  if (!chain.length && kid(txBody, 'bodyPr')) bps.push(kid(txBody, 'bodyPr'));
+  const bAttr = a => bps.map(b => b.getAttribute(a)).find(v => v != null);
+  const ins = (a, d) => { const v = bAttr(a); return v != null ? emuPt(v) : d; };
+  const fit = kid(bps[0], 'normAutofit');
+  const scale = fit ? (+fit.getAttribute('fontScale') || 100000) / 100000 : 1;
+  const lnRed = fit ? (+fit.getAttribute('lnSpcReduction') || 0) / 100000 : 0;
+  const anchor = bAttr('anchor') || 't';
+  const box = document.createElement('div');
+  box.style.cssText = `position:absolute;inset:0;display:flex;flex-direction:column;justify-content:${anchor === 'ctr' ? 'center' : anchor === 'b' ? 'flex-end' : 'flex-start'};`
+    + `padding:${ins('tIns', 3.6)}pt ${ins('rIns', 7.2)}pt ${ins('bIns', 3.6)}pt ${ins('lIns', 7.2)}pt;white-space:${bAttr('wrap') === 'none' ? 'pre' : 'pre-wrap'};overflow-wrap:break-word`;
+  const kind = ph ? ((ph.type === 'title' || ph.type === 'ctrTitle') ? 'titleStyle' : (ph.type === 'body' || ph.type === 'subTitle' || ph.type === 'obj') ? 'bodyStyle' : 'otherStyle') : 'otherStyle';
+  const txStyle = at(C.master.x, 'txStyles', kind);
+  const shapeColor = forceColor || (!ph ? colorOf(kid(styleEl, 'fontRef'), C) : null);
+  const tx1 = { hex: '#' + (C.theme.colors[C.clrMap.tx1 || 'dk1'] || '000000'), a: 1 };
+  const nums = {};
+  let first = true;
+  for (const p of kidsOf(txBody, 'p')) {
+    const pPr = kid(p, 'pPr'), lvl = +(pPr?.getAttribute('lvl') || 0), name = 'lvl' + (lvl + 1) + 'pPr';
+    const lv = [];
+    for (const s of chain) { const e = kid(at(s, 'txBody', 'lstStyle'), name); if (e) lv.push(e); }
+    if (!chain.length) { const e = kid(kid(txBody, 'lstStyle'), name); if (e) lv.push(e); }
+    for (const src of [txStyle, C.defStyle]) { const e = kid(src, name); if (e) lv.push(e); }
+    const pa = a => pPr?.getAttribute(a) ?? lv.map(e => e.getAttribute(a)).find(v => v != null);
+    const pk = n => kid(pPr, n) || lv.map(e => kid(e, n)).find(Boolean);
+    const defR = (rPr, a) => rPr?.getAttribute(a) ?? lv.map(e => kid(e, 'defRPr')?.getAttribute(a)).find(v => v != null);
+    const runStyle = rPr => {
+      const sz = (+defR(rPr, 'sz') || 1800) / 100 * scale;
+      const col = colorOf(kid(rPr, 'solidFill'), C) || shapeColor || colorOf(lv.map(e => kid(kid(e, 'defRPr'), 'solidFill')).find(Boolean), C) || tx1;
+      let face = kid(rPr, 'latin')?.getAttribute('typeface') || lv.map(e => kid(kid(e, 'defRPr'), 'latin')?.getAttribute('typeface')).find(Boolean) || (kind === 'titleStyle' ? '+mj-lt' : '+mn-lt');
+      if (face === '+mj-lt') face = C.theme.fonts.major; else if (face === '+mn-lt') face = C.theme.fonts.minor;
+      const b = defR(rPr, 'b'), i = defR(rPr, 'i'), u = defR(rPr, 'u');
+      return { sz, col, fam: famOf(face), bold: b === '1' || b === 'true', italic: i === '1' || i === 'true', under: !!u && u !== 'none',
+        caps: defR(rPr, 'cap') === 'all', baseline: +(rPr?.getAttribute('baseline') || 0) };
+    };
+    const styleSpan = (sp, st, col) => {
+      const c = col || st.col;
+      Object.assign(sp.style, { fontSize: (st.baseline ? st.sz * 0.65 : st.sz) + 'pt', fontFamily: CSSFONT[st.fam], fontWeight: st.bold ? '700' : '400',
+        fontStyle: st.italic ? 'italic' : 'normal', color: cssColor(c) });
+      if (st.under) sp.style.textDecoration = 'underline';
+      if (st.baseline) sp.style.verticalAlign = st.baseline > 0 ? 'super' : 'sub';
+    };
+    const pd = document.createElement('div');
+    pd.style.textAlign = { ctr: 'center', r: 'right', just: 'justify', dist: 'justify' }[pa('algn')] || 'left';
+    const marL = emuPt(pa('marL') || 0), indent = emuPt(pa('indent') || 0);
+    pd.style.paddingLeft = marL + 'pt'; pd.style.textIndent = indent + 'pt';
+    const runs = [...p.children].filter(c => c.localName === 'r' || c.localName === 'fld' || c.localName === 'br');
+    const firstRun = runs.find(r => r.localName !== 'br');
+    const baseSt = runStyle(kid(firstRun, 'rPr') || kid(p, 'endParaRPr'));
+    pd.style.fontSize = baseSt.sz + 'pt';
+    const spc = (e, sz) => { if (!e) return 0; const pts = kid(e, 'spcPts'), pct = kid(e, 'spcPct'); return pts ? +pts.getAttribute('val') / 100 : pct ? +pct.getAttribute('val') / 100000 * sz * 1.2 : 0; };
+    let lh = 1.2;
+    const lnS = pk('lnSpc');
+    if (lnS) { const pct = kid(lnS, 'spcPct'), pts = kid(lnS, 'spcPts'); if (pct) lh = 1.2 * (+pct.getAttribute('val') / 100000 - lnRed); else if (pts) lh = (+pts.getAttribute('val') / 100) / baseSt.sz; }
+    else if (lnRed) lh = 1.2 * (1 - lnRed);
+    pd.style.lineHeight = String(Math.max(0.6, lh));
+    if (!first) pd.style.marginTop = spc(pk('spcBef'), baseSt.sz) + 'pt';
+    pd.style.marginBottom = spc(pk('spcAft'), baseSt.sz) + 'pt';
+    const buOf = e => (e ? ['buNone', 'buChar', 'buAutoNum', 'buBlip'].map(n => kid(e, n)).find(Boolean) : null);
+    const bu = buOf(pPr) || lv.map(buOf).find(Boolean);
+    const hasText = runs.some(r => r.localName === 'fld' || (r.localName === 'r' && (kid(r, 't')?.textContent || '').length));
+    let marker = '';
+    if (bu && hasText && bu.localName === 'buChar') marker = mapBullet(bu.getAttribute('char'), pk('buFont')?.getAttribute('typeface'));
+    else if (bu && hasText && bu.localName === 'buAutoNum') { nums[lvl] = (nums[lvl] || +(bu.getAttribute('startAt') || 1) - 1) + 1; marker = autoNum(nums[lvl], bu.getAttribute('type')); }
+    if (!(bu && bu.localName === 'buAutoNum')) nums[lvl] = 0;
+    if (marker) {
+      const m = document.createElement('span');
+      styleSpan(m, baseSt, colorOf(pk('buClr'), C));
+      if (indent < 0) { m.textContent = marker; m.style.display = 'inline-block'; m.style.width = (-indent) + 'pt'; m.style.textIndent = '0'; }
+      else m.textContent = marker + ' ';
+      pd.append(m);
+    }
+    for (const r of runs) {
+      if (r.localName === 'br') { pd.append(document.createElement('br')); continue; }
+      let t = kid(r, 't')?.textContent ?? '';
+      if (r.localName === 'fld' && /slidenum/i.test(r.getAttribute('type') || '')) t = String(C.num);
+      if (!t) continue;
+      const st = runStyle(kid(r, 'rPr'));
+      const sp = document.createElement('span');
+      sp.textContent = st.caps ? t.toUpperCase() : t;
+      styleSpan(sp, st);
+      pd.append(sp);
+    }
+    if (!hasText) pd.style.minHeight = baseSt.sz * lh + 'pt';
+    box.append(pd);
+    first = false;
+  }
+  return box;
+}
+async function pptxToPdf(buf) {
+  await loadLib('jszip');
+  const zip = await JSZip.loadAsync(buf);
+  const xmls = {}, relsC = {}, urls = {};
+  const xml = async p => {
+    if (!p) return null;
+    if (!(p in xmls)) { const f = zip.file(p); xmls[p] = f ? new DOMParser().parseFromString(await f.async('string'), 'application/xml').documentElement : null; }
+    return xmls[p];
+  };
+  const rels = async p => {
+    if (!p) return {};
+    if (relsC[p]) return relsC[p];
+    const i = p.lastIndexOf('/'), dir = p.slice(0, i);
+    const x = await xml(dir + '/_rels/' + p.slice(i + 1) + '.rels');
+    const m = {};
+    if (x) for (const r of x.children) m[r.getAttribute('Id')] = { type: r.getAttribute('Type') || '', target: r.getAttribute('TargetMode') === 'External' ? null : joinPath(dir, r.getAttribute('Target')) };
+    return (relsC[p] = m);
+  };
+  const relOfType = (m, t) => Object.values(m).find(r => r.type.endsWith('/' + t) && r.target)?.target;
+  const mediaUrl = async (part, rid) => {
+    const r = (await rels(part))[rid];
+    if (!r || !r.target) return null;
+    if (r.target in urls) return urls[r.target];
+    const f = zip.file(r.target), ext = r.target.split('.').pop().toLowerCase();
+    const mime = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', bmp: 'image/bmp', webp: 'image/webp', svg: 'image/svg+xml' }[ext];
+    if (!f || !mime) return (urls[r.target] = null);
+    const bytes = await f.async('uint8array');
+    const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
+    if (ext === 'png' || ext === 'jpg' || ext === 'jpeg') imgBytesFor.set(url, { bytes, kind: ext === 'png' ? 'png' : 'jpg' });
+    return (urls[r.target] = url);
+  };
+  const pres = await xml('ppt/presentation.xml');
+  if (!pres) throw new Error('Not a presentation');
+  const sz = kid(pres, 'sldSz');
+  const W = emuPt(sz?.getAttribute('cx') || 9144000), H = emuPt(sz?.getAttribute('cy') || 6858000);
+  const prels = await rels('ppt/presentation.xml');
+  const slides = kidsOf(kid(pres, 'sldIdLst'), 'sldId').map(s => prels[s.getAttribute('r:id')]?.target).filter(Boolean);
+  const out = await PDFLib.PDFDocument.create(), ectx = emitCtx(out), host = makeHost();
+  let skipped = 0;
+  const cropImage = async (url, sr) => {
+    const g = a => (+sr.getAttribute(a) || 0) / 100000;
+    const l = g('l'), t = g('t'), r = g('r'), b = g('b');
+    if (!(l || t || r || b) || l < 0 || t < 0 || r < 0 || b < 0) return url;
+    const im = await loadImg(url);
+    const sw = im.naturalWidth * (1 - l - r), sh = im.naturalHeight * (1 - t - b);
+    if (sw <= 1 || sh <= 1) return url;
+    const c = document.createElement('canvas'); c.width = Math.round(sw); c.height = Math.round(sh);
+    c.getContext('2d').drawImage(im, im.naturalWidth * l, im.naturalHeight * t, sw, sh, 0, 0, c.width, c.height);
+    const blob = await new Promise(res => c.toBlob(res, 'image/png'));
+    const u = URL.createObjectURL(blob);
+    imgBytesFor.set(u, { bytes: new Uint8Array(await blob.arrayBuffer()), kind: 'png' });
+    return u;
+  };
+  const place = (el, x, y, w, h) => { el.style.cssText = `position:absolute;left:${x}pt;top:${y}pt;width:${w}pt;height:${h}pt`; return el; };
+  async function renderSp(sp, part, C, outEl, T) {
+    const ph = phOf(sp);
+    if (ph && part !== C.slide) return; // placeholders on layouts and masters are only prompts
+    const spPr = kid(sp, 'spPr'), styleEl = kid(sp, 'style');
+    const chain = [sp];
+    if (ph) { const l = findPh(C.layout.x, ph, true); if (l) chain.push(l); const m = findPh(C.master.x, ph, false); if (m) chain.push(m); }
+    let xf = null;
+    for (const s of chain) { xf = readXfrm(kid(kid(s, 'spPr'), 'xfrm')); if (xf) break; }
+    if (!xf) return;
+    const [x, y, w, h] = T(xf.x, xf.y, xf.w, xf.h);
+    const d = place(document.createElement('div'), x, y, w, h);
+    const geom = kid(spPr, 'prstGeom')?.getAttribute('prst') || (kid(spPr, 'custGeom') ? 'cust' : 'rect');
+    const isLine = geom === 'line' || sp.localName === 'cxnSp' || /Connector/.test(geom);
+    const fill = isLine ? null : fillOf(spPr, styleEl, C), line = lineOf(spPr, styleEl, C);
+    if (fill && fill.blip) {
+      const url = await C.mediaUrl(part.p, fill.blip.getAttribute('r:embed'));
+      if (url) { const im = document.createElement('img'); im.src = url; im.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%'; d.append(im); }
+    } else if ((fill || line) && geom !== 'cust') {
+      d.dataset.geom = isLine ? 'line' : geom;
+      if (fill) d.dataset.fill = hexStr(fill);
+      if (line) { d.dataset.stroke = hexStr(line.c); d.dataset.sw = String(line.w / K); }
+      if (xf.flip) d.dataset.flip = xf.flip;
+    }
+    const tb = kid(sp, 'txBody');
+    if (tb) d.append(renderText(tb, chain, ph, styleEl, C));
+    outEl.append(d);
+  }
+  async function renderPic(pic, part, C, outEl, T) {
+    const ph = phOf(pic);
+    if (ph && part !== C.slide) return;
+    let xf = readXfrm(kid(kid(pic, 'spPr'), 'xfrm'));
+    if (!xf && ph) xf = readXfrm(kid(kid(findPh(C.layout.x, ph, true), 'spPr'), 'xfrm'));
+    if (!xf) return;
+    const blip = at(pic, 'blipFill', 'blip');
+    let url = blip && await C.mediaUrl(part.p, blip.getAttribute('r:embed'));
+    if (!url) { skipped++; return; }
+    const crop = at(pic, 'blipFill', 'srcRect');
+    if (crop) url = await cropImage(url, crop);
+    const [x, y, w, h] = T(xf.x, xf.y, xf.w, xf.h);
+    const im = place(document.createElement('img'), x, y, w, h);
+    im.src = url;
+    outEl.append(im);
+  }
+  async function renderFrame(gf, part, C, outEl, T) {
+    const xf = readXfrm(kid(gf, 'xfrm'));
+    const tbl = gf.getElementsByTagNameNS('*', 'tbl')[0];
+    if (!xf || !tbl) { skipped++; return; } // charts and diagrams
+    const [x, y, w] = T(xf.x, xf.y, xf.w, xf.h);
+    const t = document.createElement('table');
+    t.style.cssText = `position:absolute;left:${x}pt;top:${y}pt;width:${w}pt;border-collapse:collapse;table-layout:fixed`;
+    const k = xf.w ? w / xf.w : 1;
+    const cg = document.createElement('colgroup');
+    for (const g of kidsOf(kid(tbl, 'tblGrid'), 'gridCol')) { const c = document.createElement('col'); c.style.width = emuPt(g.getAttribute('w')) * k + 'pt'; cg.append(c); }
+    t.append(cg);
+    const tp = kid(tbl, 'tblPr'), styled = !!kid(tp, 'tableStyleId');
+    const firstRow = tp?.getAttribute('firstRow') === '1', band = tp?.getAttribute('bandRow') === '1';
+    const accent = { hex: '#' + (C.theme.colors.accent1 || '4472C4'), a: 1 };
+    const tint = v => { const c = hexA(accent.hex); return { hex: '#' + [c.r, c.g, c.b].map(x => Math.round(x * v + 255 * (1 - v)).toString(16).padStart(2, '0')).join(''), a: 1 }; };
+    kidsOf(tbl, 'tr').forEach((tr, ri) => {
+      const row = document.createElement('tr');
+      row.style.height = emuPt(tr.getAttribute('h')) * k + 'pt';
+      for (const tc of kidsOf(tr, 'tc')) {
+        if (tc.getAttribute('hMerge') === '1' || tc.getAttribute('vMerge') === '1') continue;
+        const td = document.createElement('td');
+        if (tc.getAttribute('gridSpan')) td.colSpan = +tc.getAttribute('gridSpan');
+        if (tc.getAttribute('rowSpan')) td.rowSpan = +tc.getAttribute('rowSpan');
+        const pr = kid(tc, 'tcPr');
+        const head = styled && firstRow && ri === 0;
+        let fill = colorOf(kid(pr, 'solidFill'), C);
+        if (!fill && styled && !kid(pr, 'noFill')) fill = head ? accent : band ? tint((ri - (firstRow ? 1 : 0)) % 2 ? 0.2 : 0.4) : null;
+        if (fill) td.style.background = cssColor(fill);
+        for (const [side, n] of [['Left', 'lnL'], ['Right', 'lnR'], ['Top', 'lnT'], ['Bottom', 'lnB']]) {
+          const ln = kid(pr, n);
+          const c = ln && !kid(ln, 'noFill') ? colorOf(kid(ln, 'solidFill'), C) : null;
+          if (c) td.style['border' + side] = `${emuPt(ln.getAttribute('w') || 12700)}pt solid ${cssColor(c)}`;
+          else if (!ln) td.style['border' + side] = styled ? '1pt solid #ffffff' : '0.75pt solid #9aa3b5';
+        }
+        const m = (a, d) => (pr?.getAttribute(a) != null ? emuPt(pr.getAttribute(a)) : d);
+        td.style.padding = `${m('marT', 3.6)}pt ${m('marR', 7.2)}pt ${m('marB', 3.6)}pt ${m('marL', 7.2)}pt`;
+        td.style.verticalAlign = { ctr: 'middle', b: 'bottom' }[pr?.getAttribute('anchor')] || 'top';
+        const tb = kid(tc, 'txBody');
+        if (tb) {
+          const box = renderText(tb, [], null, null, C, head ? { hex: '#ffffff', a: 1 } : null);
+          box.style.position = 'static'; box.style.padding = '0'; box.style.display = 'block';
+          if (head) box.style.fontWeight = '700';
+          td.append(box);
+        }
+        row.append(td);
+      }
+      t.append(row);
+    });
+    outEl.append(t);
+  }
+  async function renderTree(tree, part, C, outEl, T) {
+    if (!tree) return;
+    for (const ch of tree.children) {
+      const n = ch.localName;
+      try {
+        if (n === 'sp' || n === 'cxnSp') await renderSp(ch, part, C, outEl, T);
+        else if (n === 'pic') await renderPic(ch, part, C, outEl, T);
+        else if (n === 'graphicFrame') await renderFrame(ch, part, C, outEl, T);
+        else if (n === 'AlternateContent') { const fb = kid(ch, 'Fallback'); if (fb) await renderTree(fb, part, C, outEl, T); }
+        else if (n === 'grpSp') {
+          const xf = kid(kid(ch, 'grpSpPr'), 'xfrm');
+          if (!xf) { await renderTree(ch, part, C, outEl, T); continue; }
+          const g = (e, a) => emuPt(kid(xf, e)?.getAttribute(a));
+          const ox = g('off', 'x'), oy = g('off', 'y'), ew = g('ext', 'cx'), eh = g('ext', 'cy');
+          const cx0 = g('chOff', 'x'), cy0 = g('chOff', 'y'), cw = g('chExt', 'cx') || ew, chh = g('chExt', 'cy') || eh;
+          const sx = cw ? ew / cw : 1, sy = chh ? eh / chh : 1;
+          await renderTree(ch, part, C, outEl, (x, y, w, h) => T(ox + (x - cx0) * sx, oy + (y - cy0) * sy, w * sx, h * sy));
+        }
+      } catch (e) { console.warn('Skipped a shape', e); }
+    }
+  }
+  const ident = (x, y, w, h) => [x, y, w, h];
+  try {
+    for (let i = 0; i < slides.length; i++) {
+      const sp = slides[i], sx = await xml(sp);
+      if (!sx) continue;
+      const lp = relOfType(await rels(sp), 'slideLayout'), lx = await xml(lp);
+      const mp = lp && relOfType(await rels(lp), 'slideMaster'), mx = await xml(mp);
+      const tp = mp && relOfType(await rels(mp), 'theme');
+      const C = { W, H, num: i + 1, theme: parseTheme(await xml(tp)), clrMap: attrsOf(kid(mx, 'clrMap')), mediaUrl, defStyle: kid(pres, 'defaultTextStyle'),
+        slide: { x: sx, p: sp }, layout: { x: lx, p: lp }, master: { x: mx, p: mp } };
+      const ov = at(sx, 'clrMapOvr', 'overrideClrMapping');
+      if (ov) C.clrMap = attrsOf(ov);
+      const el = document.createElement('div');
+      el.style.cssText = `position:relative;width:${W}pt;height:${H}pt;overflow:hidden;background:#fff;color:#000`;
+      // background: the slide's own, else its layout's, else the master's
+      for (const part of [C.slide, C.layout, C.master]) {
+        const bg = at(part.x, 'cSld', 'bg');
+        if (!bg) continue;
+        const bgPr = kid(bg, 'bgPr');
+        const f = bgPr ? fillOf(bgPr, null, C) : colorOf(kid(bg, 'bgRef'), C);
+        if (f && f.blip) {
+          const url = await mediaUrl(part.p, f.blip.getAttribute('r:embed'));
+          if (url) { const im = place(document.createElement('img'), 0, 0, W, H); im.src = url; el.append(im); }
+        } else if (f) { const d = place(document.createElement('div'), 0, 0, W, H); d.dataset.geom = 'rect'; d.dataset.fill = hexStr(f); el.append(d); }
+        break;
+      }
+      const shows = x => !x || x.getAttribute('showMasterSp') !== '0';
+      if (shows(sx) && shows(lx)) await renderTree(at(mx, 'cSld', 'spTree'), C.master, C, el, ident);
+      if (shows(sx)) await renderTree(at(lx, 'cSld', 'spTree'), C.layout, C, el, ident);
+      await renderTree(at(sx, 'cSld', 'spTree'), C.slide, C, el, ident);
+      host.append(el);
+      await settleImages(el);
+      normalizeFonts(el);
+      const r = el.getBoundingClientRect();
+      const items = collect(el, r.left, r.top);
+      await emitItems(ectx, out.addPage([W, H]), items, { ox: 0, oy: 0, H });
+      el.remove();
+    }
+  } finally { host.remove(); }
+  if (!out.getPageCount()) throw new Error('No slides');
+  return { bytes: await out.save(), replaced: ectx.replaced, skipped };
+}
+
+async function importOffice(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'doc' || ext === 'ppt') {
+    toast(`${file.name} uses the older .${ext} format. Open it in ${ext === 'doc' ? 'Word or Google Docs' : 'PowerPoint or Google Slides'}, save it as .${ext}x, then open that file here.`, 9000);
+    return;
+  }
+  if (S.editing) finishEdit();
+  busy(true, ext === 'docx' ? 'Converting the Word file…' : 'Converting the PowerPoint file…');
+  try {
+    const buf = await file.arrayBuffer();
+    const res = ext === 'docx' ? await docxToPdf(buf) : await pptxToPdf(buf);
+    const name = file.name.replace(/\.(docx|pptx)$/i, '.pdf');
+    if (await addPdf(new Uint8Array(res.bytes), name, true)) {
+      S.fileName = name; S.isSample = false; S.fromOffice = true; updateFileLabel();
+      S.fit = true; S.scale = fitScale(); renderAll(); resetHistory(); S.dirty = true;
+      $('#desk').scrollTop = 0;
+      const notes = [];
+      if (res.skipped) notes.push(`${res.skipped} chart${res.skipped === 1 ? '' : 's'}, diagram${res.skipped === 1 ? '' : 's'} or picture${res.skipped === 1 ? '' : 's'} in a format this converter can't read ${res.skipped === 1 ? 'was' : 'were'} left out`);
+      if (res.replaced) notes.push('some characters the built-in PDF fonts don\'t have became "?"');
+      toast(`Converted ${file.name} into ${S.pages.length} PDF page${S.pages.length === 1 ? '' : 's'}. Look it over, then click Download to save it.${notes.length ? ' Note: ' + notes.join('; ') + '.' : ''}`, notes.length ? 10000 : 6000);
+    }
+  } catch (e) {
+    console.error(e);
+    toast(/load the converter/.test(e && e.message) ? "The converter couldn't load. Check your internet connection and try again."
+      : `${file.name} couldn't be converted. It may be damaged or password-protected.`, 8000);
+  } finally { busy(false); }
+}
+
+/* ---------- PDF to Word / PowerPoint ---------- */
+async function pageLines(doc, n) {
+  const p = await doc.getPage(n);
+  await p.getOperatorList(); // loads the page's fonts so their names and weights are known
+  const [x0, y0, x1, y1] = p.view;
+  const tc = await p.getTextContent();
+  const lines = joinLines(textPieces(tc, x0, y1)).map(l => ({ ...l, ...fontInfo(p, l), parts: l.parts.map(q => ({ ...q, ...fontInfo(p, q) })) }));
+  return { w: x1 - x0, h: y1 - y0, lines };
+}
+async function pageJpeg(doc, n, dpi = 150) {
+  const p = await doc.getPage(n);
+  const vp = p.getViewport({ scale: dpi / 72 });
+  const c = document.createElement('canvas');
+  c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
+  const g = c.getContext('2d');
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height);
+  await p.render({ canvasContext: g, viewport: vp }).promise;
+  const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.88));
+  return { bytes: new Uint8Array(await blob.arrayBuffer()), w: vp.width * 72 / dpi, h: vp.height * 72 / dpi };
+}
+// Group a page's lines into paragraphs. Lines that share a baseline (form fields, table cells) stay one row, joined by tabs.
+function toParagraphs(lines, right) {
+  const rows = [];
+  for (const l of [...lines].sort((a, b) => a.base - b.base || a.x - b.x)) {
+    const r = rows[rows.length - 1];
+    if (r && Math.abs(l.base - r.base) < Math.min(l.size, r.size) * 0.35) r.items.push(l);
+    else rows.push({ base: l.base, size: l.size, items: [l] });
+  }
+  const paras = [];
+  for (const r of rows) {
+    r.items.sort((a, b) => a.x - b.x);
+    const it = r.items[0], prev = paras[paras.length - 1];
+    if (prev && r.items.length === 1 && prev.items.length === 1) {
+      const pl = prev.lines[prev.lines.length - 1], gap = it.base - pl.base;
+      const same = Math.abs(it.size - pl.size) < 0.6 && it.bold === pl.bold && it.italic === pl.italic && it.font === pl.font;
+      const aligned = Math.abs(it.x - prev.x) < 2 || (prev.lines.length === 1 && it.x < prev.x && prev.x - it.x < it.size * 4);
+      const steady = gap > 0 && gap < it.size * 1.75 && (prev.lines.length < 2 || Math.abs(gap - prev.lead) < it.size * 0.35);
+      const prevEndedEarly = pl.x + pl.w < right - it.size * 7;
+      if (same && aligned && steady && !prevEndedEarly) { prev.lines.push(it); prev.lead = gap; prev.x = Math.min(prev.x, it.x); continue; }
+    }
+    paras.push({ items: r.items, lines: [it], x: it.x, firstX: it.x, base: r.base, lead: 0 });
+  }
+  return paras;
+}
+// Runs for a paragraph made of lines, each made of pieces; neighbouring pieces in the same style share a run.
+function runsXml(lines) {
+  const segs = [];
+  lines.forEach((l, li) => l.parts.forEach((q, qi) => {
+    let text = (qi ? (q.sp ? ' ' : '') : (li ? ' ' : '')) + q.str;
+    const last = segs[segs.length - 1];
+    if (li && !qi && last && /[a-z]-$/.test(last.text) && /^[a-z]/.test(q.str)) { last.text = last.text.slice(0, -1); text = q.str; }
+    if (last && last.q.font === q.font && last.q.bold === q.bold && last.q.italic === q.italic && Math.abs(last.q.size - q.size) < 0.3) last.text += text;
+    else segs.push({ q, text });
+  }));
+  return segs.map(sg => runXml(sg.q, sg.text.replace(/\s+/g, ' '))).join('');
+}
+function runXml(l, text) {
+  const f = WFONT[l.font], half = Math.max(2, Math.round(l.size * 2));
+  return `<w:r><w:rPr><w:rFonts w:ascii="${f}" w:hAnsi="${f}" w:cs="${f}"/>${l.bold ? '<w:b/>' : ''}${l.italic ? '<w:i/>' : ''}<w:sz w:val="${half}"/><w:szCs w:val="${half}"/></w:rPr><w:t xml:space="preserve">${xmlEsc(text)}</w:t></w:r>`;
+}
+function drawingXml(rid, n, cx, cy) {
+  return `<w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${cx}" cy="${cy}"/><wp:docPr id="${n}" name="Page ${n}"/>`
+    + `<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">`
+    + `<pic:pic><pic:nvPicPr><pic:cNvPr id="${n}" name="page${n}.jpg"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>`
+    + `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing>`;
+}
+async function pdfToDocx(doc, mode) {
+  await loadLib('jszip');
+  const zip = new JSZip(), rels = [];
+  const v = (await doc.getPage(1)).getViewport({ scale: 1 }), PW = v.width, PH = v.height;
+  let body = '', mar;
+  if (mode === 'pictures') {
+    mar = { t: 0, r: 0, b: 0, l: 0 };
+    for (let n = 1; n <= doc.numPages; n++) {
+      const img = await pageJpeg(doc, n);
+      zip.file(`word/media/page${n}.jpg`, img.bytes);
+      rels.push(`<Relationship Id="rIdP${n}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/page${n}.jpg"/>`);
+      const k = Math.min(PW / img.w, PH / img.h) * 0.98;
+      body += `<w:p><w:pPr>${n > 1 ? '<w:pageBreakBefore/>' : ''}<w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="center"/></w:pPr>`
+        + `<w:r>${drawingXml('rIdP' + n, n, Math.round(img.w * k * 12700), Math.round(img.h * k * 12700))}</w:r></w:p>`;
+    }
+  } else {
+    const pages = [];
+    for (let n = 1; n <= doc.numPages; n++) pages.push(await pageLines(doc, n));
+    const all = pages.flatMap(p => p.lines);
+    const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+    mar = all.length ? {
+      l: clamp(Math.min(...all.map(l => l.x)), 18, 90), r: clamp(PW - Math.max(...all.map(l => l.x + l.w)), 18, 90),
+      t: clamp(Math.min(...all.map(l => l.base - l.size)), 18, 72), b: 24,
+    } : { t: 72, r: 72, b: 72, l: 72 };
+    const right = PW - mar.r;
+    pages.forEach((pg, pi) => {
+      const paras = toParagraphs(pg.lines, right);
+      let prevBase = null;
+      if (!paras.length && pi > 0) body += '<w:p><w:pPr><w:pageBreakBefore/></w:pPr></w:p>';
+      paras.forEach((para, k) => {
+        const l0 = para.lines[0], size = Math.max(...para.items.map(i => i.size));
+        const lead = para.lead || size * 1.2;
+        const before = prevBase == null ? Math.max(0, l0.base - size - mar.t) : Math.max(0, l0.base - prevBase - lead);
+        prevBase = para.lines[para.lines.length - 1].base;
+        let ppr = (pi > 0 && k === 0 ? '<w:pageBreakBefore/>' : '');
+        let runs = '';
+        if (para.items.length > 1) {
+          ppr += '<w:tabs>' + para.items.filter(i => i.x - mar.l > 1).map(i => `<w:tab w:val="left" w:pos="${twip(i.x - mar.l)}"/>`).join('') + '</w:tabs>';
+          para.items.forEach(i => { if (i.x - mar.l > 1) runs += '<w:r><w:tab/></w:r>'; runs += runsXml([i]); });
+        } else runs = runsXml(para.lines);
+        ppr += `<w:spacing w:before="${twip(before)}" w:after="0" w:line="${twip(lead)}" w:lineRule="atLeast"/>`;
+        const left = para.items.length > 1 ? 0 : Math.max(0, para.x - mar.l), first = para.firstX - para.x;
+        if (left || first) ppr += `<w:ind w:left="${twip(left)}"${first > 0.5 ? ` w:firstLine="${twip(first)}"` : ''}/>`;
+        if (para.items.length === 1 && para.lines.length <= 2) {
+          const mid = l0.x + l0.w / 2, center = (mar.l + right) / 2;
+          if (Math.abs(mid - center) < 6 && l0.x > mar.l + 18) ppr = ppr.replace(/<w:ind[^>]*\/>/, '') + '<w:jc w:val="center"/>';
+          else if (Math.abs(l0.x + l0.w - right) < 6 && l0.x > center) ppr = ppr.replace(/<w:ind[^>]*\/>/, '') + '<w:jc w:val="right"/>';
+        }
+        body += `<w:p><w:pPr>${ppr}</w:pPr>${runs}</w:p>`;
+      });
+    });
+    if (!body) body = '<w:p/>';
+  }
+  const sect = `<w:sectPr><w:pgSz w:w="${twip(PW)}" w:h="${twip(PH)}"${PW > PH ? ' w:orient="landscape"' : ''}/><w:pgMar w:top="${twip(mar.t)}" w:right="${twip(mar.r)}" w:bottom="${twip(mar.b)}" w:left="${twip(mar.l)}" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>`;
+  zip.file('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpg" ContentType="image/jpeg"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+  zip.file('_rels/.rels', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+  zip.file('word/_rels/document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels.join('')}</Relationships>`);
+  zip.file('word/document.xml', '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">'
+    + `<w:body>${body}${sect}</w:body></w:document>`);
+  return zip.generateAsync({ type: 'blob', mimeType: MIME.docx });
+}
+async function pdfToPptx(doc, mode) {
+  await loadLib('pptx');
+  const pptx = new PptxGenJS();
+  const v = (await doc.getPage(1)).getViewport({ scale: 1 }), SW = v.width / 72, SH = v.height / 72;
+  pptx.defineLayout({ name: 'PDF', width: SW, height: SH });
+  pptx.layout = 'PDF';
+  for (let n = 1; n <= doc.numPages; n++) {
+    const slide = pptx.addSlide();
+    if (mode === 'pictures') {
+      const img = await pageJpeg(doc, n);
+      const k = Math.min(SW * 72 / img.w, SH * 72 / img.h), w = img.w * k / 72, h = img.h * k / 72;
+      slide.addImage({ data: 'data:image/jpeg;base64,' + bytesToB64(img.bytes), x: (SW - w) / 2, y: (SH - h) / 2, w, h });
+    } else {
+      const pg = await pageLines(doc, n);
+      for (const l of pg.lines) {
+        slide.addText(l.str, { x: l.x / 72, y: Math.max(0, l.base - l.size * BASE[l.font]) / 72, w: (l.w * 1.06 + l.size * 0.6) / 72, h: l.size * 1.3 / 72,
+          fontSize: Math.round(l.size * 2) / 2, fontFace: WFONT[l.font], bold: l.bold, italic: l.italic, color: '000000', margin: 0, valign: 'top', wrap: false });
+      }
+    }
+  }
+  return pptx.write({ outputType: 'blob' });
+}
+async function exportOffice(kind, mode) {
+  if (S.editing) finishEdit();
+  busy(true, kind === 'docx' ? 'Making the Word file…' : 'Making the PowerPoint file…');
+  let doc = null;
+  try {
+    const { bytes } = await buildPdf();
+    doc = await pdfjsLib.getDocument({ data: bytes.slice(), fontExtraProperties: true, isEvalSupported: false }).promise;
+    const data = kind === 'docx' ? await pdfToDocx(doc, mode) : await pdfToPptx(doc, mode);
+    const name = S.fileName.replace(/\.pdf$/i, '') + '.' + kind;
+    busy(false);
+    if (await saveFile(data, name, MIME[kind])) toast(`Saved ${name}`);
+  } catch (e) {
+    console.error(e);
+    toast(/load the converter/.test(e && e.message) ? "The converter couldn't load. Check your internet connection and try again." : "The file couldn't be made. Try the Exact look option instead.", 8000);
+  } finally { busy(false); if (doc) doc.destroy(); }
+}
+
+const closeConv = () => { $('#convModal').hidden = true; };
+$('#convBtn').onclick = () => { if (S.editing) finishEdit(); $('#convModal').hidden = false; };
+$('#convClose').onclick = closeConv;
+$('#convModal').addEventListener('pointerdown', e => { if (e.target.id === 'convModal') closeConv(); });
+$('#convModal').addEventListener('keydown', e => { if (e.key === 'Escape') closeConv(); });
+document.querySelectorAll('.fmt').forEach(b => { b.onclick = () => { const mode = $('#modePics').checked ? 'pictures' : 'text'; closeConv(); exportOffice(b.dataset.fmt, mode); }; });
+$('#convOpen').onclick = () => $('#officeInput').click();
+$('#officeInput').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) { closeConv(); importOffice(f); } };
 
 /* ---------- sample document ---------- */
 async function makeSample() {
