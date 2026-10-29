@@ -91,10 +91,11 @@ dates (or from the detected date if nothing is done yet).
 - The **Overdue** tab lists every overdue / due-soon SCAR (waiting on the next D) and RCA (waiting on the RCA or the
   customer's closure), with days since the last step, days allowed, and how late it is. Click a row to open the ticket.
 - Overdue tickets get an "Overdue Nd" tag in the ticket list.
-- **Overdue rules** (bottom of the Overdue tab) sets the days allowed. Defaults: D1 1, D2 2, D3 2, D4 7, D5 7, D6 14,
-  D7 14, D8 7 days after the previous D; customer closure 14 days after D8; RCA created 14 days after detection;
-  customer agrees to close 14 days after the RCA; "due soon" 2 days ahead. The rules are shared by everyone using the
-  tracker (saved in `data/settings.json`).
+- **Overdue timelines** (top of the Overdue tab) show the days allowed for each step, view-only: D1 1, D2 2, D3 2,
+  D4 7, D5 7, D6 14, D7 14, D8 7 days after the previous D, customer closure 14 days after D8 (68 days in all if every
+  step uses its full allowance); RCA created 14 days after detection, customer agrees to close 14 days after the RCA.
+  A step shows as "due soon" 2 days before its deadline. The timeline is set in the tracker's code (`rules` in
+  index.html), so ask for a change rather than editing it in the page.
 
 D's ticked before dates were recorded count from the ticket's last save; open those tickets and fill in the real dates.
 

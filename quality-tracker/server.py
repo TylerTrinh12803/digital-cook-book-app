@@ -37,7 +37,6 @@ COLLECTIONS = {
     "tickets": os.path.join(DATA_DIR, "tickets.json"),
     "reports": os.path.join(DATA_DIR, "reports.json"),
 }
-SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
 MAX_UPLOAD = 50 * 1024 * 1024
 MAX_DOC = 2 * 1024 * 1024
 CONVERT_TIMEOUT = 300
@@ -222,13 +221,6 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json(list(docs.values()))
         if path == "/api/status":
             return self.send_json({"converters": converters()})
-        if path == "/api/settings":
-            with lock:
-                data = {}
-                if os.path.exists(SETTINGS_FILE):
-                    with open(SETTINGS_FILE, encoding="utf-8") as f:
-                        data = json.load(f)
-            return self.send_json(data)
         # Only the page, its vendor files and uploaded files are served.
         if path.startswith("/data/") and not path.startswith("/data/uploads/"):
             return self.error_json(HTTPStatus.NOT_FOUND, "Not found")
@@ -246,20 +238,6 @@ class Handler(SimpleHTTPRequestHandler):
     def do_PUT(self):
         if self.route() == "/api/tickets":
             return self.replace_tickets()
-        if self.route() == "/api/settings":
-            # Shared settings, e.g. the overdue rules (days allowed per 8D step / RCA step).
-            raw = self.read_body(MAX_DOC)
-            try:
-                data = json.loads(raw.decode("utf-8"))
-                assert isinstance(data, dict)
-            except Exception:
-                return self.error_json(HTTPStatus.BAD_REQUEST, "Settings must be a JSON object")
-            with lock:
-                fd, tmp = tempfile.mkstemp(dir=DATA_DIR, suffix=".tmp")
-                with os.fdopen(fd, "w", encoding="utf-8") as f:
-                    json.dump(data, f, indent=1, ensure_ascii=False)
-                os.replace(tmp, SETTINGS_FILE)
-            return self.send_json(data)
         name, did = self.doc_route()
         if not name:
             return self.error_json(HTTPStatus.NOT_FOUND, "Not found")
