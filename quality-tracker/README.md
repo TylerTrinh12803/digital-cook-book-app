@@ -32,15 +32,17 @@ The Analysis tab is a one-page dashboard with two separate reports; switch with 
 blue header (which also shows the data period and total requests). Everything on the tab covers only that type.
 
 - **SCAR / 8D report** ("8D Problem Solving Dashboard"): a D1–D8 strip showing how many SCARs have each D done.
-- **RCA report** ("RCA One-Pager · Quick Fixes"): a 5-step strip (Problem → Containment → Root cause → Quick fix →
-  Verify & close) with how many RCAs have each step done (containment actions added, root cause set, fix added or
-  "RCA created" ticked, NVIDIA approved). Closed tickets count as done for every step.
+- **RCA report** ("RCA One-Pager · Quick Fixes"): the same dashboard without a step strip.
 - Summary tiles (total, open, monitor, closed, average progress, average per month, average age open).
 - **Requests by status** (donut: closed / in progress / open, where in progress means Monitor or work started),
   **Requests by creator / requestor** (from the Reporter field) and **per month** (split by status, severity, or raised vs closed).
 - **Open & in progress** (top 5, most urgent first), **Recently closed** (latest 5) and **Key insights** worked out from
   the data (share still open and the oldest item, busiest month, top requestor, overdue actions or open S0/S1 items).
 - **Pareto** of root causes, sub-root causes or factory areas.
+
+**Download slide (.pptx)** in the blue header saves the selected report as a single widescreen PowerPoint slide
+(header, D1–D8 strip for 8D, summary tiles, status / requestor / per-month charts as editable PowerPoint charts,
+top-5 open and recently closed tables, and key insights). The Pareto stays on the web page only.
 
 The filters apply to the dashboard. Click a row to open the ticket, a summary tile or **See all** to jump to those
 tickets. **Export Excel** on the Analysis tab saves just that report (e.g. `FXN_HT_SCAR_8D_Report_<date>.xlsx`).

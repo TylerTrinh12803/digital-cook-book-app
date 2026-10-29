@@ -163,9 +163,11 @@ table { border-collapse: collapse; width: 100%; min-width: 1080px; }
 .dash-head .report-seg button { padding: 7px 14px; font-weight: 600; background: transparent; color: var(--dash-ink); }
 .dash-head .report-seg button + button { border-left-color: var(--dash-line); }
 .dash-head .report-seg button[aria-pressed="true"] { background: var(--dash-ink); color: var(--dash-bg); }
+.dash-btn { align-self: center; background: transparent; color: var(--dash-ink); border-color: var(--dash-line); }
+.dash-btn:hover { border-color: var(--dash-ink); }
+.dash-top.no-steps .dash-head { border-radius: var(--radius); }
 .steps { list-style: none; margin: 0; display: grid; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 var(--radius) var(--radius); padding: 8px 8px 10px; }
 .steps-8 { grid-template-columns: repeat(8, minmax(0, 1fr)); }
-.steps-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .step { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .step-top { display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 6px 18px 6px 20px; background: var(--c); color: var(--step-ink); clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%); }
 .step:first-child .step-top { padding-left: 10px; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%); }
@@ -179,7 +181,7 @@ table { border-collapse: collapse; width: 100%; min-width: 1080px; }
 .dash-note { margin: 8px 0 0; font-size: .82rem; color: var(--muted); }
 @media (max-width: 1100px) { .steps-8 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
-  .steps-8, .steps-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .steps-8 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .step-top, .step:first-child .step-top { clip-path: none; border-radius: var(--radius); padding-left: 10px; }
   .dash-mark { font-size: 2.4rem; } .dash-brand h2 { font-size: 1.4rem; }
 }
@@ -432,6 +434,7 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
           <button type="button" data-report="SCAR" aria-pressed="true">SCAR / 8D</button>
           <button type="button" data-report="RCA" aria-pressed="false">RCA</button>
         </div>
+        <button class="btn dash-btn" type="button" id="slideBtn" title="Save this report as a one-page PowerPoint slide">Download slide (.pptx)</button>
       </div>
     </div>
     <ol class="steps steps-8" id="dashSteps"></ol>
@@ -736,6 +739,7 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
 <script src="vendor/chart.umd.min.js"></script>
 <script src="vendor/xlsx.full.min.js"></script>
 <script src="vendor/exceljs.min.js"></script>
+<script src="vendor/pptxgen.bundle.js"></script>
 <script>
 (() => {
 "use strict";
@@ -1335,20 +1339,12 @@ const STEPS = {
     ["D7", "Prevent recurrence", "Update systems, standards, training"],
     ["D8", "Congratulate the team", "Recognize success and share learning"]
   ],
-  RCA: [
-    ["", "Problem", "What happened, where and how many"],
-    ["", "Containment", "Stop it spreading, protect the customer"],
-    ["", "Root cause", "5-Why or fishbone to the real cause"],
-    ["", "Quick fix", "Put the corrective action in place"],
-    ["", "Verify & close", "Confirm it works; NVIDIA agrees to close"]
-  ]
 };
-// A step counts as done when it's ticked on the ticket (or the ticket is closed).
+// A D counts as done when it's ticked on the ticket (or the ticket is closed).
 function stepDone(t, i) {
   if (t.status === "CLOSE") return true;
   const p = t.progress || {};
-  if (reportType === "SCAR") return !!(p.d && p.d[i]);
-  return [!!t.description, !!(t.containment && t.containment.length), !!t.rootCause, !!((t.pca && t.pca.length) || p.rcaDone), !!p.approved][i];
+  return !!(p.d && p.d[i]);
 }
 const ICON = {
   bars: '<path d="M5 20v-6M12 20V9M19 20V4"/>',
@@ -1374,9 +1370,11 @@ function renderReportBar(rows) {
   const dates = rows.map(t => t.detected).filter(Boolean).sort();
   $("#dashPeriod").textContent = dates.length ? `${dates[0]} — ${dates[dates.length - 1]}` : "—";
   $("#dashTotal").textContent = rows.length;
+  // The D1-D8 strip is for the 8D report only; the RCA one-pager has none.
   const steps = $("#dashSteps");
-  steps.className = `steps ${is8D ? "steps-8" : "steps-5"}`;
-  steps.innerHTML = STEPS[reportType].map(([code, name, what], i) => {
+  steps.hidden = !is8D;
+  $("#reportBar").classList.toggle("no-steps", !is8D);
+  steps.innerHTML = !is8D ? "" : STEPS.SCAR.map(([code, name, what], i) => {
     const done = rows.filter(t => stepDone(t, i)).length, pct = rows.length ? done / rows.length * 100 : 0;
     return `<li class="step" style="--c: var(--step${i + 1}); --cs: var(--step${i + 1}s)">
       <div class="step-top"><span class="step-num">${i + 1}</span><span class="step-name">${code ? `<b>${esc(code)}</b>` : ""}${esc(name)}</span></div>
@@ -1443,25 +1441,29 @@ function miniTable(list, last) {
     <td>${progressBar(t)}</td>
     <td class="mono">${last.cell(t)}</td></tr>`).join("")}</tbody></table>`;
 }
-function renderAnalysisLists(rows) {
-  const noun = REPORT[reportType].noun;
-  $("#openListTitle").textContent = `Open & in progress ${noun}`;
-  $("#closedListTitle").textContent = `Recently closed ${noun}`;
+function openAndClosed(rows) {
   // Most urgent first: highest severity, then open the longest.
   const open = rows.filter(t => t.status !== "CLOSE")
     .sort((a, b) => (SEV_RANK[a.severity] ?? 9) - (SEV_RANK[b.severity] ?? 9) || ageOf(b) - ageOf(a));
   // Tickets closed without a "Closed on" date sort by their detected date instead.
   const closedOn = t => t.closedDate || t.detected || "";
   const closed = rows.filter(t => t.status === "CLOSE").sort((a, b) => closedOn(b).localeCompare(closedOn(a)) || (b.no || 0) - (a.no || 0));
+  return { open, closed };
+}
+function renderAnalysisLists(rows) {
+  const noun = REPORT[reportType].noun;
+  $("#openListTitle").textContent = `Open & in progress ${noun}`;
+  $("#closedListTitle").textContent = `Recently closed ${noun}`;
+  const { open, closed } = openAndClosed(rows);
   $("#openListNote").textContent = open.length ? `Top ${Math.min(5, open.length)} of ${open.length}, most urgent first` : "";
   $("#closedListNote").textContent = closed.length ? `Latest ${Math.min(5, closed.length)} of ${closed.length}` : "";
   $("#openList").innerHTML = open.length ? miniTable(open.slice(0, 5), { head: "Days open", cell: t => ageOf(t) }) : `<div class="list-empty">No open or monitor ${noun} in this selection.</div>`;
   $("#closedList").innerHTML = closed.length ? miniTable(closed.slice(0, 5), { head: "Closed", cell: t => t.closedDate ? esc(fmtDate(t.closedDate)) : `<span class="muted" title="Set “Closed on” in the ticket">Date not set</span>` }) : `<div class="list-empty">No closed ${noun} in this selection.</div>`;
 }
 
-function renderInsights(rows) {
+function insightsFor(rows) {
   const r = REPORT[reportType], out = [];
-  if (!rows.length) { $("#insights").innerHTML = `<li class="muted">No ${r.noun} in this selection yet.</li>`; return; }
+  if (!rows.length) return out;
   const open = rows.filter(t => t.status !== "CLOSE");
   const oldest = open.slice().sort((a, b) => ageOf(b) - ageOf(a))[0];
   out.push(["bars", `${Math.round(open.length / rows.length * 100)}% of ${r.noun} are still open or in progress.`,
@@ -1478,7 +1480,12 @@ function renderInsights(rows) {
   const high = open.filter(t => t.severity === "S0" || t.severity === "S1").length;
   if (overdue.length) out.push(["alert", `${overdue.length} action${overdue.length > 1 ? "s are" : " is"} past due.`, `Containment and corrective actions on open ${r.noun}.`]);
   else if (high) out.push(["alert", `${high} S0 / S1 ${high > 1 ? r.noun : r.one} still open.`, "High-severity items to prioritize."]);
-  $("#insights").innerHTML = out.map(([ic, title, sub]) => `<li><span class="ins-ico ins-${ic}">${icon(ic)}</span><div><b>${esc(title)}</b><p>${esc(sub)}</p></div></li>`).join("");
+  return out;
+}
+function renderInsights(rows) {
+  const out = insightsFor(rows);
+  $("#insights").innerHTML = out.length ? out.map(([ic, title, sub]) => `<li><span class="ins-ico ins-${ic}">${icon(ic)}</span><div><b>${esc(title)}</b><p>${esc(sub)}</p></div></li>`).join("")
+    : `<li class="muted">No ${REPORT[reportType].noun} in this selection yet.</li>`;
 }
 
 function renderPareto(rows) {
@@ -1499,6 +1506,173 @@ function renderPareto(rows) {
     built.items.map(([k, v], i) => `<tr class="${built.vital[i] ? "vital" : ""}"><td>${esc(k)}</td><td class="mono">${v.toLocaleString()}</td><td class="mono">${(v / built.total * 100).toFixed(1)}%</td><td class="mono">${built.cum[i].toFixed(1)}%</td></tr>`).join("")}</tbody></table>`;
 }
 function showChartEmpty(msg) { $("#canvasBox").hidden = true; const e = $("#chartEmpty"); e.hidden = false; e.textContent = msg; }
+
+/* ---------- one-slide PowerPoint export of the dashboard ---------- */
+// Builds a 16:9 slide from the same numbers as the dashboard, with native (editable) PowerPoint charts.
+const SLIDE = {
+  head: "0D3A78", ink: "152027", muted: "5B6872", line: "D7DEE2", bg: "F1F4F6", white: "FFFFFF", blue: "2F6FD1",
+  status: { OPEN: "C62F2F", MONITOR: "B47100", CLOSE: "22855A" },
+  series: { Open: "C62F2F", Monitor: "B47100", Closed: "22855A", S0: "C62F2F", S1: "C97A06", S2: "3F6EA8", Raised: "0B6872" },
+  steps: [["CFE8FA", "1C7FC4"], ["D4DEFA", "2F5FD1"], ["C8F0EA", "129B8A"], ["D9F2C9", "3F9A2E"], ["FDEEB5", "B98500"], ["FDD9BD", "D9691A"], ["FBCFD3", "CC3344"], ["E2D6F7", "7350C4"]],
+  head1: "Bahnschrift SemiCondensed", body: "Segoe UI"
+};
+const clip = (s, n) => { s = String(s || ""); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
+
+async function downloadSlide() {
+  if (typeof PptxGenJS === "undefined") { toast("The PowerPoint library didn't load. Reload the page and try again.", 5000); return; }
+  const btn = $("#slideBtn"); btn.disabled = true; btn.textContent = "Making slide…";
+  try {
+    const rows = filtered({ ignoreStatus: true }), r = REPORT[reportType], is8D = reportType === "SCAR";
+    const pptx = new PptxGenJS();
+    pptx.layout = "LAYOUT_WIDE"; // 13.333 x 7.5 in
+    pptx.title = is8D ? "8D Problem Solving Dashboard" : "RCA One-Pager";
+    const s = pptx.addSlide();
+    s.background = { color: SLIDE.bg };
+    const W = 13.333, M = 0.3, inner = W - 2 * M;
+    const panel = (x, y, w, h, title) => {
+      s.addShape(pptx.ShapeType.rect, { x, y, w, h, fill: { color: SLIDE.white }, line: { color: SLIDE.line, width: 0.75 } });
+      if (title) s.addText(title.toUpperCase(), { x: x + 0.1, y: y + 0.04, w: w - 0.2, h: 0.28, fontFace: SLIDE.head1, fontSize: 11, bold: true, color: SLIDE.ink, margin: 0 });
+    };
+
+    // Header band
+    s.addShape(pptx.ShapeType.rect, { x: 0, y: 0, w: W, h: 0.95, fill: { color: SLIDE.head }, line: { color: SLIDE.head } });
+    s.addText(is8D ? "8D" : "RCA", { x: M, y: 0.1, w: is8D ? 1.05 : 1.35, h: 0.75, fontFace: SLIDE.head1, fontSize: 40, bold: true, color: SLIDE.white, margin: 0, valign: "middle" });
+    const tx = M + (is8D ? 1.1 : 1.4);
+    s.addText(is8D ? "PROBLEM SOLVING DASHBOARD" : "ONE-PAGER · QUICK FIXES", { x: tx, y: 0.14, w: 6.6, h: 0.42, fontFace: SLIDE.head1, fontSize: 24, bold: true, color: SLIDE.white, margin: 0 });
+    s.addText(is8D ? "From issues to solutions — drive quality, build reliability." : "Find the cause, fix it, verify it, close it.", { x: tx, y: 0.55, w: 6.6, h: 0.28, fontFace: SLIDE.body, fontSize: 11, color: "DCE6F5", margin: 0 });
+    const dates = rows.map(t => t.detected).filter(Boolean).sort();
+    const metaBox = (x, w, label, value, size) => {
+      s.addShape(pptx.ShapeType.roundRect, { x, y: 0.15, w, h: 0.65, fill: { color: SLIDE.head }, line: { color: "7D9CC7", width: 0.75 }, rectRadius: 0.06 });
+      s.addText([{ text: label, options: { fontSize: 8, color: "DCE6F5", breakLine: true } }, { text: value, options: { fontSize: size, bold: true, color: SLIDE.white } }],
+        { x: x + 0.1, y: 0.17, w: w - 0.2, h: 0.61, fontFace: SLIDE.body, margin: 0, valign: "middle" });
+    };
+    metaBox(W - M - 4.45, 2.75, "Data period", dates.length ? `${dates[0]} — ${dates[dates.length - 1]}` : "—", 12);
+    metaBox(W - M - 1.6, 1.6, "Total requests", String(rows.length), 20);
+
+    // D1-D8 strip (SCAR / 8D only)
+    let y = 1.07;
+    if (is8D) {
+      const sw = inner / 8;
+      STEPS.SCAR.forEach(([code, name], i) => {
+        const [fill, strong] = SLIDE.steps[i];
+        const done = rows.filter(t => stepDone(t, i)).length;
+        s.addText([{ text: `${code} `, options: { bold: true, color: strong, fontSize: 10 } }, { text: name, options: { color: SLIDE.ink, fontSize: 8.5, bold: true } }],
+          { shape: i ? pptx.ShapeType.chevron : pptx.ShapeType.homePlate, x: M + i * sw, y, w: sw + 0.08, h: 0.5, fill: { color: fill }, line: { color: fill }, fontFace: SLIDE.head1, align: "center", valign: "middle", margin: [0, 10, 0, 14] });
+        s.addText(`${done} of ${rows.length} done`, { x: M + i * sw + 0.15, y: y + 0.51, w: sw - 0.2, h: 0.2, fontFace: SLIDE.body, fontSize: 7.5, color: SLIDE.muted, margin: 0 });
+      });
+      y += 0.8;
+    }
+
+    // Summary tiles
+    const c = st => rows.filter(t => t.status === st).length;
+    const openOnes = rows.filter(t => t.status !== "CLOSE");
+    const now = todayISO().slice(0, 7);
+    const span = rows.length ? monthRange([...rows.map(t => monthKey(t.detected)), now]).length : 0;
+    const ages = openOnes.filter(t => t.detected).map(ageOf);
+    const tiles = [
+      [`Total ${r.noun}`, rows.length, `${rows.filter(t => (t.detected || "").startsWith(now)).length} this month`, SLIDE.ink],
+      ["Open", c("OPEN"), `${rows.filter(t => t.status === "OPEN" && t.severity === "S0").length} at S0`, SLIDE.status.OPEN],
+      ["Monitor", c("MONITOR"), "pending validation", SLIDE.status.MONITOR],
+      ["Closed", c("CLOSE"), rows.length ? `${Math.round(c("CLOSE") / rows.length * 100)}% of total` : "", SLIDE.status.CLOSE],
+      ["Avg progress", `${openOnes.length ? Math.round(openOnes.reduce((a, t) => a + progressOf(t), 0) / openOnes.length) : 0}%`, "open + monitor", SLIDE.ink],
+      [`Avg ${r.noun} / month`, span ? (Math.round(rows.length / span * 10) / 10).toString() : "0", span ? `over ${span} months` : "", SLIDE.ink],
+      ["Avg age open", `${ages.length ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length) : 0}d`, "open + monitor", SLIDE.ink]
+    ];
+    const gap = 0.08, tw = (inner - gap * (tiles.length - 1)) / tiles.length, th = 0.72;
+    tiles.forEach(([label, value, sub, color], i) => {
+      const x = M + i * (tw + gap);
+      s.addShape(pptx.ShapeType.rect, { x, y, w: tw, h: th, fill: { color: SLIDE.white }, line: { color: SLIDE.line, width: 0.75 } });
+      s.addText([
+        { text: label.toUpperCase(), options: { fontSize: 7.5, color: SLIDE.muted, breakLine: true } },
+        { text: String(value), options: { fontSize: 20, bold: true, color, fontFace: SLIDE.head1, breakLine: true } },
+        { text: sub, options: { fontSize: 7.5, color: SLIDE.muted } }
+      ], { x: x + 0.08, y: y + 0.03, w: tw - 0.16, h: th - 0.06, fontFace: SLIDE.body, margin: 0, valign: "middle" });
+    });
+    y += th + 0.1;
+
+    // Charts row: status donut, requestors, per month
+    const ch = is8D ? 2.05 : 2.55;
+    const w1 = 3.55, w2 = 4.05, w3 = inner - w1 - w2 - 0.2, x2 = M + w1 + 0.1, x3 = x2 + w2 + 0.1;
+    panel(M, y, w1, ch, "Requests by status");
+    panel(x2, y, w2, ch, "Requests by creator / requestor");
+    panel(x3, y, w3, ch, `${r.noun} per month`);
+    const noData = (x, w) => s.addText(`No ${r.noun} in this selection.`, { x, y: y + ch / 2 - 0.15, w, h: 0.3, align: "center", fontFace: SLIDE.body, fontSize: 9, color: SLIDE.muted });
+    if (rows.length) {
+      const buckets = statusBuckets(rows);
+      s.addChart(pptx.ChartType.doughnut, [{ name: "Requests", labels: buckets.map(b => b[0]), values: buckets.map(b => b[2].length) }], {
+        x: M + 0.05, y: y + 0.3, w: w1 - 0.1, h: ch - 0.35, holeSize: 55, chartColors: [SLIDE.status.CLOSE, SLIDE.blue, SLIDE.status.OPEN],
+        showLegend: true, legendPos: "r", legendFontSize: 9, legendFontFace: SLIDE.body, showPercent: true, showValue: false,
+        dataLabelColor: SLIDE.white, dataLabelFontSize: 8, dataBorder: { pt: 1, color: SLIDE.white }
+      });
+      const counts = new Map();
+      rows.forEach(t => { const k = (t.reporter || "").trim() || "Not set"; counts.set(k, (counts.get(k) || 0) + 1); });
+      const top = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 7);
+      s.addChart(pptx.ChartType.bar, [{ name: "Requests", labels: top.map(t => clip(t[0], 26)), values: top.map(t => t[1]) }], {
+        x: x2 + 0.05, y: y + 0.3, w: w2 - 0.1, h: ch - 0.35, barDir: "bar", chartColors: [SLIDE.blue], barGapWidthPct: 60,
+        catAxisOrientation: "maxMin", catAxisLabelFontSize: 8, catAxisLabelColor: SLIDE.blue, catAxisLabelFontFace: SLIDE.body,
+        valAxisHidden: true, valGridLine: { style: "none" }, catGridLine: { style: "none" },
+        showValue: true, dataLabelFontSize: 8, dataLabelColor: SLIDE.muted, dataLabelPosition: "outEnd", showLegend: false
+      });
+      ocMode = monthMode === "flow" ? "flow" : "mix";
+      const built = monthMode === "sev" ? CHARTS.tickets.build(rows) : CHARTS.openclose.build(rows);
+      const series = built.data.datasets.filter(d => d.type === "bar");
+      // Whole-number steps on the value axis for small counts.
+      const peak = Math.max(1, ...built.data.labels.map((_, i) => monthMode === "flow" ? Math.max(...series.map(d => d.data[i] || 0)) : series.reduce((a, d) => a + (d.data[i] || 0), 0)));
+      if (built.months.length) {
+        s.addChart(pptx.ChartType.bar, series.map(d => ({ name: d.label, labels: built.data.labels, values: d.data })), {
+          x: x3 + 0.05, y: y + 0.3, w: w3 - 0.1, h: ch - 0.35, barDir: "col", barGrouping: monthMode === "flow" ? "clustered" : "stacked",
+          chartColors: series.map(d => SLIDE.series[d.label] || SLIDE.blue), barGapWidthPct: 70,
+          showLegend: true, legendPos: "t", legendFontSize: 8, legendFontFace: SLIDE.body,
+          catAxisLabelFontSize: 8, valAxisLabelFontSize: 8, valGridLine: { color: "E3E8EB", size: 0.5 }, catGridLine: { style: "none" }, valAxisMinVal: 0,
+          valAxisMajorUnit: peak <= 10 ? 1 : peak <= 25 ? 5 : undefined
+        });
+      } else noData(x3, w3);
+    } else { noData(M, w1); noData(x2, w2); noData(x3, w3); }
+    y += ch + 0.1;
+
+    // Bottom row: open & in progress, recently closed, key insights
+    const bh = 7.5 - 0.22 - y;
+    const wa = 5.25, wb = 4.3, wc = inner - wa - wb - 0.2, xb = M + wa + 0.1, xc = xb + wb + 0.1;
+    const { open, closed } = openAndClosed(rows);
+    panel(M, y, wa, bh, `Open & in progress ${r.noun}  ·  top ${Math.min(5, open.length)} of ${open.length}`);
+    panel(xb, y, wb, bh, `Recently closed ${r.noun}  ·  latest ${Math.min(5, closed.length)} of ${closed.length}`);
+    panel(xc, y, wc, bh, "Key insights");
+    // Rows sized so five fit in the box even when an issue wraps to two lines.
+    const rowH = Math.min(0.4, (bh - 0.75) / 5);
+    const hdr = cells => cells.map(t => ({ text: t, options: { bold: true, color: SLIDE.muted, fill: { color: "E4EAEC" }, fontSize: 7.5 } }));
+    const stCell = t => ({ text: STATUS_LABEL[t.status] || t.status, options: { bold: true, color: SLIDE.status[t.status] || SLIDE.ink } });
+    const sevCell = t => ({ text: t.severity || "", options: { bold: true, color: SLIDE.series[t.severity] || SLIDE.ink } });
+    const tableOpts = (x, w, colW) => ({ x: x + 0.08, y: y + 0.36, w: w - 0.16, colW, fontFace: SLIDE.body, fontSize: 8, color: SLIDE.ink, valign: "middle",
+      border: { type: "solid", pt: 0.5, color: SLIDE.line }, rowH: [0.26, ...Array(5).fill(rowH)], margin: [0.02, 0.05, 0.02, 0.05], autoPage: false });
+    if (open.length) {
+      s.addTable([hdr(["No.", "Sev", "Issue", "Status", "Progress", "Days"]), ...open.slice(0, 5).map(t => [
+        { text: qid(t.no), options: { fontFace: "Consolas" } }, sevCell(t), clip(t.description, 40), stCell(t), `${Math.round(progressOf(t))}%`, String(ageOf(t))
+      ])], tableOpts(M, wa, [0.6, 0.36, 2.35, 0.7, 0.66, 0.42]));
+    } else s.addText(`No open or monitor ${r.noun}.`, { x: M, y: y + 0.5, w: wa, h: 0.3, align: "center", fontFace: SLIDE.body, fontSize: 9, color: SLIDE.muted });
+    if (closed.length) {
+      s.addTable([hdr(["No.", "Sev", "Issue", "Closed"]), ...closed.slice(0, 5).map(t => [
+        { text: qid(t.no), options: { fontFace: "Consolas" } }, sevCell(t), clip(t.description, 38), t.closedDate || "Not set"
+      ])], tableOpts(xb, wb, [0.62, 0.38, 2.29, 0.85]));
+    } else s.addText(`No closed ${r.noun}.`, { x: xb, y: y + 0.5, w: wb, h: 0.3, align: "center", fontFace: SLIDE.body, fontSize: 9, color: SLIDE.muted });
+    const ins = insightsFor(rows);
+    s.addText(ins.length ? ins.flatMap(([, title, sub], i) => [
+      { text: title, options: { bold: true, color: SLIDE.blue, fontSize: 9, breakLine: true } },
+      { text: sub, options: { color: SLIDE.muted, fontSize: 8, breakLine: i < ins.length - 1, paraSpaceAfter: 6 } }
+    ]) : [{ text: `No ${r.noun} in this selection yet.`, options: { color: SLIDE.muted, fontSize: 9 } }],
+    { x: xc + 0.1, y: y + 0.36, w: wc - 0.2, h: bh - 0.42, fontFace: SLIDE.body, valign: "top", margin: 0 });
+
+    // Footer
+    s.addText(`FXN HT Quality Tracker · exported ${fmtDate(todayISO())}`, { x: M, y: 7.28, w: inner, h: 0.18, fontFace: SLIDE.body, fontSize: 7, color: SLIDE.muted, align: "right", margin: 0 });
+
+    const blob = await pptx.write({ outputType: "blob" });
+    const name = `FXN_HT_${is8D ? "8D_Dashboard" : "RCA_One_Pager"}_${todayISO()}.pptx`;
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement("a"), { href: url, download: name }); document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast(`Saved ${name}`);
+  } catch (err) { toast(`Couldn't make the slide: ${err.message}`, 6000); }
+  finally { btn.disabled = false; btn.textContent = "Download slide (.pptx)"; }
+}
 
 // Draws the whole Analysis tab for the selected report.
 function renderChart() {
@@ -2283,6 +2457,7 @@ async function exportExcel() {
 function bindUI() {
   $$(".tabs button").forEach(b => b.addEventListener("click", () => { view = b.dataset.view; saveUI(); render(); }));
   $("#reportBar").addEventListener("click", e => { const b = e.target.closest("[data-report]"); if (b) { reportType = b.dataset.report; saveUI(); render(); } });
+  $("#slideBtn").addEventListener("click", downloadSlide);
   $("#newBtn").addEventListener("click", () => openTicket(null));
   ["#fSearch", "#fStatus", "#fSev", "#fType", "#fPhase", "#fArea", "#fProduct"].forEach(s => $(s).addEventListener("input", () => { renderKPIs(); view === "tickets" ? renderTable() : renderChart(); }));
   $("#tableWrap").addEventListener("click", e => {
