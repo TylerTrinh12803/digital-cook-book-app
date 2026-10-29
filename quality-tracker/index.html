@@ -39,6 +39,12 @@
   --on-danger: #ffffff;
   --draft: #6a4fb3;
   --draft-soft: #ece7f8;
+  --st-progress: #2f6fd1;
+  --dash-bg: #0d3a78; --dash-ink: #ffffff; --dash-line: rgba(255, 255, 255, .35);
+  --step-ink: #152027; --step-num-ink: #ffffff;
+  --step1: #cfe8fa; --step1s: #1c7fc4; --step2: #d4defa; --step2s: #2f5fd1; --step3: #c8f0ea; --step3s: #129b8a;
+  --step4: #d9f2c9; --step4s: #3f9a2e; --step5: #fdeeb5; --step5s: #b98500; --step6: #fdd9bd; --step6s: #d9691a;
+  --step7: #fbcfd3; --step7s: #cc3344; --step8: #e2d6f7; --step8s: #7350c4;
   --font-display: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
   --font-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
@@ -51,6 +57,10 @@
     --sev0: #f06a6a; --sev1: #f0a93c; --sev2: #7ba7e0;
     --st-open: #f06a6a; --st-monitor: #f0a93c; --st-close: #4fc48e;
     --series-open: #4dbcc7; --series-close: #4fc48e; --series-backlog: #f0a93c; --danger: #f06a6a; --on-danger: #2a0b0b; --draft: #b7a2f0; --draft-soft: #2a2442;
+    --st-progress: #6ea0ef; --dash-bg: #12305c; --step-ink: #e2eaed; --step-num-ink: #0e1418;
+    --step1: #173b54; --step1s: #5fb4ec; --step2: #1d2d5c; --step2s: #7f9ef0; --step3: #123f3a; --step3s: #4fd1bd;
+    --step4: #1f3b17; --step4s: #7fd06a; --step5: #3d3410; --step5s: #f0c74a; --step6: #45280f; --step6s: #f39a55;
+    --step7: #45181e; --step7s: #f07985; --step8: #2c2147; --step8s: #ad92f0;
     color-scheme: dark;
   }
 }
@@ -60,12 +70,16 @@
   --sev0: #f06a6a; --sev1: #f0a93c; --sev2: #7ba7e0;
   --st-open: #f06a6a; --st-monitor: #f0a93c; --st-close: #4fc48e;
   --series-open: #4dbcc7; --series-close: #4fc48e; --series-backlog: #f0a93c; --danger: #f06a6a; --on-danger: #2a0b0b; --draft: #b7a2f0; --draft-soft: #2a2442;
+    --st-progress: #6ea0ef; --dash-bg: #12305c; --step-ink: #e2eaed; --step-num-ink: #0e1418;
+    --step1: #173b54; --step1s: #5fb4ec; --step2: #1d2d5c; --step2s: #7f9ef0; --step3: #123f3a; --step3s: #4fd1bd;
+    --step4: #1f3b17; --step4s: #7fd06a; --step5: #3d3410; --step5s: #f0c74a; --step6: #45280f; --step6s: #f39a55;
+    --step7: #45181e; --step7s: #f07985; --step8: #2c2147; --step8s: #ad92f0;
   color-scheme: dark;
 }
 [hidden] { display: none !important; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--font-body); }
-.wrap { max-width: 1280px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1440px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 a { color: var(--accent); }
@@ -133,11 +147,87 @@ table { border-collapse: collapse; width: 100%; min-width: 1080px; }
 .prog-steps small, .prog-approve small { color: var(--muted); font-family: var(--font-mono); font-size: .72rem; margin-left: auto; }
 .prog-approve { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-weight: 600; }
 .prog-note { margin: 8px 0 0; font-size: .78rem; color: var(--muted); }
-/* analysis report switch */
-.report-bar { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px 20px; flex-wrap: wrap; margin-top: 16px; }
-.report-bar h2 { margin: 0; font: 700 1.7rem/1.05 var(--font-display); text-transform: uppercase; letter-spacing: .02em; }
-.report-bar p { margin: 4px 0 0; font-size: .85rem; max-width: 72ch; }
-.report-seg button { padding: 8px 18px; font-size: .92rem; font-weight: 600; }
+/* analysis dashboard: header band + step strip */
+.dash-top { margin-top: 16px; }
+.dash-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px 20px; padding: 14px 20px; border-radius: var(--radius) var(--radius) 0 0; background: var(--dash-bg); color: var(--dash-ink); }
+.dash-brand { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.dash-mark { font: 700 3.4rem/.85 var(--font-display); letter-spacing: -.01em; }
+.dash-brand h2 { margin: 0; font: 700 2rem/1 var(--font-display); text-transform: uppercase; letter-spacing: .02em; text-wrap: balance; }
+.dash-brand p { margin: 4px 0 0; font-size: .95rem; opacity: .88; }
+.dash-meta { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
+.dash-stat { display: flex; flex-direction: column; justify-content: center; padding: 6px 14px; border: 1px solid var(--dash-line); border-radius: var(--radius); }
+.dash-stat span { font-size: .72rem; letter-spacing: .04em; opacity: .85; }
+.dash-stat b { font: 600 1.05rem/1.3 var(--font-mono); font-variant-numeric: tabular-nums; }
+.dash-stat b.big { font: 700 1.8rem/1 var(--font-display); }
+.dash-head .report-seg { align-self: center; border-color: var(--dash-line); }
+.dash-head .report-seg button { padding: 7px 14px; font-weight: 600; background: transparent; color: var(--dash-ink); }
+.dash-head .report-seg button + button { border-left-color: var(--dash-line); }
+.dash-head .report-seg button[aria-pressed="true"] { background: var(--dash-ink); color: var(--dash-bg); }
+.steps { list-style: none; margin: 0; display: grid; gap: 4px; background: var(--surface); border: 1px solid var(--line); border-top: 0; border-radius: 0 0 var(--radius) var(--radius); padding: 8px 8px 10px; }
+.steps-8 { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+.steps-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.step { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.step-top { display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 6px 18px 6px 20px; background: var(--c); color: var(--step-ink); clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%, 12px 50%); }
+.step:first-child .step-top { padding-left: 10px; clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%); }
+.step-num { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--cs); color: var(--step-num-ink); font: 700 .9rem/1 var(--font-display); }
+.step-name { font: 600 .95rem/1.05 var(--font-display); letter-spacing: .01em; min-width: 0; }
+.step-name b { display: block; font-size: 1.1rem; color: var(--cs); }
+.step p { margin: 0; padding: 0 6px 0 12px; font-size: .78rem; line-height: 1.3; color: var(--muted); }
+.step-done { padding: 0 6px 0 12px; font-size: .72rem; color: var(--muted); display: flex; flex-direction: column; gap: 3px; font-variant-numeric: tabular-nums; margin-top: auto; }
+.step-bar { height: 4px; border-radius: 99px; background: var(--sunken); overflow: hidden; }
+.step-bar span { display: block; height: 100%; background: var(--cs); }
+.dash-note { margin: 8px 0 0; font-size: .82rem; color: var(--muted); }
+@media (max-width: 1100px) { .steps-8 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 640px) {
+  .steps-8, .steps-5 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .step-top, .step:first-child .step-top { clip-path: none; border-radius: var(--radius); padding-left: 10px; }
+  .dash-mark { font-size: 2.4rem; } .dash-brand h2 { font-size: 1.4rem; }
+}
+/* analysis dashboard: panels */
+.dash-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.35fr); gap: 12px; margin-top: 12px; }
+.dpanel { margin-top: 0; display: flex; flex-direction: column; min-width: 0; }
+.dpanel header, .insights header { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 12px 14px 6px; }
+.dpanel h3, .insights h3 { margin: 0; font: 600 1.1rem/1.1 var(--font-display); text-transform: uppercase; letter-spacing: .03em; }
+.dcanvas { position: relative; height: 240px; padding: 0 10px 10px; }
+.seg.mini button { padding: 3px 8px; font-size: .74rem; }
+.donut-wrap { display: flex; align-items: center; gap: 14px; padding: 6px 14px 14px; flex-wrap: wrap; flex: 1; justify-content: center; }
+.donut-box { position: relative; width: 150px; height: 150px; flex: none; }
+.donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+.donut-center b { font: 700 2.1rem/1 var(--font-display); }
+.donut-center span { font-size: .78rem; color: var(--muted); }
+.legend-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; flex: 1; min-width: 128px; font-size: .9rem; }
+.legend-list li { display: grid; grid-template-columns: 12px 1fr auto auto; gap: 8px; align-items: center; }
+.legend-list .dot { width: 12px; height: 12px; border-radius: 50%; }
+.legend-list b { font-variant-numeric: tabular-nums; }
+.legend-list .muted { font-size: .8rem; font-variant-numeric: tabular-nums; }
+.hbars { padding: 6px 14px 14px; display: flex; flex-direction: column; gap: 9px; }
+.hbar { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) 4.8em; gap: 8px; align-items: center; font-size: .84rem; }
+.hbar-name { text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--st-progress); }
+.hbar-track { height: 12px; background: var(--sunken); border-radius: 3px; overflow: hidden; }
+.hbar-track span { display: block; height: 100%; background: var(--st-progress); border-radius: 3px; }
+.hbar-val { font: 500 .76rem/1 var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.hbar-more { margin: 2px 0 0; font-size: .78rem; text-align: right; }
+.dash-bottom { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.3fr) minmax(0, .72fr); gap: 12px; margin-top: 12px; align-items: start; }
+/* compact tables in the dashboard boxes */
+.dash-bottom .list-box table { min-width: 500px; }
+.dash-bottom .list-box td, .dash-bottom .list-box th { padding: 7px 8px; }
+.dash-bottom .list-box .desc { max-width: none; }
+.dash-bottom .list-box .prog { min-width: 0; gap: 6px; }
+.dash-bottom .list-box .prog-bar { flex: 0 0 44px; }
+.dash-bottom .list-box .sevcell { white-space: nowrap; }
+.insights { margin-top: 0; }
+.insights ul { list-style: none; margin: 0; padding: 6px 14px 16px; display: flex; flex-direction: column; gap: 16px; }
+.insights li { display: grid; grid-template-columns: 40px 1fr; gap: 10px; align-items: start; }
+.ins-ico { width: 40px; height: 40px; border-radius: 8px; display: grid; place-items: center; }
+.ins-ico .ico { width: 26px; height: 26px; }
+.ins-bars { color: var(--st-close); } .ins-calendar { color: var(--st-open); } .ins-people { color: var(--st-progress); } .ins-alert { color: var(--st-monitor); }
+.insights b { display: block; font-size: .9rem; line-height: 1.3; color: var(--st-progress); }
+.insights p { margin: 2px 0 0; font-size: .8rem; color: var(--muted); line-height: 1.35; }
+#paretoPanel { margin-top: 12px; }
+@media (max-width: 1150px) {
+  .dash-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+  .dash-bottom { grid-template-columns: 1fr; }
+}
 /* drafts */
 .drafts { margin-top: 12px; border-color: var(--draft); }
 .drafts header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); background: var(--draft-soft); border-radius: var(--radius) var(--radius) 0 0; }
@@ -161,7 +251,6 @@ dialog.confirm { width: min(480px, calc(100vw - 24px)); }
 .btn.danger-solid { background: var(--danger); border-color: var(--danger); color: var(--on-danger); }
 .btn.danger-solid:disabled { opacity: .45; }
 /* analysis: top-5 lists */
-.lists { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 540px), 1fr)); gap: 12px; margin-top: 12px; }
 .list-box { margin-top: 0; min-width: 0; display: flex; flex-direction: column; }
 .list-box header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
 .list-box h3 { margin: 0; font: 600 1.2rem/1.1 var(--font-display); text-transform: uppercase; letter-spacing: .03em; }
@@ -201,9 +290,6 @@ td.mono { white-space: nowrap; }
 .count-line { font-size: .82rem; color: var(--muted); margin-top: 8px; }
 
 /* analysis */
-.subtabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
-.subtabs button { border: 1px solid var(--line); background: var(--surface); padding: 6px 12px; border-radius: 999px; cursor: pointer; font-size: .88rem; }
-.subtabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .chart-panel { padding: 16px; }
 .chart-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between; margin-bottom: 10px; }
 .chart-head h2 { margin: 0; font: 600 1.35rem/1.1 var(--font-display); text-transform: uppercase; letter-spacing: .02em; text-wrap: balance; }
@@ -336,12 +422,20 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
 <main class="wrap">
   <div class="banner" id="modeBanner" hidden></div>
 
-  <div class="report-bar" id="reportBar" hidden>
-    <div><h2 id="reportTitle">SCAR / 8D report</h2><p class="muted" id="reportNote"></p></div>
-    <div class="seg report-seg" role="group" aria-label="Report">
-      <button type="button" data-report="SCAR" aria-pressed="true">SCAR / 8D report</button>
-      <button type="button" data-report="RCA" aria-pressed="false">RCA report</button>
+  <div class="dash-top" id="reportBar" hidden>
+    <div class="dash-head">
+      <div class="dash-brand"><span class="dash-mark" id="dashMark">8D</span><div><h2 id="reportTitle">Problem Solving Dashboard</h2><p id="reportSub"></p></div></div>
+      <div class="dash-meta">
+        <div class="dash-stat"><span>Data period</span><b id="dashPeriod">—</b></div>
+        <div class="dash-stat"><span>Total requests</span><b class="big" id="dashTotal">0</b></div>
+        <div class="seg report-seg" role="group" aria-label="Report">
+          <button type="button" data-report="SCAR" aria-pressed="true">SCAR / 8D</button>
+          <button type="button" data-report="RCA" aria-pressed="false">RCA</button>
+        </div>
+      </div>
     </div>
+    <ol class="steps steps-8" id="dashSteps"></ol>
+    <p class="dash-note" id="reportNote" hidden></p>
   </div>
   <section class="kpis" id="kpis" aria-label="Summary"></section>
 
@@ -389,21 +483,31 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
 
   <!-- Analysis view -->
   <section id="view-analysis" role="tabpanel" aria-labelledby="tab-analysis" hidden>
-    <div class="subtabs" role="tablist" aria-label="Chart">
-      <button role="tab" data-chart="openclose" aria-selected="true">Open vs closed</button>
-      <button role="tab" data-chart="tickets" aria-selected="false" id="perMonthTab">SCARs per month</button>
-      <button role="tab" data-chart="pareto" aria-selected="false">Pareto</button>
+    <div class="dash-grid">
+      <section class="panel dpanel" aria-labelledby="statusTitle">
+        <header><h3 id="statusTitle">Requests by status</h3></header>
+        <div class="donut-wrap">
+          <div class="donut-box" id="donutBox"><canvas id="cStatus" role="img" aria-label="Requests by status"></canvas><div class="donut-center"><b id="donutTotal">0</b><span>Total</span></div></div>
+          <ul class="legend-list" id="statusLegend"></ul>
+        </div>
+      </section>
+      <section class="panel dpanel" aria-labelledby="whoTitle">
+        <header><h3 id="whoTitle">Requests by creator / requestor</h3></header>
+        <div class="hbars" id="requestorBars"></div>
+      </section>
+      <section class="panel dpanel" aria-labelledby="perMonthTitle">
+        <header><h3 id="perMonthTitle">SCARs per month</h3>
+          <div class="seg mini" role="group" aria-label="Split by">
+            <button type="button" data-mm="mix" aria-pressed="true">Status</button>
+            <button type="button" data-mm="sev" aria-pressed="false">Severity</button>
+            <button type="button" data-mm="flow" aria-pressed="false">Raised vs closed</button>
+          </div>
+        </header>
+        <div class="dcanvas" id="monthBox"><canvas id="cMonth" role="img" aria-label="Per month"></canvas></div>
+        <div class="list-empty" id="monthEmpty" hidden></div>
+      </section>
     </div>
-    <div class="panel chart-panel">
-      <div class="chart-head">
-        <div><h2 id="chartTitle"></h2><p id="chartNote"></p></div>
-        <div class="controls" id="chartControls"></div>
-      </div>
-      <div class="canvas-box" id="canvasBox"><canvas id="chart" aria-label="Chart" role="img"></canvas></div>
-      <div class="chart-empty" id="chartEmpty" hidden></div>
-      <div class="pareto-table" id="paretoTable" hidden></div>
-    </div>
-    <div class="lists">
+    <div class="dash-bottom">
       <section class="panel list-box" aria-labelledby="openListTitle">
         <header><h3 id="openListTitle">Open &amp; in progress</h3><span class="muted" id="openListNote"></span><button class="btn small" type="button" data-seeall="open">See all</button></header>
         <div class="table-scroll" id="openList"></div>
@@ -412,6 +516,19 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
         <header><h3 id="closedListTitle">Recently closed</h3><span class="muted" id="closedListNote"></span><button class="btn small" type="button" data-seeall="closed">See all</button></header>
         <div class="table-scroll" id="closedList"></div>
       </section>
+      <section class="panel insights" aria-labelledby="insightsTitle">
+        <header><h3 id="insightsTitle">Key insights</h3></header>
+        <ul id="insights"></ul>
+      </section>
+    </div>
+    <div class="panel chart-panel" id="paretoPanel">
+      <div class="chart-head">
+        <div><h2 id="chartTitle"></h2><p id="chartNote"></p></div>
+        <div class="controls" id="chartControls"></div>
+      </div>
+      <div class="canvas-box" id="canvasBox"><canvas id="chart" aria-label="Pareto chart" role="img"></canvas></div>
+      <div class="chart-empty" id="chartEmpty" hidden></div>
+      <div class="pareto-table" id="paretoTable" hidden></div>
     </div>
   </section>
 
@@ -643,7 +760,7 @@ let mode = "starting"; // starting | server (start script running) | local (page
 let lastSig = "";
 let view = "tickets", chartKind = "openclose";
 let sort = { key: "detected", dir: "desc" };
-let ocMode = "flow", paretoDim = "rootCause", paretoBlank = false;
+let ocMode = "mix", monthMode = "mix", paretoDim = "rootCause", paretoBlank = false;
 let chart = null;
 let editing = null; // ticket being edited (copy) or null for new
 let draftAttachments = [];
@@ -801,6 +918,7 @@ function restoreUI() {
     const s = JSON.parse(lsGet(UI_KEY) || "{}");
     if (s.view) view = s.view; if (s.chartKind) chartKind = s.chartKind;
     if (REPORT[s.reportType]) reportType = s.reportType;
+    if (["mix", "sev", "flow"].includes(s.monthMode)) monthMode = s.monthMode;
     if (chartKind === "scar" || chartKind === "rca") chartKind = "tickets";
     if (s.paretoDim) paretoDim = s.paretoDim;
     if (s.ocMode) ocMode = s.ocMode; if (s.sort) sort = s.sort;
@@ -809,7 +927,7 @@ function restoreUI() {
   if (location.hash === "#pareto") { view = "analysis"; chartKind = "pareto"; }
   if (location.hash === "#reports") view = "reports";
 }
-function saveUI() { lsSet(UI_KEY, JSON.stringify({ view, chartKind, paretoDim, ocMode, sort, reportType })); }
+function saveUI() { lsSet(UI_KEY, JSON.stringify({ view, chartKind, paretoDim, monthMode, sort, reportType })); }
 
 function fillStaticOptions() {
   $("#f_area").insertAdjacentHTML("beforeend", AREAS.map(a => `<option>${esc(a)}</option>`).join(""));
@@ -864,7 +982,6 @@ function render() {
   $("#fStatusWrap").hidden = view === "analysis";
   $("#fTypeWrap").hidden = view === "analysis";
   $("#reportBar").hidden = view !== "analysis";
-  if (view === "analysis") renderReportBar();
   const canExport = mode !== "starting" && typeof XLSX !== "undefined";
   $("#exportBtn").hidden = !canExport || !tickets.length;
   $("#importBtn").hidden = mode === "starting" || typeof XLSX === "undefined";
@@ -935,8 +1052,8 @@ function pickKPI(pick) {
 /* ---------- progress ---------- */
 // 8D (SCARs): each discipline is 95/8 %, all eight = 95%, the customer approving closure adds the last 5%.
 // RCA: creating the RCA is 85%, the customer agreeing to close adds the last 15%.
-const D8 = ["D1 Form the team", "D2 Describe the problem", "D3 Contain the problem", "D4 Find the root cause",
-  "D5 Choose corrective actions", "D6 Implement & verify actions", "D7 Prevent recurrence", "D8 Close & recognize the team"];
+const D8 = ["D1 Form the team", "D2 Describe the problem", "D3 Containment actions", "D4 Root cause analysis",
+  "D5 Corrective actions", "D6 Validate effectiveness", "D7 Prevent recurrence", "D8 Congratulate the team"];
 const progressModel = t => (t.progress && t.progress.model) || (t.type === "SCAR" ? "8D" : "RCA");
 // A closed ticket always counts as 100%, whatever is ticked.
 function progressOf(t) {
@@ -1206,41 +1323,116 @@ const CHARTS = {
   }
 };
 
-function renderChart() {
-  $$(".subtabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.chart === chartKind)));
-  const def = CHARTS[chartKind];
-  $("#chartTitle").textContent = typeof def.title === "function" ? def.title() : def.title;
-  $("#perMonthTab").textContent = `${REPORT[reportType].noun} per month`;
-  $("#chartNote").textContent = def.note();
-  $("#chartControls").innerHTML = def.controls();
-  renderReportBar();
-  renderAnalysisLists();
-  if (chart) { chart.destroy(); chart = null; }
-  const rows = filtered({ ignoreStatus: true });
-  const pt = $("#paretoTable"); pt.hidden = true;
-  if (typeof Chart === "undefined") return showChartEmpty("The chart library didn't load. Check your connection and reload the page.");
-  if (mode === "starting") return showChartEmpty("Loading tickets…");
-  const built = def.build(rows);
-  if (!built.months.length) return showChartEmpty(chartKind === "pareto" ? "No tickets with a root cause in this selection yet. Add root causes as investigations finish, or tick “Include not yet determined”." : "No tickets in this selection yet.");
-  $("#chartEmpty").hidden = true; $("#canvasBox").hidden = false;
-  Chart.register(totalsPlugin, thresholdPlugin);
-  chart = new Chart($("#chart"), { type: "bar", data: built.data, options: built.options });
-  if (chartKind === "pareto") {
-    pt.hidden = false;
-    pt.innerHTML = `<table><thead><tr><th>${{ rootCause: "Root cause", subRootCause: "Sub-root cause", area: "Factory area" }[paretoDim]}</th><th>Tickets</th><th>Share</th><th>Cumulative</th></tr></thead><tbody>${
-      built.items.map(([k, v], i) => `<tr class="${built.vital[i] ? "vital" : ""}"><td>${esc(k)}</td><td class="mono">${v.toLocaleString()}</td><td class="mono">${(v / built.total * 100).toFixed(1)}%</td><td class="mono">${built.cum[i].toFixed(1)}%</td></tr>`).join("")}</tbody></table>`;
-  }
+/* ---------- analysis dashboard (SCAR / 8D or RCA one-pager) ---------- */
+const STEPS = {
+  SCAR: [
+    ["D1", "Form the team", "Identify and engage the right people"],
+    ["D2", "Describe the problem", "Define the problem using data"],
+    ["D3", "Containment actions", "Protect the customer: stop, contain, isolate"],
+    ["D4", "Root cause analysis", "Identify and verify the root cause(s)"],
+    ["D5", "Corrective actions", "Develop and implement solutions"],
+    ["D6", "Validate effectiveness", "Confirm the permanent fix works"],
+    ["D7", "Prevent recurrence", "Update systems, standards, training"],
+    ["D8", "Congratulate the team", "Recognize success and share learning"]
+  ],
+  RCA: [
+    ["", "Problem", "What happened, where and how many"],
+    ["", "Containment", "Stop it spreading, protect the customer"],
+    ["", "Root cause", "5-Why or fishbone to the real cause"],
+    ["", "Quick fix", "Put the corrective action in place"],
+    ["", "Verify & close", "Confirm it works; NVIDIA agrees to close"]
+  ]
+};
+// A step counts as done when it's ticked on the ticket (or the ticket is closed).
+function stepDone(t, i) {
+  if (t.status === "CLOSE") return true;
+  const p = t.progress || {};
+  if (reportType === "SCAR") return !!(p.d && p.d[i]);
+  return [!!t.description, !!(t.containment && t.containment.length), !!t.rootCause, !!((t.pca && t.pca.length) || p.rcaDone), !!p.approved][i];
 }
-function renderReportBar() {
+const ICON = {
+  bars: '<path d="M5 20v-6M12 20V9M19 20V4"/>',
+  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01"/>',
+  people: '<circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.2A5 5 0 0 1 21 19"/>',
+  alert: '<path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/>'
+};
+const icon = name => `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[name]}</svg>`;
+const monthLong = m => { const [y, mo] = m.split("-"); return new Date(+y, +mo - 1, 1).toLocaleString("en-US", { month: "long" }) + " " + y; };
+// Donut buckets: open with nothing done yet, in progress (work started, or in monitor), closed.
+const statusBuckets = rows => [
+  ["Closed", "--st-close", rows.filter(t => t.status === "CLOSE")],
+  ["In progress", "--st-progress", rows.filter(t => t.status === "MONITOR" || (t.status === "OPEN" && progressOf(t) > 0))],
+  ["Open", "--st-open", rows.filter(t => t.status === "OPEN" && progressOf(t) === 0)]
+];
+
+function renderReportBar(rows) {
   $$("[data-report]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.report === reportType)));
-  const r = REPORT[reportType], n = filtered({ ignoreStatus: true }).length;
+  const r = REPORT[reportType], is8D = reportType === "SCAR";
+  $("#dashMark").textContent = is8D ? "8D" : "RCA";
+  $("#reportTitle").textContent = is8D ? "Problem Solving Dashboard" : "One-Pager · Quick Fixes";
+  $("#reportSub").textContent = is8D ? "From issues to solutions — drive quality, build reliability." : "Find the cause, fix it, verify it, close it.";
+  const dates = rows.map(t => t.detected).filter(Boolean).sort();
+  $("#dashPeriod").textContent = dates.length ? `${dates[0]} — ${dates[dates.length - 1]}` : "—";
+  $("#dashTotal").textContent = rows.length;
+  const steps = $("#dashSteps");
+  steps.className = `steps ${is8D ? "steps-8" : "steps-5"}`;
+  steps.innerHTML = STEPS[reportType].map(([code, name, what], i) => {
+    const done = rows.filter(t => stepDone(t, i)).length, pct = rows.length ? done / rows.length * 100 : 0;
+    return `<li class="step" style="--c: var(--step${i + 1}); --cs: var(--step${i + 1}s)">
+      <div class="step-top"><span class="step-num">${i + 1}</span><span class="step-name">${code ? `<b>${esc(code)}</b>` : ""}${esc(name)}</span></div>
+      <p>${esc(what)}</p>
+      <div class="step-done" title="${done} of ${rows.length} ${esc(r.noun)} have this step done (closed tickets count as done)"><span class="step-bar"><span style="width:${pct}%"></span></span>${done} of ${rows.length} done</div>
+    </li>`;
+  }).join("");
   const others = official().filter(t => !REPORT[t.type]).length;
-  $("#reportTitle").textContent = `${r.label} report`;
-  $("#reportNote").textContent = `${n} ${n === 1 ? `${r.one} matches` : `${r.noun} match`} the filters. Everything below covers ${r.noun} only.` +
-    (others ? ` ${others} ticket${others > 1 ? "s" : ""} typed “Other” ${others > 1 ? "aren't" : "isn't"} in either report; set the type to SCAR or RCA to include ${others > 1 ? "them" : "it"}.` : "");
+  $("#reportNote").textContent = others ? `${others} ticket${others > 1 ? "s" : ""} typed “Other” ${others > 1 ? "aren't" : "isn't"} in either report; set the type to SCAR or RCA to include ${others > 1 ? "them" : "it"}.` : "";
+  $("#reportNote").hidden = !others;
 }
 
-/* ---------- analysis: top 5 open / recently closed ---------- */
+let dashCharts = [];
+function renderDashCharts(rows) {
+  dashCharts.forEach(c => c.destroy()); dashCharts = [];
+  const r = REPORT[reportType];
+  // Requests by status
+  const buckets = statusBuckets(rows);
+  $("#donutTotal").textContent = rows.length;
+  $("#statusLegend").innerHTML = buckets.map(([l, tok, list]) =>
+    `<li><span class="dot" style="background:var(${tok})"></span><span>${l}</span><b>${list.length}</b><span class="muted">(${rows.length ? Math.round(list.length / rows.length * 100) : 0}%)</span></li>`).join("");
+  // Requests by requestor
+  const counts = new Map();
+  rows.forEach(t => { const k = (t.reporter || "").trim() || "Not set"; counts.set(k, (counts.get(k) || 0) + 1); });
+  const top = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 7), max = top.length ? top[0][1] : 1;
+  $("#requestorBars").innerHTML = top.length ? top.map(([n, c]) =>
+    `<div class="hbar"><span class="hbar-name" title="${esc(n)}">${esc(n)}</span><span class="hbar-track"><span style="width:${c / max * 100}%"></span></span><span class="hbar-val">${c} · ${(c / rows.length * 100).toFixed(1).replace(/\.0$/, "")}%</span></div>`).join("") +
+    (counts.size > 7 ? `<p class="muted hbar-more">+ ${counts.size - 7} more requestors</p>` : "")
+    : `<div class="list-empty">No ${r.noun} in this selection.</div>`;
+  // Per month
+  $("#perMonthTitle").textContent = `${r.noun} per month`;
+  $$("[data-mm]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mm === monthMode)));
+  if (typeof Chart === "undefined" || mode === "starting") return;
+  Chart.register(totalsPlugin, thresholdPlugin);
+  $("#donutBox").hidden = !rows.length;
+  if (rows.length) {
+    const ink = css("--ink"), grid = css("--line");
+    dashCharts.push(new Chart($("#cStatus"), {
+      type: "doughnut",
+      data: { labels: buckets.map(b => b[0]), datasets: [{ data: buckets.map(b => b[2].length), backgroundColor: buckets.map(b => css(b[1])), borderColor: css("--surface"), borderWidth: 2 }] },
+      options: { responsive: true, maintainAspectRatio: false, cutout: "58%", animation: matchMedia("(prefers-reduced-motion: reduce)").matches ? false : { duration: 300 },
+        plugins: { legend: { display: false }, totals: { show: false }, threshold: { value: null },
+          tooltip: { backgroundColor: css("--surface"), titleColor: ink, bodyColor: ink, borderColor: grid, borderWidth: 1, padding: 10 } } }
+    }));
+  }
+  ocMode = monthMode === "flow" ? "flow" : "mix";
+  const built = monthMode === "sev" ? CHARTS.tickets.build(rows) : CHARTS.openclose.build(rows);
+  $("#monthEmpty").hidden = !!built.months.length; $("#monthBox").hidden = !built.months.length;
+  $("#monthEmpty").textContent = `No ${r.noun} in this selection.`;
+  if (built.months.length) {
+    const o = built.options;
+    o.layout.padding.top = 10; o.plugins.legend.labels.padding = 10; o.plugins.legend.labels.boxWidth = 10; o.plugins.legend.labels.boxHeight = 10;
+    dashCharts.push(new Chart($("#cMonth"), { type: "bar", data: built.data, options: o }));
+  }
+}
+
 const SEV_RANK = { S0: 0, S1: 1, S2: 2 };
 function miniTable(list, last) {
   return `<table><thead><tr><th>Sev</th><th>No.</th><th>Issue</th><th>Status</th><th>Progress</th><th>${last.head}</th></tr></thead><tbody>${list.map(t => `<tr data-id="${esc(t.id)}" tabindex="0">
@@ -1251,9 +1443,8 @@ function miniTable(list, last) {
     <td>${progressBar(t)}</td>
     <td class="mono">${last.cell(t)}</td></tr>`).join("")}</tbody></table>`;
 }
-function renderAnalysisLists() {
+function renderAnalysisLists(rows) {
   const noun = REPORT[reportType].noun;
-  const rows = filtered({ ignoreStatus: true });
   $("#openListTitle").textContent = `Open & in progress ${noun}`;
   $("#closedListTitle").textContent = `Recently closed ${noun}`;
   // Most urgent first: highest severity, then open the longest.
@@ -1267,7 +1458,57 @@ function renderAnalysisLists() {
   $("#openList").innerHTML = open.length ? miniTable(open.slice(0, 5), { head: "Days open", cell: t => ageOf(t) }) : `<div class="list-empty">No open or monitor ${noun} in this selection.</div>`;
   $("#closedList").innerHTML = closed.length ? miniTable(closed.slice(0, 5), { head: "Closed", cell: t => t.closedDate ? esc(fmtDate(t.closedDate)) : `<span class="muted" title="Set “Closed on” in the ticket">Date not set</span>` }) : `<div class="list-empty">No closed ${noun} in this selection.</div>`;
 }
+
+function renderInsights(rows) {
+  const r = REPORT[reportType], out = [];
+  if (!rows.length) { $("#insights").innerHTML = `<li class="muted">No ${r.noun} in this selection yet.</li>`; return; }
+  const open = rows.filter(t => t.status !== "CLOSE");
+  const oldest = open.slice().sort((a, b) => ageOf(b) - ageOf(a))[0];
+  out.push(["bars", `${Math.round(open.length / rows.length * 100)}% of ${r.noun} are still open or in progress.`,
+    oldest ? `Focus on closing high-age items: ${qid(oldest.no)} has been open ${ageOf(oldest)} days.` : "Everything in this selection is closed."]);
+  const byMonth = new Map();
+  rows.forEach(t => { const m = monthKey(t.detected); if (m) byMonth.set(m, (byMonth.get(m) || 0) + 1); });
+  const busiest = [...byMonth].sort((a, b) => b[1] - a[1] || b[0].localeCompare(a[0]))[0];
+  if (busiest) out.push(["calendar", `${monthLong(busiest[0])}:`, `had the highest number of new ${r.noun} (${busiest[1]}).`]);
+  const byWho = new Map();
+  rows.forEach(t => { const k = (t.reporter || "").trim(); if (k) byWho.set(k, (byWho.get(k) || 0) + 1); });
+  const who = [...byWho].sort((a, b) => b[1] - a[1])[0];
+  if (who) out.push(["people", who[0], `created the most ${r.noun} (${who[1]}).`]);
+  const overdue = open.flatMap(t => [...(t.containment || []), ...(t.pca || [])]).filter(a => a.status !== "Closed" && a.due && a.due < todayISO());
+  const high = open.filter(t => t.severity === "S0" || t.severity === "S1").length;
+  if (overdue.length) out.push(["alert", `${overdue.length} action${overdue.length > 1 ? "s are" : " is"} past due.`, `Containment and corrective actions on open ${r.noun}.`]);
+  else if (high) out.push(["alert", `${high} S0 / S1 ${high > 1 ? r.noun : r.one} still open.`, "High-severity items to prioritize."]);
+  $("#insights").innerHTML = out.map(([ic, title, sub]) => `<li><span class="ins-ico ins-${ic}">${icon(ic)}</span><div><b>${esc(title)}</b><p>${esc(sub)}</p></div></li>`).join("");
+}
+
+function renderPareto(rows) {
+  const def = CHARTS.pareto;
+  $("#chartTitle").textContent = `Pareto · ${REPORT[reportType].noun}`;
+  $("#chartNote").textContent = def.note();
+  $("#chartControls").innerHTML = def.controls();
+  if (chart) { chart.destroy(); chart = null; }
+  const pt = $("#paretoTable"); pt.hidden = true;
+  if (typeof Chart === "undefined") return showChartEmpty("The chart library didn't load. Reload the page.");
+  if (mode === "starting") return showChartEmpty("Loading tickets…");
+  const built = def.build(rows);
+  if (!built.months.length) return showChartEmpty(`No ${REPORT[reportType].noun} with a root cause in this selection yet. Add root causes as investigations finish, or tick “Include not yet determined”.`);
+  $("#chartEmpty").hidden = true; $("#canvasBox").hidden = false;
+  chart = new Chart($("#chart"), { type: "bar", data: built.data, options: built.options });
+  pt.hidden = false;
+  pt.innerHTML = `<table><thead><tr><th>${{ rootCause: "Root cause", subRootCause: "Sub-root cause", area: "Factory area" }[paretoDim]}</th><th>Tickets</th><th>Share</th><th>Cumulative</th></tr></thead><tbody>${
+    built.items.map(([k, v], i) => `<tr class="${built.vital[i] ? "vital" : ""}"><td>${esc(k)}</td><td class="mono">${v.toLocaleString()}</td><td class="mono">${(v / built.total * 100).toFixed(1)}%</td><td class="mono">${built.cum[i].toFixed(1)}%</td></tr>`).join("")}</tbody></table>`;
+}
 function showChartEmpty(msg) { $("#canvasBox").hidden = true; const e = $("#chartEmpty"); e.hidden = false; e.textContent = msg; }
+
+// Draws the whole Analysis tab for the selected report.
+function renderChart() {
+  const rows = filtered({ ignoreStatus: true });
+  renderReportBar(rows);
+  renderDashCharts(rows);
+  renderAnalysisLists(rows);
+  renderInsights(rows);
+  renderPareto(rows);
+}
 
 /* ---------- SCAR / RCA reports ---------- */
 function guessType(name) { const n = name.toUpperCase(); return /SCAR/.test(n) ? "SCAR" : /\b8D\b|_8D_|8D /.test(n) ? "8D" : /RCA/.test(n) ? "RCA" : "Other"; }
@@ -2041,7 +2282,6 @@ async function exportExcel() {
 /* ---------- events ---------- */
 function bindUI() {
   $$(".tabs button").forEach(b => b.addEventListener("click", () => { view = b.dataset.view; saveUI(); render(); }));
-  $$(".subtabs button").forEach(b => b.addEventListener("click", () => { chartKind = b.dataset.chart; saveUI(); renderChart(); }));
   $("#reportBar").addEventListener("click", e => { const b = e.target.closest("[data-report]"); if (b) { reportType = b.dataset.report; saveUI(); render(); } });
   $("#newBtn").addEventListener("click", () => openTicket(null));
   ["#fSearch", "#fStatus", "#fSev", "#fType", "#fPhase", "#fArea", "#fProduct"].forEach(s => $(s).addEventListener("input", () => { renderKPIs(); view === "tickets" ? renderTable() : renderChart(); }));
@@ -2064,6 +2304,8 @@ function bindUI() {
     if (a.dataset.act === "import-ppt") $("#pptInput").click();
   });
   $("#view-analysis").addEventListener("click", e => {
+    const mm = e.target.closest("[data-mm]");
+    if (mm) { monthMode = mm.dataset.mm; saveUI(); renderChart(); return; }
     const row = e.target.closest(".list-box tr[data-id]");
     if (row) return openTicket(tickets.find(t => t.id === row.dataset.id));
     const all = e.target.closest("[data-seeall]");
@@ -2080,7 +2322,7 @@ function bindUI() {
   });
   $("#chartControls").addEventListener("click", e => {
     const b = e.target.closest("button"); if (!b) return;
-    if (b.dataset.oc) ocMode = b.dataset.oc; if (b.dataset.pd) paretoDim = b.dataset.pd;
+    if (b.dataset.pd) paretoDim = b.dataset.pd;
     saveUI(); renderChart();
   });
   $("#chartControls").addEventListener("change", e => { if (e.target.id === "pBlank") { paretoBlank = e.target.checked; renderChart(); } });

@@ -28,16 +28,23 @@ To load them into an empty tracker, click **Import Excel** and pick the workbook
 
 ## Analysis
 
-The Analysis tab is two separate reports: switch between **SCAR / 8D report** and **RCA report** at the top.
-Everything on the tab then covers only that type: the summary tiles (with average progress), the charts
-(open vs closed, SCARs or RCAs per month, Pareto), and two boxes that follow the filters:
+The Analysis tab is a one-page dashboard with two separate reports; switch with **SCAR / 8D** | **RCA** in the
+blue header (which also shows the data period and total requests). Everything on the tab covers only that type.
 
-- **Open & in progress**: the top 5 Open and Monitor tickets, most urgent first (highest severity, then open longest), with progress.
-- **Recently closed**: the 5 most recently closed tickets by their "Closed on" date.
+- **SCAR / 8D report** ("8D Problem Solving Dashboard"): a D1–D8 strip showing how many SCARs have each D done.
+- **RCA report** ("RCA One-Pager · Quick Fixes"): a 5-step strip (Problem → Containment → Root cause → Quick fix →
+  Verify & close) with how many RCAs have each step done (containment actions added, root cause set, fix added or
+  "RCA created" ticked, NVIDIA approved). Closed tickets count as done for every step.
+- Summary tiles (total, open, monitor, closed, average progress, average per month, average age open).
+- **Requests by status** (donut: closed / in progress / open, where in progress means Monitor or work started),
+  **Requests by creator / requestor** (from the Reporter field) and **per month** (split by status, severity, or raised vs closed).
+- **Open & in progress** (top 5, most urgent first), **Recently closed** (latest 5) and **Key insights** worked out from
+  the data (share still open and the oldest item, busiest month, top requestor, overdue actions or open S0/S1 items).
+- **Pareto** of root causes, sub-root causes or factory areas.
 
-**Export Excel** on the Analysis tab saves just that report (e.g. `FXN_HT_SCAR_8D_Report_<date>.xlsx`).
+The filters apply to the dashboard. Click a row to open the ticket, a summary tile or **See all** to jump to those
+tickets. **Export Excel** on the Analysis tab saves just that report (e.g. `FXN_HT_SCAR_8D_Report_<date>.xlsx`).
 Tickets typed "Other" aren't in either report; set their type to SCAR or RCA to include them.
-Click a row to open the ticket, or **See all** for the full list on the Tickets tab.
 
 ## Progress per ticket
 
