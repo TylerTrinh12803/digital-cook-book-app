@@ -972,6 +972,21 @@ async function convertToPdf(file) {
 }
 // Only PowerPoints uploaded to the tracker can be converted; files behind web links (SharePoint) can't be reached.
 // Saves a stored file (PDF) to the viewer's Downloads folder under its own name.
+// Saves a generated file. Pages hosted on claude.ai can't start downloads themselves, so there the
+// host's own save prompt is used; everywhere else it's a normal browser download.
+async function saveBlob(name, blob) {
+  if (window.claude && typeof window.claude.use === "function") {
+    const dl = await window.claude.use("downloads").catch(() => null);
+    if (dl) {
+      try { await dl.save({ filename: name, data: blob }); return true; }
+      catch (err) { if (err && err.code === "declined") return false; throw err; }
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement("a"), { href: url, download: name }); document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  return true;
+}
 function downloadFile(f) {
   const a = Object.assign(document.createElement("a"), { href: attUrl(f), download: f.name || "report.pdf" });
   document.body.appendChild(a); a.click(); a.remove();
@@ -1115,7 +1130,7 @@ function seedDemo() {
   lsSet(SET_KEY, JSON.stringify(window.SNAPSHOT.settings || {}));
 }
 function renderBanner() {
-  if (window.SNAPSHOT) return banner(`<b>Demo copy made ${esc(fmtDate(String(window.SNAPSHOT.takenAt || "").slice(0, 10)))}.</b> Click around and try anything: changes stay in this browser and don't affect the real tracker. <button class="btn small" type="button" data-act="demo-reset">Reset demo</button>`);
+  if (window.SNAPSHOT) return banner(`<b>${window.SNAPSHOT.sample ? "Demo with made-up sample tickets." : `Demo copy made ${esc(fmtDate(String(window.SNAPSHOT.takenAt || "").slice(0, 10)))}.`}</b> Click around and try anything: changes stay in this browser and don't affect the real tracker. <button class="btn small" type="button" data-act="demo-reset">Reset demo</button>`);
   if (mode === "starting") return banner("Loading tickets…");
   if (mode === "local") return banner("<b>Opened as a plain file, so tickets save in this browser only.</b> To keep them in the tracker's data folder instead, close this tab and run the start file (start-windows.bat, or start-mac-linux.sh).");
   if (!pull.lost) banner("");
@@ -1936,10 +1951,7 @@ async function shareDemo() {
     }).replace(/</g, "\\u003c");
     html = html.replace("<script>\n(() => {", () => `<script>window.SNAPSHOT = ${snap};<\/script>\n<script>\n(() => {`);
     const name = `FXN_HT_Quality_Tracker_demo_${todayISO()}.html`;
-    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
-    const a = Object.assign(document.createElement("a"), { href: url, download: name }); document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-    toast(`Saved ${name}. Send it by email or Teams; it opens in any browser.`, 5000);
+    if (await saveBlob(name, new Blob([html], { type: "text/html" }))) toast(`Saved ${name}. Send it by email or Teams; it opens in any browser.`, 5000);
   } catch (err) { toast(`Couldn't make the demo: ${err.message}`, 6000); }
   finally { btn.disabled = false; btn.textContent = "Share demo (.html)"; }
 }
@@ -1959,10 +1971,7 @@ async function downloadSlide() {
     reportType = shown;
     const blob = await pptx.write({ outputType: "blob" });
     const name = `FXN_HT_Quality_Dashboards_${todayISO()}.pptx`;
-    const url = URL.createObjectURL(blob);
-    const a = Object.assign(document.createElement("a"), { href: url, download: name }); document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-    toast(`Saved ${name}`);
+    if (await saveBlob(name, blob)) toast(`Saved ${name}`);
   } catch (err) { toast(`Couldn't make the slides: ${err.message}`, 6000); }
   finally { reportType = shown; btn.disabled = false; btn.textContent = "Download slides (.pptx)"; }
 }
@@ -2743,10 +2752,7 @@ async function exportExcel() {
 
     const data = await wb.xlsx.writeBuffer();
     const filename = view === "analysis" ? `FXN_HT_${reportType === "SCAR" ? "SCAR_8D" : "RCA"}_Report_${today}.xlsx` : `FXN_HT_Quality_Issues_${today}.xlsx`;
-    const url = URL.createObjectURL(new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
-    const a = Object.assign(document.createElement("a"), { href: url, download: filename }); document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-    toast(`Saved ${filename}`);
+    if (await saveBlob(filename, new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }))) toast(`Saved ${filename}`);
   } catch (err) { toast(`Couldn't make the Excel file: ${err.message}`, 6000); }
   finally { btn.disabled = false; }
 }
