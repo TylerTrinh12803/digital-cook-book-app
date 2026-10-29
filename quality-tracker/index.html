@@ -1364,11 +1364,11 @@ const ICON = {
 };
 const icon = name => `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[name]}</svg>`;
 const monthLong = m => { const [y, mo] = m.split("-"); return new Date(+y, +mo - 1, 1).toLocaleString("en-US", { month: "long" }) + " " + y; };
-// Donut buckets: open with nothing done yet, in progress (work started, or in monitor), closed.
+// Donut buckets follow the ticket status: In progress means Monitor.
 const statusBuckets = rows => [
   ["Closed", "--st-close", rows.filter(t => t.status === "CLOSE")],
-  ["In progress", "--st-progress", rows.filter(t => t.status === "MONITOR" || (t.status === "OPEN" && progressOf(t) > 0))],
-  ["Open", "--st-open", rows.filter(t => t.status === "OPEN" && progressOf(t) === 0)]
+  ["In progress", "--st-progress", rows.filter(t => t.status === "MONITOR")],
+  ["Open", "--st-open", rows.filter(t => t.status === "OPEN")]
 ];
 
 function renderReportBar(rows) {

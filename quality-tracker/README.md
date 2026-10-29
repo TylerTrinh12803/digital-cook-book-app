@@ -34,7 +34,7 @@ blue header (which also shows the data period and total requests). Everything on
 - **SCAR / 8D report** ("8D Problem Solving Dashboard"): a D1–D8 strip showing how many SCARs have each D done.
 - **RCA report** ("RCA One-Pager · Quick Fixes"): the same dashboard without a step strip.
 - Summary tiles (total, open, monitor, closed, average progress, average per month, average age open).
-- **Requests by status** (donut: closed / in progress / open, where in progress means Monitor or work started),
+- **Requests by status** (donut by ticket status: closed / in progress (Monitor) / open),
   **Requests by creator / requestor** (from the Reporter field) and **per month** (split by status, severity, or raised vs closed).
 - **Open & in progress** (top 5, most urgent first), **Recently closed** (latest 5) and **Key insights** worked out from
   the data (share still open and the oldest item, busiest month, top requestor, overdue actions or open S0/S1 items).
