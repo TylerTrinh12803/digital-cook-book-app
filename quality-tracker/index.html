@@ -271,6 +271,18 @@ table { border-collapse: collapse; width: 100%; min-width: 1080px; }
 .rules-foot .field { width: 260px; max-width: 100%; }
 .rules-foot .grow { flex: 1; }
 .p-date { font: inherit; font-size: .76rem; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--ink); width: 9.2em; }
+/* quick status change */
+.chip-btn { all: unset; cursor: pointer; border-radius: 999px; display: inline-block; }
+.chip-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chip-btn .chip::after { content: "▾"; font-size: .85em; margin-left: 1px; opacity: .8; }
+.chip-btn:hover .chip { background: var(--sunken); }
+.status-menu { position: fixed; z-index: 40; min-width: 160px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 10px 28px rgb(0 0 0 / .2); }
+.status-menu p { margin: 4px 10px 6px; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.status-menu button { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border-radius: 4px; cursor: pointer; font-size: .9rem; }
+.status-menu button:hover, .status-menu button:focus-visible { background: var(--sunken); }
+.status-menu button[aria-checked="true"] { font-weight: 700; }
+.status-menu .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.status-menu .tick { margin-left: auto; color: var(--muted); }
 /* drafts */
 .drafts { margin-top: 12px; border-color: var(--draft); }
 .drafts header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); background: var(--draft-soft); border-radius: var(--radius) var(--radius) 0 0; }
@@ -834,6 +846,7 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
   </form>
 </dialog>
 
+<div class="status-menu" id="statusMenu" role="menu" aria-label="Change status" hidden></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="vendor/chart.umd.min.js"></script>
@@ -1351,6 +1364,35 @@ async function submitRules(e) {
   catch (err) { toast(`Couldn't save the rules: ${err.message}`, 5000); }
 }
 
+/* ---------- quick status change from the status chip ---------- */
+const statusChip = t => `<button type="button" class="chip-btn" data-status-for="${esc(t.id)}" title="Change status" aria-haspopup="menu"><span class="chip st-${esc(t.status)}">${esc(STATUS_LABEL[t.status] || t.status)}</span></button>`;
+let statusTarget = null, statusOpenedAt = 0;
+function openStatusMenu(btn) {
+  const t = tickets.find(x => x.id === btn.dataset.statusFor), m = $("#statusMenu");
+  if (!t) return;
+  if (!m.hidden && statusTarget === t.id) return closeStatusMenu();
+  statusTarget = t.id;
+  m.innerHTML = `<p>${qid(t.no)} status</p>` + ["OPEN", "MONITOR", "CLOSE"].map(st => `<button type="button" role="menuitemradio" aria-checked="${t.status === st}" data-set-status="${st}">
+      <span class="dot" style="background: var(${{ OPEN: "--st-open", MONITOR: "--st-monitor", CLOSE: "--st-close" }[st]})"></span>${STATUS_LABEL[st]}${t.status === st ? `<span class="tick">current</span>` : ""}</button>`).join("");
+  m.hidden = false;
+  statusOpenedAt = performance.now();
+  // Below the chip, or above it when there's no room; kept on screen.
+  const r = btn.getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;
+  m.style.left = Math.max(8, Math.min(r.left, innerWidth - mw - 8)) + "px";
+  m.style.top = (r.bottom + mh + 8 > innerHeight ? Math.max(8, r.top - mh - 4) : r.bottom + 4) + "px";
+  (m.querySelector('[aria-checked="true"]') || m.querySelector("button")).focus();
+}
+function closeStatusMenu() { $("#statusMenu").hidden = true; statusTarget = null; }
+async function setStatus(status) {
+  const t0 = tickets.find(x => x.id === statusTarget);
+  closeStatusMenu();
+  if (!t0 || t0.status === status) return;
+  // Closing fills in today's closed date (if none yet); reopening clears it.
+  const t = { ...t0, status, closedDate: status === "CLOSE" ? (t0.closedDate || todayISO()) : "" };
+  try { await saveTicket(t); toast(`${qid(t.no)} is now ${STATUS_LABEL[status]}`); }
+  catch (err) { toast(writeError(err), 6000); }
+}
+
 /* ---------- drafts & delete confirmation ---------- */
 const official = () => tickets.filter(t => !t.draft);
 const FIELD_LABEL = { detected: "Issue detected", type: "Ticket type", description: "Description", severity: "Severity", product: "Product name",
@@ -1418,7 +1460,7 @@ function renderTable() {
       <td class="mono">${esc(fmtDate(t.detected))}</td>
       <td><span class="type ${esc(t.type)}">${esc(t.type || "—")}</span>${t.ref ? `<div class="mono muted">${esc(t.ref)}</div>` : ""}</td>
       <td class="desc">${esc(t.description)}<div class="sub">${esc([t.product, t.phase, t.client].filter(Boolean).join(" · "))}</div></td>
-      <td><span class="chip st-${esc(t.status)}">${esc(STATUS_LABEL[t.status] || t.status)}</span>${overdueTag(t)}${actSummary(t)}</td>
+      <td>${statusChip(t)}${overdueTag(t)}${actSummary(t)}</td>
       <td>${progressBar(t)}<span class="prog-sub">${esc(progressText(t))}</span></td>
       <td>${esc(t.area)}</td>
       <td>${t.rootCause ? esc(t.rootCause) + (t.subRootCause ? `<div class="sub muted">${esc(t.subRootCause)}</div>` : "") : `<span class="muted">Pending</span>`}</td>
@@ -1675,7 +1717,7 @@ function miniTable(list, last) {
     <td class="sevcell s-${esc(t.severity)}"><span class="stripe"></span><span class="sev-tag">${esc(t.severity)}</span></td>
     <td class="mono">${qid(t.no)}</td>
     <td class="desc">${esc(t.description)}<div class="sub">${esc([t.type, t.ref, t.area].filter(Boolean).join(" · "))}</div></td>
-    <td><span class="chip st-${esc(t.status)}">${esc(STATUS_LABEL[t.status] || t.status)}</span></td>
+    <td>${statusChip(t)}</td>
     <td>${progressBar(t)}</td>
     <td class="mono">${last.cell(t)}</td></tr>`).join("")}</tbody></table>`;
 }
@@ -2762,6 +2804,16 @@ function bindUI() {
   $$(".tabs button").forEach(b => b.addEventListener("click", () => { view = b.dataset.view; saveUI(); render(); }));
   $("#reportBar").addEventListener("click", e => { const b = e.target.closest("[data-report]"); if (b) { reportType = b.dataset.report; saveUI(); render(); } });
   $("#slideBtn").addEventListener("click", downloadSlide);
+  // Status menu: choose, or close on outside click / Escape / scroll
+  $("#statusMenu").addEventListener("click", e => { const b = e.target.closest("[data-set-status]"); if (b) setStatus(b.dataset.setStatus); });
+  // A click outside the open menu only closes it (it doesn't also open the row underneath).
+  document.addEventListener("click", e => {
+    if ($("#statusMenu").hidden || e.target.closest("#statusMenu, [data-status-for]")) return;
+    closeStatusMenu(); e.stopPropagation(); e.preventDefault();
+  }, true);
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#statusMenu").hidden) closeStatusMenu(); });
+  // Scrolling moves the chip away from the menu, so close it (ignoring a scroll still settling from the click).
+  window.addEventListener("scroll", () => { if (!$("#statusMenu").hidden && performance.now() - statusOpenedAt > 300) closeStatusMenu(); }, true);
   // Overdue bell and view
   $("#rulesD").innerHTML = D8.map((d, i) => `<label class="field"><span>${esc(d)}</span><input type="number" min="0" id="r_d${i}"></label>`).join("");
   const bellPop = $("#bellPop"), bellBtn = $("#bellBtn");
@@ -2788,9 +2840,10 @@ function bindUI() {
   $("#tableWrap").addEventListener("click", e => {
     const s = e.target.closest("[data-sort]");
     if (s) { const k = s.dataset.sort; sort = { key: k, dir: sort.key === k && sort.dir === "desc" ? "asc" : "desc" }; saveUI(); renderTable(); return; }
+    const sc = e.target.closest("[data-status-for]"); if (sc) return openStatusMenu(sc);
     const tr = e.target.closest("tr[data-id]"); if (tr) openTicket(tickets.find(t => t.id === tr.dataset.id));
   });
-  $("#tableWrap").addEventListener("keydown", e => { const tr = e.target.closest("tr[data-id]"); if (tr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openTicket(tickets.find(t => t.id === tr.dataset.id)); } });
+  $("#tableWrap").addEventListener("keydown", e => { if (e.target.closest("[data-status-for]")) return; const tr = e.target.closest("tr[data-id]"); if (tr && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openTicket(tickets.find(t => t.id === tr.dataset.id)); } });
   document.addEventListener("click", e => {
     const a = e.target.closest("[data-act]"); if (!a) return;
     if (a.dataset.act === "new") openTicket(null);
@@ -2807,6 +2860,7 @@ function bindUI() {
   $("#view-analysis").addEventListener("click", e => {
     const mm = e.target.closest("[data-mm]");
     if (mm) { monthMode = mm.dataset.mm; saveUI(); renderChart(); return; }
+    const sc = e.target.closest("[data-status-for]"); if (sc) return openStatusMenu(sc);
     const row = e.target.closest(".list-box tr[data-id]");
     if (row) return openTicket(tickets.find(t => t.id === row.dataset.id));
     const all = e.target.closest("[data-seeall]");
@@ -2818,6 +2872,7 @@ function bindUI() {
     }
   });
   $("#view-analysis").addEventListener("keydown", e => {
+    if (e.target.closest("[data-status-for]")) return;
     const row = e.target.closest(".list-box tr[data-id]");
     if (row && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openTicket(tickets.find(t => t.id === row.dataset.id)); }
   });

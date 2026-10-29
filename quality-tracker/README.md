@@ -14,6 +14,11 @@ and fonts are all in this folder, and tickets are saved in `data/` next to these
 If you got the zip, your issues from `FXN_HT_Quality_Issue_tracker` are already loaded.
 To load them into an empty tracker, click **Import Excel** and pick the workbook.
 
+## Quick status change
+
+Click a ticket's status chip (in the ticket list or the Analysis boxes) to switch it between Open, Monitor and
+Closed without opening the ticket. Closing fills in today's "Closed on" date if none is set; reopening clears it.
+
 ## Drafts and deleting
 
 - **Save as draft** (in a new ticket) keeps an unfinished ticket without the required fields; it only needs a
