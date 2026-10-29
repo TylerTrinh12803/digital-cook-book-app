@@ -142,7 +142,7 @@ table { border-collapse: collapse; width: 100%; min-width: 1080px; }
 .prog.big .prog-txt { font-size: 1rem; }
 .prog-head { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
 .prog-head .prog { flex: 1 1 240px; }
-.prog-steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 6px 16px; }
+.prog-steps { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); gap: 6px 16px; }
 .prog-steps label, .prog-approve { display: flex; gap: 8px; align-items: center; font-size: .88rem; }
 .prog-steps small, .prog-approve small { color: var(--muted); font-family: var(--font-mono); font-size: .72rem; margin-left: auto; }
 .prog-approve { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-weight: 600; }
@@ -232,6 +232,45 @@ table { border-collapse: collapse; width: 100%; min-width: 1080px; }
   .dash-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
   .dash-bottom { grid-template-columns: 1fr; }
 }
+/* overdue: bell, tab badge, tags, view */
+.bell-wrap { position: relative; }
+.bell { position: relative; display: grid; place-items: center; width: 40px; height: 38px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--muted); cursor: pointer; }
+.bell svg { width: 20px; height: 20px; }
+.bell.has-late { color: var(--st-open); border-color: var(--st-open); }
+.bell-badge, .tab-badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--st-open); color: var(--on-danger); font: 700 .7rem/18px var(--font-body); text-align: center; }
+.bell-badge { position: absolute; top: -7px; right: -7px; box-shadow: 0 0 0 2px var(--surface); }
+.tab-badge { display: inline-block; margin-left: 4px; vertical-align: 1px; }
+.bell-pop { position: absolute; right: 0; top: calc(100% + 8px); width: min(400px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 12px 32px rgb(0 0 0 / .22); z-index: 30; }
+.bell-pop header { display: flex; gap: 10px; align-items: baseline; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.bell-pop header .muted { font-size: .8rem; }
+.bell-pop ul { list-style: none; margin: 0; padding: 4px 0; max-height: 60vh; overflow: auto; }
+.bell-pop li button { all: unset; box-sizing: border-box; width: 100%; display: flex; gap: 10px; align-items: flex-start; padding: 8px 14px; cursor: pointer; }
+.bell-pop li button:hover, .bell-pop li button:focus-visible { background: var(--sunken); }
+.bell-pop footer { padding: 8px 14px; border-top: 1px solid var(--line); text-align: right; }
+.od-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; background: var(--st-open); }
+.od-dot.soon { background: var(--st-monitor); }
+.od-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.od-txt b { font-size: .88rem; font-weight: 600; }
+.od-txt span { font-size: .78rem; color: var(--muted); }
+.od-none, .od-more { padding: 12px 14px; font-size: .86rem; color: var(--muted); }
+.od-tag { display: inline-block; margin-top: 4px; padding: 1px 7px; border-radius: 999px; font-size: .7rem; font-weight: 700; color: var(--on-danger); background: var(--st-open); white-space: nowrap; }
+.od-tag.soon { background: var(--st-monitor); }
+.od-summary { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.od-chip { padding: 4px 12px; border-radius: 999px; font-size: .84rem; font-weight: 600; border: 1px solid currentColor; }
+.od-chip.overdue { color: var(--st-open); } .od-chip.soon { color: var(--st-monitor); }
+.od-box { margin-top: 12px; }
+.od-box table { min-width: 960px; }
+.od-row.overdue td:first-child { box-shadow: inset 3px 0 0 var(--st-open); }
+.od-late.overdue { color: var(--st-open); font-weight: 700; } .od-late.soon { color: var(--st-monitor); font-weight: 700; }
+.od-rules { margin-top: 12px; }
+.od-rules summary { cursor: pointer; font-weight: 600; padding: 12px 14px; }
+.rules-form { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 12px; }
+.rules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); gap: 10px; margin-bottom: 10px; }
+.rules-form input[type="number"] { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; }
+.rules-foot { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.rules-foot .field { width: 260px; max-width: 100%; }
+.rules-foot .grow { flex: 1; }
+.p-date { font: inherit; font-size: .76rem; padding: 2px 4px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--ink); width: 9.2em; }
 /* drafts */
 .drafts { margin-top: 12px; border-color: var(--draft); }
 .drafts header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); background: var(--draft-soft); border-radius: var(--radius) var(--radius) 0 0; }
@@ -418,6 +457,18 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
       <button role="tab" id="tab-tickets" aria-selected="true" data-view="tickets">Tickets</button>
       <button role="tab" id="tab-analysis" aria-selected="false" data-view="analysis">Analysis</button>
       <button role="tab" id="tab-reports" aria-selected="false" data-view="reports">SCAR / RCA reports</button>
+      <button role="tab" id="tab-overdue" aria-selected="false" data-view="overdue">Overdue <span class="tab-badge" id="overdueBadge" hidden>0</span></button>
+    </div>
+    <div class="bell-wrap">
+      <button class="bell" id="bellBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="bellPop" aria-label="Overdue SCARs / RCAs">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+        <span class="bell-badge" id="bellBadge" hidden>0</span>
+      </button>
+      <div class="bell-pop" id="bellPop" hidden>
+        <header><b>Overdue</b><span class="muted" id="bellCount"></span></header>
+        <ul id="bellList"></ul>
+        <footer><button class="btn small" type="button" data-od-all>See all overdue</button></footer>
+      </div>
     </div>
     <button class="btn primary" id="newBtn" type="button">+ New ticket</button>
   </div>
@@ -543,6 +594,46 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
     </div>
   </section>
 
+  <!-- Overdue view -->
+  <section id="view-overdue" role="tabpanel" aria-labelledby="tab-overdue" hidden>
+    <div class="rep-head">
+      <div>
+        <h2>Overdue SCARs &amp; RCAs</h2>
+        <p>Open SCAR and RCA tickets whose next step has gone past its allowed days since the last step was done (or since the issue was detected). The days per step are set under Overdue rules below.</p>
+      </div>
+    </div>
+    <div class="od-summary" id="odSummary"></div>
+    <section class="panel list-box od-box" aria-labelledby="od8DTitle">
+      <header><h3 id="od8DTitle">SCAR / 8D: waiting on the next D</h3></header>
+      <div class="table-scroll" id="od8D"></div>
+    </section>
+    <section class="panel list-box od-box" aria-labelledby="odRCATitle">
+      <header><h3 id="odRCATitle">RCA: waiting on the RCA or closure</h3></header>
+      <div class="table-scroll" id="odRCA"></div>
+    </section>
+    <details class="panel od-rules" id="odRules">
+      <summary>Overdue rules (days allowed per step)</summary>
+      <form id="rulesForm" class="rules-form">
+        <fieldset><legend>SCAR / 8D: days to reach each D after the previous one (D1: after detection)</legend>
+          <div class="rules-grid" id="rulesD"></div>
+          <label class="field"><span>Customer closure approval after D8</span><input type="number" min="0" id="r_ap8"></label>
+        </fieldset>
+        <fieldset><legend>RCA</legend>
+          <div class="rules-grid">
+            <label class="field"><span>RCA created after detection</span><input type="number" min="0" id="r_rca"></label>
+            <label class="field"><span>Customer agrees to close after the RCA</span><input type="number" min="0" id="r_apRCA"></label>
+          </div>
+        </fieldset>
+        <div class="rules-foot">
+          <label class="field"><span>Warn "due soon" this many days before</span><input type="number" min="0" id="r_soon"></label>
+          <span class="grow"></span>
+          <button class="btn" type="button" id="rulesReset">Use the defaults</button>
+          <button class="btn primary" type="submit">Save rules</button>
+        </div>
+      </form>
+    </details>
+  </section>
+
   <!-- Reports view -->
   <section id="view-reports" role="tabpanel" aria-labelledby="tab-reports" hidden>
     <div class="rep-head">
@@ -622,8 +713,8 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
             <div class="prog big" id="progLive"></div>
           </div>
           <div class="prog-steps" id="prog8D"></div>
-          <div class="prog-steps" id="progRCA"><label><input type="checkbox" id="p_rca"> RCA created<small>85%</small></label></div>
-          <label class="prog-approve"><input type="checkbox" id="p_approved"> <span id="approveLabel">NVIDIA approved closure</span><small id="approveShare">+5%</small></label>
+          <div class="prog-steps" id="progRCA"><label><input type="checkbox" id="p_rca"> RCA created<input type="date" class="p-date" id="p_rcaDate" title="Date the RCA was created" aria-label="Date the RCA was created"><small>85%</small></label></div>
+          <label class="prog-approve"><input type="checkbox" id="p_approved"> <span id="approveLabel">NVIDIA approved closure</span><input type="date" class="p-date" id="p_approvedDate" title="Date of the customer's approval" aria-label="Date of the customer's approval"><small id="approveShare">+5%</small></label>
           <p class="prog-note" id="progNote"></p>
         </fieldset>
         <fieldset style="margin-top:12px">
@@ -913,12 +1004,14 @@ async function boot() {
       try { converters = (await api("GET", "api/status")).converters || []; } catch {}
       lastSig = JSON.stringify(tickets);
       mode = "server";
+      await loadSettings();
       setInterval(pull, POLL_MS);
       document.addEventListener("visibilitychange", () => { if (!document.hidden) pull(); });
     } catch { mode = "local"; loadLocal(); }
   } else {
     mode = "local"; loadLocal();
   }
+  if (mode === "local") await loadSettings();
   render();
 }
 
@@ -939,6 +1032,7 @@ function restoreUI() {
   if (location.hash === "#analysis") view = "analysis";
   if (location.hash === "#pareto") { view = "analysis"; graphView = "pareto"; }
   if (location.hash === "#reports") view = "reports";
+  if (location.hash === "#overdue") view = "overdue";
 }
 function saveUI() { lsSet(UI_KEY, JSON.stringify({ view, chartKind, paretoDim, monthMode, sort, reportType, graphView })); }
 
@@ -990,8 +1084,11 @@ function render() {
   $("#view-tickets").hidden = view !== "tickets";
   $("#view-analysis").hidden = view !== "analysis";
   $("#view-reports").hidden = view !== "reports";
-  $("#kpis").hidden = view === "reports";
-  $("#filters").hidden = view === "reports";
+  $("#view-overdue").hidden = view !== "overdue";
+  $("#kpis").hidden = view === "reports" || view === "overdue";
+  $("#filters").hidden = view === "reports" || view === "overdue";
+  const od = overdueList();
+  renderBell(od);
   $("#fStatusWrap").hidden = view === "analysis";
   $("#fTypeWrap").hidden = view === "analysis";
   $("#graphWrap").hidden = view !== "analysis";
@@ -999,7 +1096,7 @@ function render() {
   const canExport = mode !== "starting" && typeof XLSX !== "undefined";
   $("#exportBtn").hidden = !canExport || !tickets.length;
   $("#importBtn").hidden = mode === "starting" || typeof XLSX === "undefined";
-  if (view === "tickets") renderTable(); else if (view === "analysis") renderChart(); else renderReports();
+  if (view === "tickets") renderTable(); else if (view === "analysis") renderChart(); else if (view === "overdue") renderOverdue(od); else renderReports();
 }
 
 function renderBanner() {
@@ -1087,13 +1184,20 @@ function progressBar(t, big) {
   return `<div class="prog${big ? " big" : ""}${r >= 100 ? " done" : ""}" role="progressbar" aria-valuenow="${r}" aria-valuemin="0" aria-valuemax="100" title="${esc(progressText(t))}"><div class="prog-bar"><span style="width:${pct}%"></span></div><span class="prog-txt">${r}%</span></div>`;
 }
 function readProgress() {
-  return { model: getRadio("pmodel") || "RCA", d: D8.map((_, i) => $("#p_d" + i).checked), rcaDone: $("#p_rca").checked, approved: $("#p_approved").checked };
+  return {
+    model: getRadio("pmodel") || "RCA", d: D8.map((_, i) => $("#p_d" + i).checked), rcaDone: $("#p_rca").checked, approved: $("#p_approved").checked,
+    // When each step was done: drives "days since the last D" for the overdue notifications.
+    dDates: D8.map((_, i) => $("#p_d" + i).checked ? $("#p_dd" + i).value : ""),
+    rcaDate: $("#p_rca").checked ? $("#p_rcaDate").value : "", approvedDate: $("#p_approved").checked ? $("#p_approvedDate").value : ""
+  };
 }
 let progModelTouched = false;
 function syncProgress() {
   const t = { type: $("#f_type").value, client: $("#f_client").value.trim(), status: getRadio("status"), progress: readProgress() };
   const is8D = t.progress.model === "8D", who = t.client || "Customer";
   $("#prog8D").hidden = !is8D; $("#progRCA").hidden = is8D;
+  D8.forEach((_, i) => { $("#p_dd" + i).hidden = !$("#p_d" + i).checked; });
+  $("#p_rcaDate").hidden = !$("#p_rca").checked; $("#p_approvedDate").hidden = !$("#p_approved").checked;
   $("#approveLabel").textContent = `${who} ${is8D ? "approved closure" : "agreed to close"}`;
   $("#approveShare").textContent = is8D ? "+5%" : "+15%";
   $("#progNote").textContent = is8D
@@ -1122,6 +1226,99 @@ function actSummary(t) {
   return txt ? `<span class="act-sum" title="Containment and permanent corrective actions closed">${txt} closed</span>` : "";
 }
 function ageOf(t) { if (!t.detected) return 0; return daysBetween(t.detected, t.status === "CLOSE" && t.closedDate ? t.closedDate : todayISO()); }
+
+/* ---------- overdue notifications (8D steps and RCA steps) ---------- */
+// Days allowed for each next step, counted from the last step done (or from detection for the first one).
+const DEFAULT_RULES = { d: [1, 2, 2, 7, 7, 14, 14, 7], approve8D: 14, rca: 14, approveRCA: 14, soon: 2 };
+const SET_KEY = "fxnht-quality-settings-v1";
+let rules = JSON.parse(JSON.stringify(DEFAULT_RULES));
+function applyRules(data) {
+  const o = (data && data.overdue) || {};
+  rules = { ...DEFAULT_RULES, ...o, d: Array.isArray(o.d) && o.d.length === 8 ? o.d.map(Number) : DEFAULT_RULES.d.slice() };
+}
+async function loadSettings() {
+  let data = null;
+  if (mode === "server") { try { data = await api("GET", "api/settings"); } catch {} }
+  else { try { data = JSON.parse(lsGet(SET_KEY) || "null"); } catch {} }
+  applyRules(data);
+}
+async function saveRules(next) {
+  const data = { overdue: next };
+  if (mode === "server") await api("PUT", "api/settings", JSON.stringify(data), { "Content-Type": "application/json" });
+  else if (!lsSet(SET_KEY, JSON.stringify(data))) throw new Error("this browser refused to save");
+  applyRules(data);
+}
+// What an open SCAR / RCA is waiting on, when that clock started, and how late it is.
+function overdueInfo(t) {
+  if (t.draft || t.status === "CLOSE" || !REPORT[t.type]) return null;
+  const p = t.progress || {}, who = t.client || "Customer";
+  // D's ticked before dates were recorded fall back to the ticket's last save.
+  const fallback = (t.updatedAt || "").slice(0, 10) || t.detected;
+  let step, since, limit;
+  if (progressModel(t) === "8D") {
+    const d = p.d || [], k = D8.findIndex((_, i) => !d[i]);
+    const doneDates = (p.dDates || []).filter((x, i) => d[i] && x).sort();
+    since = d.some(Boolean) ? (doneDates[doneDates.length - 1] || fallback) : t.detected;
+    if (k >= 0) { step = D8[k]; limit = rules.d[k]; }
+    else if (!p.approved) { step = `${who} closure approval`; limit = rules.approve8D; }
+    else return null;
+  } else if (!p.rcaDone) { step = "RCA created"; since = t.detected; limit = rules.rca; }
+  else if (!p.approved) { step = `${who} agrees to close`; since = p.rcaDate || fallback; limit = rules.approveRCA; }
+  else return null;
+  if (!since) return null;
+  const days = daysBetween(since, todayISO()), over = days - limit;
+  return { t, step, since, limit, days, over, state: over > 0 ? "overdue" : over > -rules.soon ? "soon" : "ok" };
+}
+function overdueList() { return official().map(overdueInfo).filter(x => x && x.state !== "ok").sort((a, b) => b.over - a.over); }
+const lateText = x => x.over > 0 ? `${x.over} day${x.over > 1 ? "s" : ""} overdue` : x.over === 0 ? "due today" : `due in ${-x.over} day${x.over < -1 ? "s" : ""}`;
+function overdueTag(t) {
+  const x = overdueInfo(t);
+  if (!x || x.state === "ok") return "";
+  return `<span class="od-tag ${x.state}" title="${esc(`Waiting on ${x.step}: ${lateText(x)}`)}">${x.state === "overdue" ? `Overdue ${x.over}d` : "Due soon"}</span>`;
+}
+function renderBell(list) {
+  const late = list.filter(x => x.state === "overdue");
+  const badge = $("#bellBadge"), tab = $("#overdueBadge");
+  badge.hidden = tab.hidden = !late.length;
+  badge.textContent = tab.textContent = late.length > 99 ? "99+" : late.length;
+  $("#bellBtn").classList.toggle("has-late", !!late.length);
+  $("#bellBtn").setAttribute("aria-label", late.length ? `${late.length} overdue SCARs / RCAs` : "No overdue SCARs / RCAs");
+  $("#bellCount").textContent = `${late.length} overdue${list.length - late.length ? ` · ${list.length - late.length} due soon` : ""}`;
+  $("#bellList").innerHTML = list.length ? list.slice(0, 8).map(x => `<li><button type="button" data-od-open="${esc(x.t.id)}">
+      <span class="od-dot ${x.state}"></span>
+      <span class="od-txt"><b>${qid(x.t.no)} · ${esc(x.step)}</b><span>${esc(lateText(x))} · ${esc(x.t.type)} · ${esc(clip(x.t.description, 46))}</span></span>
+    </button></li>`).join("") + (list.length > 8 ? `<li class="muted od-more">+ ${list.length - 8} more</li>` : "")
+    : `<li class="od-none">Nothing overdue or due soon.</li>`;
+}
+function renderOverdue(list) {
+  const table = (rows, kind) => rows.length ? `<table><thead><tr><th>Sev</th><th>No.</th><th>Issue</th><th>Waiting on</th><th>Last step</th><th>Days</th><th>Allowed</th><th>Late</th><th>Owner</th><th>Progress</th></tr></thead><tbody>${rows.map(x => `<tr data-id="${esc(x.t.id)}" tabindex="0" class="od-row ${x.state}">
+      <td class="sevcell s-${esc(x.t.severity)}"><span class="stripe"></span><span class="sev-tag">${esc(x.t.severity)}</span></td>
+      <td class="mono">${qid(x.t.no)}</td>
+      <td class="desc">${esc(x.t.description)}<div class="sub">${esc([x.t.ref, x.t.area, STATUS_LABEL[x.t.status]].filter(Boolean).join(" · "))}</div></td>
+      <td><b>${esc(x.step)}</b></td>
+      <td class="mono">${esc(fmtDate(x.since))}</td>
+      <td class="mono">${x.days}</td>
+      <td class="mono">${x.limit}</td>
+      <td class="mono"><span class="od-late ${x.state}">${esc(lateText(x))}</span></td>
+      <td>${esc(x.t.teamLead || x.t.pic || "")}</td>
+      <td>${progressBar(x.t)}</td></tr>`).join("")}</tbody></table>`
+    : `<div class="list-empty">No ${kind} overdue or due soon.</div>`;
+  const by8D = list.filter(x => progressModel(x.t) === "8D"), byRCA = list.filter(x => progressModel(x.t) !== "8D");
+  const n = l => l.filter(x => x.state === "overdue").length;
+  $("#odSummary").innerHTML = `<span class="od-chip overdue">${n(by8D)} SCAR / 8D overdue</span><span class="od-chip overdue">${n(byRCA)} RCA overdue</span><span class="od-chip soon">${list.length - n(list)} due within ${rules.soon} day${rules.soon === 1 ? "" : "s"}</span>`;
+  $("#od8D").innerHTML = table(by8D, "SCAR / 8D tickets");
+  $("#odRCA").innerHTML = table(byRCA, "RCA tickets");
+  // Rules form
+  D8.forEach((_, i) => { const el = $("#r_d" + i); if (document.activeElement !== el) el.value = rules.d[i]; });
+  for (const [id, k] of [["r_ap8", "approve8D"], ["r_rca", "rca"], ["r_apRCA", "approveRCA"], ["r_soon", "soon"]]) { const el = $("#" + id); if (document.activeElement !== el) el.value = rules[k]; }
+}
+async function submitRules(e) {
+  e.preventDefault();
+  const num = id => Math.max(0, Math.round(Number($("#" + id).value) || 0));
+  const next = { d: D8.map((_, i) => num("r_d" + i)), approve8D: num("r_ap8"), rca: num("r_rca"), approveRCA: num("r_apRCA"), soon: num("r_soon") };
+  try { await saveRules(next); toast("Overdue rules saved"); render(); }
+  catch (err) { toast(`Couldn't save the rules: ${err.message}`, 5000); }
+}
 
 /* ---------- drafts & delete confirmation ---------- */
 const official = () => tickets.filter(t => !t.draft);
@@ -1190,7 +1387,7 @@ function renderTable() {
       <td class="mono">${esc(fmtDate(t.detected))}</td>
       <td><span class="type ${esc(t.type)}">${esc(t.type || "—")}</span>${t.ref ? `<div class="mono muted">${esc(t.ref)}</div>` : ""}</td>
       <td class="desc">${esc(t.description)}<div class="sub">${esc([t.product, t.phase, t.client].filter(Boolean).join(" · "))}</div></td>
-      <td><span class="chip st-${esc(t.status)}">${esc(STATUS_LABEL[t.status] || t.status)}</span>${actSummary(t)}</td>
+      <td><span class="chip st-${esc(t.status)}">${esc(STATUS_LABEL[t.status] || t.status)}</span>${overdueTag(t)}${actSummary(t)}</td>
       <td>${progressBar(t)}<span class="prog-sub">${esc(progressText(t))}</span></td>
       <td>${esc(t.area)}</td>
       <td>${t.rootCause ? esc(t.rootCause) + (t.subRootCause ? `<div class="sub muted">${esc(t.subRootCause)}</div>` : "") : `<span class="muted">Pending</span>`}</td>
@@ -1902,11 +2099,12 @@ function openTicket(t) {
   renderActions("ca", v.containment || []);
   renderActions("pca", v.pca || []);
   renderLinkedReports(t);
-  $("#prog8D").innerHTML = D8.map((d, i) => `<label><input type="checkbox" id="p_d${i}"> ${esc(d)}<small>${(95 / 8).toFixed(1)}%</small></label>`).join("");
+  $("#prog8D").innerHTML = D8.map((d, i) => `<label><input type="checkbox" id="p_d${i}"> ${esc(d)}<input type="date" class="p-date" id="p_dd${i}" title="Date this D was done" aria-label="Date ${esc(d)} was done"><small>${(95 / 8).toFixed(1)}%</small></label>`).join("");
   const pr = v.progress || {};
   setRadio("pmodel", progressModel(v));
-  D8.forEach((_, i) => { $("#p_d" + i).checked = !!(pr.d && pr.d[i]); });
+  D8.forEach((_, i) => { $("#p_d" + i).checked = !!(pr.d && pr.d[i]); $("#p_dd" + i).value = (pr.dDates && pr.dDates[i]) || ""; });
   $("#p_rca").checked = !!pr.rcaDone; $("#p_approved").checked = !!pr.approved;
+  $("#p_rcaDate").value = pr.rcaDate || ""; $("#p_approvedDate").value = pr.approvedDate || "";
   progModelTouched = !!pr.model;
   syncProgress();
   $("#updDetails").open = !!t;
@@ -2478,6 +2676,26 @@ function bindUI() {
   $$(".tabs button").forEach(b => b.addEventListener("click", () => { view = b.dataset.view; saveUI(); render(); }));
   $("#reportBar").addEventListener("click", e => { const b = e.target.closest("[data-report]"); if (b) { reportType = b.dataset.report; saveUI(); render(); } });
   $("#slideBtn").addEventListener("click", downloadSlide);
+  // Overdue bell and view
+  $("#rulesD").innerHTML = D8.map((d, i) => `<label class="field"><span>${esc(d)}</span><input type="number" min="0" id="r_d${i}"></label>`).join("");
+  const bellPop = $("#bellPop"), bellBtn = $("#bellBtn");
+  const closeBell = () => { bellPop.hidden = true; bellBtn.setAttribute("aria-expanded", "false"); };
+  bellBtn.addEventListener("click", e => { e.stopPropagation(); bellPop.hidden = !bellPop.hidden; bellBtn.setAttribute("aria-expanded", String(!bellPop.hidden)); });
+  document.addEventListener("click", e => { if (!bellPop.hidden && !e.target.closest(".bell-wrap")) closeBell(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !bellPop.hidden) { closeBell(); bellBtn.focus(); } });
+  bellPop.addEventListener("click", e => {
+    const item = e.target.closest("[data-od-open]");
+    if (item) { closeBell(); return openTicket(tickets.find(t => t.id === item.dataset.odOpen)); }
+    if (e.target.closest("[data-od-all]")) { closeBell(); view = "overdue"; saveUI(); render(); }
+  });
+  $("#view-overdue").addEventListener("click", e => { const row = e.target.closest("tr[data-id]"); if (row) openTicket(tickets.find(t => t.id === row.dataset.id)); });
+  $("#view-overdue").addEventListener("keydown", e => { const row = e.target.closest("tr[data-id]"); if (row && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openTicket(tickets.find(t => t.id === row.dataset.id)); } });
+  $("#rulesForm").addEventListener("submit", submitRules);
+  $("#rulesReset").addEventListener("click", () => {
+    D8.forEach((_, i) => { $("#r_d" + i).value = DEFAULT_RULES.d[i]; });
+    $("#r_ap8").value = DEFAULT_RULES.approve8D; $("#r_rca").value = DEFAULT_RULES.rca; $("#r_apRCA").value = DEFAULT_RULES.approveRCA; $("#r_soon").value = DEFAULT_RULES.soon;
+    toast("Defaults filled in. Save rules to use them.");
+  });
   $("#graphWrap").addEventListener("click", e => { const b = e.target.closest("[data-graphs]"); if (b) { graphView = b.dataset.graphs; saveUI(); renderChart(); } });
   $("#newBtn").addEventListener("click", () => openTicket(null));
   ["#fSearch", "#fStatus", "#fSev", "#fType", "#fPhase", "#fArea", "#fProduct"].forEach(s => $(s).addEventListener("input", () => { renderKPIs(); view === "tickets" ? renderTable() : renderChart(); }));
@@ -2550,6 +2768,9 @@ function bindUI() {
   $("#ticketForm").addEventListener("change", e => {
     if (e.target.name === "pmodel") progModelTouched = true;
     if (e.target.id === "f_type" && !progModelTouched) setRadio("pmodel", e.target.value === "SCAR" ? "8D" : "RCA");
+    // Ticking a step records today's date (editable) for the overdue clock.
+    const dateFor = { p_rca: "p_rcaDate", p_approved: "p_approvedDate" }[e.target.id] || (/^p_d\d$/.test(e.target.id) ? "p_dd" + e.target.id.slice(3) : "");
+    if (dateFor && e.target.checked && !$("#" + dateFor).value) $("#" + dateFor).value = todayISO();
     if (e.target.name === "pmodel" || e.target.id === "f_type" || /^p_/.test(e.target.id)) syncProgress();
     if (e.target.classList.contains("act-status")) { e.target.dataset.status = e.target.value; syncClosed(); }
   });

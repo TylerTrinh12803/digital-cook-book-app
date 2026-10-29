@@ -65,6 +65,23 @@ A ticket marked **Closed** always shows 100%. The checklist is kept, so a reopen
 
 The Excel export has a Progress column (with an in-cell bar) and a Progress detail column.
 
+## Overdue SCARs and RCAs
+
+Each open SCAR or RCA has a clock on its next step. Ticking a D (or "RCA created" / the customer's approval) in a
+ticket records the date, which you can edit to backfill; the clock for the next step runs from the latest of those
+dates (or from the detected date if nothing is done yet).
+
+- The **bell** in the header shows how many tickets are overdue; click it for the list (red: overdue, amber: due soon).
+- The **Overdue** tab lists every overdue / due-soon SCAR (waiting on the next D) and RCA (waiting on the RCA or the
+  customer's closure), with days since the last step, days allowed, and how late it is. Click a row to open the ticket.
+- Overdue tickets get an "Overdue Nd" tag in the ticket list.
+- **Overdue rules** (bottom of the Overdue tab) sets the days allowed. Defaults: D1 1, D2 2, D3 2, D4 7, D5 7, D6 14,
+  D7 14, D8 7 days after the previous D; customer closure 14 days after D8; RCA created 14 days after detection;
+  customer agrees to close 14 days after the RCA; "due soon" 2 days ahead. The rules are shared by everyone using the
+  tracker (saved in `data/settings.json`).
+
+D's ticked before dates were recorded count from the ticket's last save; open those tickets and fill in the real dates.
+
 ## Import a new Excel sheet
 
 Click **Import Excel** and pick the workbook. The tracker reads the sheet with a "Quality issue description"
