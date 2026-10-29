@@ -34,6 +34,7 @@ two boxes that follow the filters:
 - **Open & in progress**: the top 5 Open and Monitor tickets, most urgent first (highest severity, then open longest), with progress.
 - **Recently closed**: the 5 most recently closed tickets by their "Closed on" date.
 
+On the **SCARs per month** and **RCAs per month** charts, both boxes show only SCARs or only RCAs.
 Click a row to open the ticket, or **See all** for the full list on the Tickets tab.
 
 ## Progress per ticket

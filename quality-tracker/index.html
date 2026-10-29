@@ -1217,8 +1217,13 @@ function miniTable(list, last) {
     <td>${progressBar(t)}</td>
     <td class="mono">${last.cell(t)}</td></tr>`).join("")}</tbody></table>`;
 }
+// The SCARs / RCAs per month charts narrow both boxes to that ticket type.
+const chartType = () => ({ scar: "SCAR", rca: "RCA" })[chartKind] || "";
 function renderAnalysisLists() {
-  const rows = filtered({ ignoreStatus: true });
+  const only = chartType(), noun = only ? `${only}s` : "tickets";
+  const rows = filtered({ ignoreStatus: true }).filter(t => !only || t.type === only);
+  $("#openListTitle").textContent = only ? `Open & in progress ${noun}` : "Open & in progress";
+  $("#closedListTitle").textContent = only ? `Recently closed ${noun}` : "Recently closed";
   // Most urgent first: highest severity, then open the longest.
   const open = rows.filter(t => t.status !== "CLOSE")
     .sort((a, b) => (SEV_RANK[a.severity] ?? 9) - (SEV_RANK[b.severity] ?? 9) || ageOf(b) - ageOf(a));
@@ -1227,8 +1232,8 @@ function renderAnalysisLists() {
   const closed = rows.filter(t => t.status === "CLOSE").sort((a, b) => closedOn(b).localeCompare(closedOn(a)) || (b.no || 0) - (a.no || 0));
   $("#openListNote").textContent = open.length ? `Top ${Math.min(5, open.length)} of ${open.length}, most urgent first` : "";
   $("#closedListNote").textContent = closed.length ? `Latest ${Math.min(5, closed.length)} of ${closed.length}` : "";
-  $("#openList").innerHTML = open.length ? miniTable(open.slice(0, 5), { head: "Days open", cell: t => ageOf(t) }) : `<div class="list-empty">No open or monitor tickets in this selection.</div>`;
-  $("#closedList").innerHTML = closed.length ? miniTable(closed.slice(0, 5), { head: "Closed", cell: t => t.closedDate ? esc(fmtDate(t.closedDate)) : `<span class="muted" title="Set “Closed on” in the ticket">Date not set</span>` }) : `<div class="list-empty">No closed tickets in this selection.</div>`;
+  $("#openList").innerHTML = open.length ? miniTable(open.slice(0, 5), { head: "Days open", cell: t => ageOf(t) }) : `<div class="list-empty">No open or monitor ${noun} in this selection.</div>`;
+  $("#closedList").innerHTML = closed.length ? miniTable(closed.slice(0, 5), { head: "Closed", cell: t => t.closedDate ? esc(fmtDate(t.closedDate)) : `<span class="muted" title="Set “Closed on” in the ticket">Date not set</span>` }) : `<div class="list-empty">No closed ${noun} in this selection.</div>`;
 }
 function showChartEmpty(msg) { $("#canvasBox").hidden = true; const e = $("#chartEmpty"); e.hidden = false; e.textContent = msg; }
 
@@ -2030,7 +2035,7 @@ function bindUI() {
     if (row) return openTicket(tickets.find(t => t.id === row.dataset.id));
     const all = e.target.closest("[data-seeall]");
     if (all) {
-      $("#fType").value = "";
+      $("#fType").value = chartType();
       $("#fStatus").value = all.dataset.seeall === "closed" ? "CLOSE" : "";
       sort = all.dataset.seeall === "closed" ? { key: "detected", dir: "desc" } : { key: "status", dir: "asc" };
       view = "tickets"; saveUI(); render();
