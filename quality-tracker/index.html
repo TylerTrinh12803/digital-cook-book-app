@@ -226,6 +226,8 @@ table { border-collapse: collapse; width: 100%; min-width: 1080px; }
 .insights b { display: block; font-size: .9rem; line-height: 1.3; color: var(--st-progress); }
 .insights p { margin: 2px 0 0; font-size: .8rem; color: var(--muted); line-height: 1.35; }
 #paretoPanel { margin-top: 12px; }
+.filter-seg { display: flex; flex-direction: column; gap: 2px; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.filter-seg .seg button { padding: 6px 12px; font-size: .88rem; text-transform: none; letter-spacing: 0; }
 @media (max-width: 1150px) {
   .dash-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
   .dash-bottom { grid-template-columns: 1fr; }
@@ -434,7 +436,7 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
           <button type="button" data-report="SCAR" aria-pressed="true">SCAR / 8D</button>
           <button type="button" data-report="RCA" aria-pressed="false">RCA</button>
         </div>
-        <button class="btn dash-btn" type="button" id="slideBtn" title="Save this report as a one-page PowerPoint slide">Download slide (.pptx)</button>
+        <button class="btn dash-btn" type="button" id="slideBtn" title="Save both reports (SCAR / 8D and RCA) as a two-slide PowerPoint">Download slides (.pptx)</button>
       </div>
     </div>
     <ol class="steps steps-8" id="dashSteps"></ol>
@@ -464,6 +466,12 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
     <label>Product
       <select id="fProduct"><option value="">All</option></select>
     </label>
+    <div class="filter-seg" id="graphWrap" hidden><span>Graphs</span>
+      <div class="seg" role="group" aria-label="Graphs">
+        <button type="button" data-graphs="dash" aria-pressed="true">Dashboard</button>
+        <button type="button" data-graphs="pareto" aria-pressed="false">Pareto</button>
+      </div>
+    </div>
     <span class="spacer"></span>
     <button class="btn" id="importBtn" type="button">Import Excel</button>
     <button class="btn" id="exportBtn" type="button">Export Excel</button>
@@ -486,7 +494,7 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
 
   <!-- Analysis view -->
   <section id="view-analysis" role="tabpanel" aria-labelledby="tab-analysis" hidden>
-    <div class="dash-grid">
+    <div class="dash-grid" id="dashGrid">
       <section class="panel dpanel" aria-labelledby="statusTitle">
         <header><h3 id="statusTitle">Requests by status</h3></header>
         <div class="donut-wrap">
@@ -510,6 +518,15 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
         <div class="list-empty" id="monthEmpty" hidden></div>
       </section>
     </div>
+    <div class="panel chart-panel" id="paretoPanel" hidden>
+      <div class="chart-head">
+        <div><h2 id="chartTitle"></h2><p id="chartNote"></p></div>
+        <div class="controls" id="chartControls"></div>
+      </div>
+      <div class="canvas-box" id="canvasBox"><canvas id="chart" aria-label="Pareto chart" role="img"></canvas></div>
+      <div class="chart-empty" id="chartEmpty" hidden></div>
+      <div class="pareto-table" id="paretoTable" hidden></div>
+    </div>
     <div class="dash-bottom">
       <section class="panel list-box" aria-labelledby="openListTitle">
         <header><h3 id="openListTitle">Open &amp; in progress</h3><span class="muted" id="openListNote"></span><button class="btn small" type="button" data-seeall="open">See all</button></header>
@@ -523,15 +540,6 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
         <header><h3 id="insightsTitle">Key insights</h3></header>
         <ul id="insights"></ul>
       </section>
-    </div>
-    <div class="panel chart-panel" id="paretoPanel">
-      <div class="chart-head">
-        <div><h2 id="chartTitle"></h2><p id="chartNote"></p></div>
-        <div class="controls" id="chartControls"></div>
-      </div>
-      <div class="canvas-box" id="canvasBox"><canvas id="chart" aria-label="Pareto chart" role="img"></canvas></div>
-      <div class="chart-empty" id="chartEmpty" hidden></div>
-      <div class="pareto-table" id="paretoTable" hidden></div>
     </div>
   </section>
 
@@ -764,7 +772,7 @@ let mode = "starting"; // starting | server (start script running) | local (page
 let lastSig = "";
 let view = "tickets", chartKind = "openclose";
 let sort = { key: "detected", dir: "desc" };
-let ocMode = "mix", monthMode = "mix", paretoDim = "rootCause", paretoBlank = false;
+let graphView = "dash", ocMode = "mix", monthMode = "mix", paretoDim = "rootCause", paretoBlank = false;
 let chart = null;
 let editing = null; // ticket being edited (copy) or null for new
 let draftAttachments = [];
@@ -923,15 +931,16 @@ function restoreUI() {
     if (s.view) view = s.view; if (s.chartKind) chartKind = s.chartKind;
     if (REPORT[s.reportType]) reportType = s.reportType;
     if (["mix", "sev", "flow"].includes(s.monthMode)) monthMode = s.monthMode;
+    if (s.graphView === "pareto") graphView = "pareto";
     if (chartKind === "scar" || chartKind === "rca") chartKind = "tickets";
     if (s.paretoDim) paretoDim = s.paretoDim;
     if (s.ocMode) ocMode = s.ocMode; if (s.sort) sort = s.sort;
   } catch {}
   if (location.hash === "#analysis") view = "analysis";
-  if (location.hash === "#pareto") { view = "analysis"; chartKind = "pareto"; }
+  if (location.hash === "#pareto") { view = "analysis"; graphView = "pareto"; }
   if (location.hash === "#reports") view = "reports";
 }
-function saveUI() { lsSet(UI_KEY, JSON.stringify({ view, chartKind, paretoDim, monthMode, sort, reportType })); }
+function saveUI() { lsSet(UI_KEY, JSON.stringify({ view, chartKind, paretoDim, monthMode, sort, reportType, graphView })); }
 
 function fillStaticOptions() {
   $("#f_area").insertAdjacentHTML("beforeend", AREAS.map(a => `<option>${esc(a)}</option>`).join(""));
@@ -985,6 +994,7 @@ function render() {
   $("#filters").hidden = view === "reports";
   $("#fStatusWrap").hidden = view === "analysis";
   $("#fTypeWrap").hidden = view === "analysis";
+  $("#graphWrap").hidden = view !== "analysis";
   $("#reportBar").hidden = view !== "analysis";
   const canExport = mode !== "starting" && typeof XLSX !== "undefined";
   $("#exportBtn").hidden = !canExport || !tickets.length;
@@ -1518,14 +1528,9 @@ const SLIDE = {
 };
 const clip = (s, n) => { s = String(s || ""); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
 
-async function downloadSlide() {
-  if (typeof PptxGenJS === "undefined") { toast("The PowerPoint library didn't load. Reload the page and try again.", 5000); return; }
-  const btn = $("#slideBtn"); btn.disabled = true; btn.textContent = "Making slide…";
-  try {
+// Adds one slide for the current reportType.
+function addReportSlide(pptx) {
     const rows = filtered({ ignoreStatus: true }), r = REPORT[reportType], is8D = reportType === "SCAR";
-    const pptx = new PptxGenJS();
-    pptx.layout = "LAYOUT_WIDE"; // 13.333 x 7.5 in
-    pptx.title = is8D ? "8D Problem Solving Dashboard" : "RCA One-Pager";
     const s = pptx.addSlide();
     s.background = { color: SLIDE.bg };
     const W = 13.333, M = 0.3, inner = W - 2 * M;
@@ -1663,25 +1668,40 @@ async function downloadSlide() {
 
     // Footer
     s.addText(`FXN HT Quality Tracker · exported ${fmtDate(todayISO())}`, { x: M, y: 7.28, w: inner, h: 0.18, fontFace: SLIDE.body, fontSize: 7, color: SLIDE.muted, align: "right", margin: 0 });
-
+}
+// One PowerPoint with both reports: slide 1 SCAR / 8D, slide 2 RCA.
+async function downloadSlide() {
+  if (typeof PptxGenJS === "undefined") { toast("The PowerPoint library didn't load. Reload the page and try again.", 5000); return; }
+  const btn = $("#slideBtn"); btn.disabled = true; btn.textContent = "Making slides…";
+  const shown = reportType;
+  try {
+    const pptx = new PptxGenJS();
+    pptx.layout = "LAYOUT_WIDE"; // 13.333 x 7.5 in
+    pptx.title = "FXN HT quality dashboards";
+    for (const type of ["SCAR", "RCA"]) { reportType = type; addReportSlide(pptx); }
+    reportType = shown;
     const blob = await pptx.write({ outputType: "blob" });
-    const name = `FXN_HT_${is8D ? "8D_Dashboard" : "RCA_One_Pager"}_${todayISO()}.pptx`;
+    const name = `FXN_HT_Quality_Dashboards_${todayISO()}.pptx`;
     const url = URL.createObjectURL(blob);
     const a = Object.assign(document.createElement("a"), { href: url, download: name }); document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
     toast(`Saved ${name}`);
-  } catch (err) { toast(`Couldn't make the slide: ${err.message}`, 6000); }
-  finally { btn.disabled = false; btn.textContent = "Download slide (.pptx)"; }
+  } catch (err) { toast(`Couldn't make the slides: ${err.message}`, 6000); }
+  finally { reportType = shown; btn.disabled = false; btn.textContent = "Download slides (.pptx)"; }
 }
 
 // Draws the whole Analysis tab for the selected report.
+// The Graphs switch shows either the dashboard charts or the Pareto in the same spot.
 function renderChart() {
-  const rows = filtered({ ignoreStatus: true });
+  const rows = filtered({ ignoreStatus: true }), pareto = graphView === "pareto";
+  $$("[data-graphs]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.graphs === graphView)));
+  $("#dashGrid").hidden = pareto;
+  $("#paretoPanel").hidden = !pareto;
   renderReportBar(rows);
-  renderDashCharts(rows);
+  if (pareto) { dashCharts.forEach(c => c.destroy()); dashCharts = []; renderPareto(rows); }
+  else { if (chart) { chart.destroy(); chart = null; } renderDashCharts(rows); }
   renderAnalysisLists(rows);
   renderInsights(rows);
-  renderPareto(rows);
 }
 
 /* ---------- SCAR / RCA reports ---------- */
@@ -2458,6 +2478,7 @@ function bindUI() {
   $$(".tabs button").forEach(b => b.addEventListener("click", () => { view = b.dataset.view; saveUI(); render(); }));
   $("#reportBar").addEventListener("click", e => { const b = e.target.closest("[data-report]"); if (b) { reportType = b.dataset.report; saveUI(); render(); } });
   $("#slideBtn").addEventListener("click", downloadSlide);
+  $("#graphWrap").addEventListener("click", e => { const b = e.target.closest("[data-graphs]"); if (b) { graphView = b.dataset.graphs; saveUI(); renderChart(); } });
   $("#newBtn").addEventListener("click", () => openTicket(null));
   ["#fSearch", "#fStatus", "#fSev", "#fType", "#fPhase", "#fArea", "#fProduct"].forEach(s => $(s).addEventListener("input", () => { renderKPIs(); view === "tickets" ? renderTable() : renderChart(); }));
   $("#tableWrap").addEventListener("click", e => {

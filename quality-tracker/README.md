@@ -38,11 +38,13 @@ blue header (which also shows the data period and total requests). Everything on
   **Requests by creator / requestor** (from the Reporter field) and **per month** (split by status, severity, or raised vs closed).
 - **Open & in progress** (top 5, most urgent first), **Recently closed** (latest 5) and **Key insights** worked out from
   the data (share still open and the oldest item, busiest month, top requestor, overdue actions or open S0/S1 items).
-- **Pareto** of root causes, sub-root causes or factory areas.
+- **Graphs: Dashboard | Pareto** (in the filter row, next to Product) swaps the three dashboard charts for a Pareto
+  of root causes, sub-root causes or factory areas, in the same spot.
 
-**Download slide (.pptx)** in the blue header saves the selected report as a single widescreen PowerPoint slide
-(header, D1–D8 strip for 8D, summary tiles, status / requestor / per-month charts as editable PowerPoint charts,
-top-5 open and recently closed tables, and key insights). The Pareto stays on the web page only.
+**Download slides (.pptx)** in the blue header saves one PowerPoint with both reports: slide 1 the SCAR / 8D
+dashboard, slide 2 the RCA one-pager. Each slide has the header, D1–D8 strip (8D only), summary tiles, status /
+requestor / per-month charts as editable PowerPoint charts, top-5 open and recently closed tables, and key insights.
+The slides follow the current filters. The Pareto stays on the web page only.
 
 The filters apply to the dashboard. Click a row to open the ticket, a summary tile or **See all** to jump to those
 tickets. **Export Excel** on the Analysis tab saves just that report (e.g. `FXN_HT_SCAR_8D_Report_<date>.xlsx`).
