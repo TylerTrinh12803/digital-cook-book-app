@@ -146,6 +146,7 @@ table { border-collapse: collapse; width: 100%; min-width: 1080px; }
 .prog-steps label, .prog-approve { display: flex; gap: 8px; align-items: center; font-size: .88rem; }
 .prog-steps small, .prog-approve small { color: var(--muted); font-family: var(--font-mono); font-size: .72rem; margin-left: auto; }
 .prog-approve { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); font-weight: 600; }
+.close-due { max-width: 220px; }
 .prog-note { margin: 8px 0 0; font-size: .78rem; color: var(--muted); }
 /* analysis dashboard: header band + step strip */
 .dash-top { margin-top: 16px; }
@@ -271,7 +272,6 @@ table { border-collapse: collapse; width: 100%; min-width: 1080px; }
 .tl-block h4 { margin: 4px 0 0; font: 600 .78rem/1 var(--font-body); text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
 .tl-scroll { overflow-x: auto; }
 .tl { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(96px, 1fr); }
-.tl-rca { grid-auto-columns: minmax(150px, 220px); }
 .tl-step { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 4px 6px; }
 /* the line leading into each milestone, in that milestone's color */
 .tl-step::before { content: ""; position: absolute; top: 31px; left: -50%; right: 50%; height: 4px; background: var(--c); border-radius: 2px; }
@@ -281,10 +281,18 @@ table { border-collapse: collapse; width: 100%; min-width: 1080px; }
 .tl-name { margin-top: 6px; font-size: .8rem; line-height: 1.25; }
 .tl-name b { display: block; font: 700 .95rem/1.1 var(--font-display); color: var(--c); }
 .tl-day { margin-top: 3px; font: 500 .72rem/1 var(--font-mono); color: var(--muted); white-space: nowrap; }
+.rca-rules { list-style: none; margin: 8px 0 4px; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 10px; }
+.rca-rules li { display: flex; gap: 10px; align-items: flex-start; font-size: .85rem; line-height: 1.4; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); }
+.rca-rules b { font-weight: 600; }
+.rr-num { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--st-progress); color: var(--on-danger); font: 700 .8rem/1 var(--font-display); }
+.od-chip.update { color: var(--st-progress); }
+.od-tag.update { background: var(--st-progress); }
+.od-dot.update { background: var(--st-progress); }
+.od-late.update { color: var(--st-progress); font-weight: 700; }
 .tl-note { margin: 6px 14px 8px; font-size: .8rem; color: var(--muted); max-width: 90ch; }
 /* phones: the timeline runs top to bottom */
 @media (max-width: 640px) {
-  .tl, .tl-rca { grid-auto-flow: row; grid-auto-columns: auto; }
+  .tl { grid-auto-flow: row; grid-auto-columns: auto; }
   .tl-step { display: grid; grid-template-columns: 70px 16px 1fr; column-gap: 10px; align-items: center; text-align: left; padding: 6px 0; }
   .tl-step::before { top: -50%; bottom: 50%; left: 86px; right: auto; width: 4px; height: auto; }
   .tl-gap { grid-row: 1 / span 2; transform: none; text-align: right; height: auto; line-height: 1.2; }
@@ -638,9 +646,9 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
       </div>
     </div>
     <section class="panel od-rules" aria-labelledby="tlTitle">
-      <header><h3 id="tlTitle">Overdue timelines</h3><span class="muted">Days allowed for each step</span></header>
+      <header><h3 id="tlTitle">Overdue rules</h3><span class="muted">When each step is due</span></header>
       <div class="tl-block"><h4>SCAR / 8D</h4><div class="tl-scroll" id="tl8D"></div></div>
-      <div class="tl-block"><h4>RCA</h4><div class="tl-scroll" id="tlRCA"></div></div>
+      <div class="tl-block"><h4>RCA</h4><div id="tlRCA"></div></div>
       <p class="tl-note" id="tlSoon"></p>
     </section>
     <div class="od-summary" id="odSummary"></div>
@@ -733,7 +741,8 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
             <div class="prog big" id="progLive"></div>
           </div>
           <div class="prog-steps" id="prog8D"></div>
-          <div class="prog-steps" id="progRCA"><label><input type="checkbox" id="p_rca"> RCA created<input type="date" class="p-date" id="p_rcaDate" title="Date the RCA was created" aria-label="Date the RCA was created"><small>85%</small></label></div>
+          <div class="prog-steps" id="progRCA"><label><input type="checkbox" id="p_rca"> RCA created<input type="date" class="p-date" id="p_rcaDate" title="Date the RCA was created" aria-label="Date the RCA was created"><small>85%</small></label>
+            <label class="field close-due"><span>Close due date</span><input type="date" id="f_closeDue" name="closeDue" title="When this RCA should be closed"></label></div>
           <label class="prog-approve"><input type="checkbox" id="p_approved"> <span id="approveLabel">NVIDIA approved closure</span><input type="date" class="p-date" id="p_approvedDate" title="Date of the customer's approval" aria-label="Date of the customer's approval"><small id="approveShare">+5%</small></label>
           <p class="prog-note" id="progNote"></p>
         </fieldset>
@@ -1279,7 +1288,10 @@ function ageOf(t) { if (!t.detected) return 0; return daysBetween(t.detected, t.
 // Days allowed for each next step, counted from the last step done (or from detection for the first one).
 // The overdue timeline: days allowed for each next step, counted from the last step done
 // (or from detection for the first one). Fixed here so everyone works to the same timeline.
-const rules = { d: [1, 2, 2, 7, 7, 14, 14, 7], approve8D: 14, rca: 14, approveRCA: 14, soon: 2 };
+// RCAs: the RCA is due 3 days after detection; after that each ticket has its own close due date,
+// and one without a due date asks for an update after 14 days with no movement.
+const rules = { d: [1, 2, 2, 7, 7, 14, 14, 7], approve8D: 14, rca: 3, nudge: 14, soon: 2 };
+const daysFrom = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000); // signed, b - a
 // What an open SCAR / RCA is waiting on, when that clock started, and how late it is.
 function overdueInfo(t) {
   if (t.draft || t.status === "CLOSE" || !REPORT[t.type]) return null;
@@ -1295,49 +1307,64 @@ function overdueInfo(t) {
     else if (!p.approved) { step = `${who} closure approval`; limit = rules.approve8D; }
     else return null;
   } else if (!p.rcaDone) { step = "RCA created"; since = t.detected; limit = rules.rca; }
-  else if (!p.approved) { step = `${who} agrees to close`; since = p.rcaDate || fallback; limit = rules.approveRCA; }
+  else if (!p.approved) {
+    since = p.rcaDate || fallback;
+    if (t.closeDue) {
+      // Closure is due on the date set on the ticket.
+      const over = daysFrom(t.closeDue, todayISO());
+      return { t, step: `${who} agrees to close`, since, due: t.closeDue, days: daysBetween(since, todayISO()), over, state: over > 0 ? "overdue" : over > -rules.soon ? "soon" : "ok" };
+    }
+    // No close due date: after 14 days without any change to the ticket, ask for an update.
+    const last = [(t.updatedAt || "").slice(0, 10), p.rcaDate, t.detected].filter(Boolean).sort().pop();
+    const quiet = daysBetween(last, todayISO());
+    return { t, step: "Any updates?", since: last, days: quiet, over: quiet - rules.nudge, state: quiet >= rules.nudge ? "update" : "ok" };
+  }
   else return null;
   if (!since) return null;
   const days = daysBetween(since, todayISO()), over = days - limit;
-  return { t, step, since, limit, days, over, state: over > 0 ? "overdue" : over > -rules.soon ? "soon" : "ok" };
+  const due = new Date(Date.parse(since) + limit * 86400000).toISOString().slice(0, 10);
+  return { t, step, since, due, days, over, state: over > 0 ? "overdue" : over > -rules.soon ? "soon" : "ok" };
 }
-function overdueList() { return official().map(overdueInfo).filter(x => x && x.state !== "ok").sort((a, b) => b.over - a.over); }
-const lateText = x => x.over > 0 ? `${x.over} day${x.over > 1 ? "s" : ""} overdue` : x.over === 0 ? "due today" : `due in ${-x.over} day${x.over < -1 ? "s" : ""}`;
+const STATE_RANK = { overdue: 0, update: 1, soon: 2 };
+function overdueList() { return official().map(overdueInfo).filter(x => x && x.state !== "ok").sort((a, b) => STATE_RANK[a.state] - STATE_RANK[b.state] || b.over - a.over); }
+const lateText = x => x.state === "update" ? `no update in ${x.days} days`
+  : x.over > 0 ? `${x.over} day${x.over > 1 ? "s" : ""} overdue` : x.over === 0 ? "due today" : `due in ${-x.over} day${x.over < -1 ? "s" : ""}`;
 function overdueTag(t) {
   const x = overdueInfo(t);
   if (!x || x.state === "ok") return "";
-  return `<span class="od-tag ${x.state}" title="${esc(`Waiting on ${x.step}: ${lateText(x)}`)}">${x.state === "overdue" ? `Overdue ${x.over}d` : "Due soon"}</span>`;
+  return `<span class="od-tag ${x.state}" title="${esc(`${x.state === "update" ? "Any updates?" : `Waiting on ${x.step}`}: ${lateText(x)}`)}">${x.state === "overdue" ? `Overdue ${x.over}d` : x.state === "update" ? "Update?" : "Due soon"}</span>`;
 }
 function renderBell(list) {
-  const late = list.filter(x => x.state === "overdue");
+  const late = list.filter(x => x.state === "overdue"), nudge = list.filter(x => x.state === "update"), soon = list.filter(x => x.state === "soon");
+  const attention = late.length + nudge.length;
   const badge = $("#bellBadge"), tab = $("#overdueBadge");
-  badge.hidden = tab.hidden = !late.length;
-  badge.textContent = tab.textContent = late.length > 99 ? "99+" : late.length;
-  $("#bellBtn").classList.toggle("has-late", !!late.length);
-  $("#bellBtn").setAttribute("aria-label", late.length ? `${late.length} overdue SCARs / RCAs` : "No overdue SCARs / RCAs");
-  $("#bellCount").textContent = `${late.length} overdue${list.length - late.length ? ` · ${list.length - late.length} due soon` : ""}`;
+  badge.hidden = tab.hidden = !attention;
+  badge.textContent = tab.textContent = attention > 99 ? "99+" : attention;
+  $("#bellBtn").classList.toggle("has-late", !!attention);
+  $("#bellBtn").setAttribute("aria-label", attention ? `${late.length} overdue, ${nudge.length} need an update` : "Nothing overdue");
+  $("#bellCount").textContent = [`${late.length} overdue`, nudge.length && `${nudge.length} need an update`, soon.length && `${soon.length} due soon`].filter(Boolean).join(" · ");
   $("#bellList").innerHTML = list.length ? list.slice(0, 8).map(x => `<li><button type="button" data-od-open="${esc(x.t.id)}">
       <span class="od-dot ${x.state}"></span>
       <span class="od-txt"><b>${qid(x.t.no)} · ${esc(x.step)}</b><span>${esc(lateText(x))} · ${esc(x.t.type)} · ${esc(clip(x.t.description, 46))}</span></span>
     </button></li>`).join("") + (list.length > 8 ? `<li class="muted od-more">+ ${list.length - 8} more</li>` : "")
-    : `<li class="od-none">Nothing overdue or due soon.</li>`;
+    : `<li class="od-none">Nothing overdue, due soon or waiting on an update.</li>`;
 }
 function renderOverdue(list) {
-  const table = (rows, kind) => rows.length ? `<table><thead><tr><th>Sev</th><th>No.</th><th>Issue</th><th>Waiting on</th><th>Last step</th><th>Days</th><th>Allowed</th><th>Late</th><th>Owner</th><th>Progress</th></tr></thead><tbody>${rows.map(x => `<tr data-id="${esc(x.t.id)}" tabindex="0" class="od-row ${x.state}">
+  const table = (rows, kind) => rows.length ? `<table><thead><tr><th>Sev</th><th>No.</th><th>Issue</th><th>Waiting on</th><th>Since</th><th>Due</th><th>Status</th><th>Owner</th><th>Progress</th></tr></thead><tbody>${rows.map(x => `<tr data-id="${esc(x.t.id)}" tabindex="0" class="od-row ${x.state}">
       <td class="sevcell s-${esc(x.t.severity)}"><span class="stripe"></span><span class="sev-tag">${esc(x.t.severity)}</span></td>
       <td class="mono">${qid(x.t.no)}</td>
       <td class="desc">${esc(x.t.description)}<div class="sub">${esc([x.t.ref, x.t.area, STATUS_LABEL[x.t.status]].filter(Boolean).join(" · "))}</div></td>
       <td><b>${esc(x.step)}</b></td>
       <td class="mono">${esc(fmtDate(x.since))}</td>
-      <td class="mono">${x.days}</td>
-      <td class="mono">${x.limit}</td>
+      <td class="mono">${x.due ? esc(fmtDate(x.due)) : `<span class="muted" title="No close due date set on the ticket">not set</span>`}</td>
       <td class="mono"><span class="od-late ${x.state}">${esc(lateText(x))}</span></td>
       <td>${esc(x.t.teamLead || x.t.pic || "")}</td>
       <td>${progressBar(x.t)}</td></tr>`).join("")}</tbody></table>`
-    : `<div class="list-empty">No ${kind} overdue or due soon.</div>`;
+    : `<div class="list-empty">No ${kind} overdue, due soon or waiting on an update.</div>`;
   const by8D = list.filter(x => progressModel(x.t) === "8D"), byRCA = list.filter(x => progressModel(x.t) !== "8D");
   const n = l => l.filter(x => x.state === "overdue").length;
-  $("#odSummary").innerHTML = `<span class="od-chip overdue">${n(by8D)} SCAR / 8D overdue</span><span class="od-chip overdue">${n(byRCA)} RCA overdue</span><span class="od-chip soon">${list.length - n(list)} due within ${rules.soon} day${rules.soon === 1 ? "" : "s"}</span>`;
+  const nUpd = list.filter(x => x.state === "update").length, nSoon = list.filter(x => x.state === "soon").length;
+  $("#odSummary").innerHTML = `<span class="od-chip overdue">${n(by8D)} SCAR / 8D overdue</span><span class="od-chip overdue">${n(byRCA)} RCA overdue</span><span class="od-chip update">${nUpd} RCA need an update</span><span class="od-chip soon">${nSoon} due within ${rules.soon} days</span>`;
   $("#od8D").innerHTML = table(by8D, "SCAR / 8D tickets");
   $("#odRCA").innerHTML = table(byRCA, "RCA tickets");
   renderTimelines();
@@ -1363,9 +1390,12 @@ function renderTimelines() {
   $("#tl8D").innerHTML = line([["", "Issue detected", 0, "var(--muted)"],
     ...STEPS.SCAR.map(([code, name], i) => [code, name, rules.d[i], `var(--step${i + 1}s)`]),
     ["", `${who} approves closure`, rules.approve8D, "var(--st-close)"]], "tl-8d");
-  $("#tlRCA").innerHTML = line([["", "Issue detected", 0, "var(--muted)"], ["", "RCA created", rules.rca, "var(--st-progress)"],
-    ["", `${who} agrees to close`, rules.approveRCA, "var(--st-close)"]], "tl-rca");
-  $("#tlSoon").textContent = `A step shows as “due soon” ${rules.soon} days before its deadline, and “overdue” the day after. Each step's clock starts when the previous step is actually done, so finishing early gives the next step more room.`;
+  $("#tlRCA").innerHTML = `<ol class="rca-rules">
+    <li><span class="rr-num">1</span><div><b>RCA created within ${rules.rca} days</b> of the issue being detected.</div></li>
+    <li><span class="rr-num">2</span><div><b>Closed by its close due date.</b> Each RCA ticket has its own close due date, set in the ticket under Progress.</div></li>
+    <li><span class="rr-num">3</span><div><b>No close due date?</b> After ${rules.nudge} days with no change to the ticket, it asks “Any updates?”. Any edit, status change or step resets the ${rules.nudge} days.</div></li>
+  </ol>`;
+  $("#tlSoon").textContent = `A deadline shows as “due soon” ${rules.soon} days before it, and “overdue” the day after. For 8Ds, each step's clock starts when the previous step is actually done, so finishing early gives the next step more room.`;
 }
 
 /* ---------- quick status change from the status chip ---------- */
@@ -2221,7 +2251,7 @@ function openTicket(t) {
   const isDraft = !!(t && t.draft);
   $("#dlgTitle").textContent = isDraft ? "Draft ticket" : t ? `${qid(t.no)}` : "New ticket";
   $("#dlgStatusChip").innerHTML = isDraft ? `<span class="chip draft">Draft</span>` : t ? `<span class="chip st-${esc(t.status)}">${esc(STATUS_LABEL[t.status] || t.status)}</span>` : "";
-  for (const k of ["detected", "type", "ref", "description", "product", "client", "reporter", "pic", "units", "area", "rootCause", "subRootCause", "rootCauseDetail", "teamLead", "members", "closedDate", "comments"]) {
+  for (const k of ["detected", "type", "ref", "description", "product", "client", "reporter", "pic", "units", "area", "rootCause", "subRootCause", "rootCauseDetail", "teamLead", "members", "closedDate", "closeDue", "comments"]) {
     const el = $("#f_" + k); if (!el) continue;
     if (el.tagName === "SELECT" && v[k] && ![...el.options].some(o => o.value === v[k])) el.insertAdjacentHTML("beforeend", `<option>${esc(v[k])}</option>`);
     el.value = v[k] ?? "";
@@ -2325,7 +2355,7 @@ function collectForm() {
     rootCause: val("f_rootCause"), subRootCause: val("f_subRootCause"), status: getRadio("status") || "OPEN",
     closedDate: getRadio("status") === "CLOSE" ? val("f_closedDate") : "", comments: val("f_comments"),
     flags: Object.fromEntries(FLAGS.map(([k]) => [k, $("#flag_" + k).checked]).filter(([, v]) => v)),
-    rootCauseDetail: val("f_rootCauseDetail"), teamLead: val("f_teamLead"),
+    rootCauseDetail: val("f_rootCauseDetail"), teamLead: val("f_teamLead"), closeDue: val("f_closeDue"),
     members: val("f_members").split(",").map(x => x.trim()).filter(Boolean).join(", "),
     containment: readActions("ca"), pca: readActions("pca"), progress: readProgress(),
     attachments: draftAttachments
