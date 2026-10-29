@@ -28,13 +28,15 @@ To load them into an empty tracker, click **Import Excel** and pick the workbook
 
 ## Analysis
 
-The Analysis tab has the charts (open vs closed, tickets / SCARs / RCAs per month, Pareto) and, under them,
-two boxes that follow the filters:
+The Analysis tab is two separate reports: switch between **SCAR / 8D report** and **RCA report** at the top.
+Everything on the tab then covers only that type: the summary tiles (with average progress), the charts
+(open vs closed, SCARs or RCAs per month, Pareto), and two boxes that follow the filters:
 
 - **Open & in progress**: the top 5 Open and Monitor tickets, most urgent first (highest severity, then open longest), with progress.
 - **Recently closed**: the 5 most recently closed tickets by their "Closed on" date.
 
-On the **SCARs per month** and **RCAs per month** charts, both boxes show only SCARs or only RCAs.
+**Export Excel** on the Analysis tab saves just that report (e.g. `FXN_HT_SCAR_8D_Report_<date>.xlsx`).
+Tickets typed "Other" aren't in either report; set their type to SCAR or RCA to include them.
 Click a row to open the ticket, or **See all** for the full list on the Tickets tab.
 
 ## Progress per ticket
