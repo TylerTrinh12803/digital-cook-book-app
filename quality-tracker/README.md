@@ -46,6 +46,17 @@ dashboard, slide 2 the RCA one-pager. Each slide has the header, D1–D8 strip (
 requestor / per-month charts as editable PowerPoint charts, top-5 open and recently closed tables, and key insights.
 The slides follow the current filters. The Pareto stays on the web page only.
 
+## Share a demo copy
+
+**Share demo (.html)** (next to Export Excel) saves the whole tracker as one HTML file, about 3 MB, with the
+libraries, fonts and a copy of the current tickets built in. Anyone can open it by double-clicking (email, Teams,
+shared drive): no install and no internet. It works like the real tracker, but every change stays in that
+person's browser and never reaches your tracker; **Reset demo** goes back to the original copy. Uploaded
+PowerPoints / PDFs aren't included (SharePoint links are). The file contains your ticket details, so only share it
+with people who may see them.
+
+For others to see and edit the real tickets live instead, run the tracker with `--lan` (see "Let teammates open it").
+
 The filters apply to the dashboard. Click a row to open the ticket, a summary tile or **See all** to jump to those
 tickets. **Export Excel** on the Analysis tab saves just that report (e.g. `FXN_HT_SCAR_8D_Report_<date>.xlsx`).
 Tickets typed "Other" aren't in either report; set their type to SCAR or RCA to include them.

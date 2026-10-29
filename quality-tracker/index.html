@@ -526,6 +526,7 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
     <span class="spacer"></span>
     <button class="btn" id="importBtn" type="button">Import Excel</button>
     <button class="btn" id="exportBtn" type="button">Export Excel</button>
+    <button class="btn" id="demoBtn" type="button" hidden title="Save a demo copy of the tracker as one HTML file others can open and click around in">Share demo (.html)</button>
     <input type="file" id="importFile" accept=".xlsx,.xlsm,.xls" hidden>
   </div>
 
@@ -852,8 +853,10 @@ const FLAGS = [
   ["capa", "CAPA implemented"], ["eightD", "8D issued"], ["repeat", "Repeat issue (same root cause)"]
 ];
 const STATUS_LABEL = { OPEN: "Open", MONITOR: "Monitor", CLOSE: "Closed" };
-const LS_KEY = "fxnht-quality-tickets-v1";
-const UI_KEY = "fxnht-quality-ui-v1";
+// A shared demo copy (window.SNAPSHOT) keeps its own browser storage, apart from any real tracker.
+const KEY_PREFIX = window.SNAPSHOT ? "demo-" : "";
+const LS_KEY = KEY_PREFIX + "fxnht-quality-tickets-v1";
+const UI_KEY = KEY_PREFIX + "fxnht-quality-ui-v1";
 const LOCAL_FILE_LIMIT = 1.5 * 1024 * 1024;
 const POLL_MS = 8000;
 
@@ -874,7 +877,7 @@ let reportType = "SCAR";
 const REPORT = { SCAR: { label: "SCAR / 8D", one: "SCAR", noun: "SCARs" }, RCA: { label: "RCA", one: "RCA", noun: "RCAs" } };
 let reports = [], repSig = "", converters = [];
 let editingReport = null, draftRFile = null, draftRPdf = null;
-const REP_KEY = "fxnht-quality-reports-v1";
+const REP_KEY = KEY_PREFIX + "fxnht-quality-reports-v1";
 const isPpt = name => /\.pptx?$/i.test(name || "");
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -995,7 +998,13 @@ async function boot() {
   restoreUI();
   fillStaticOptions();
   bindUI();
-  if (location.protocol.startsWith("http")) {
+  if (window.SNAPSHOT) {
+    // Demo copy: start from the snapshot the first time, then keep the viewer's own changes in this browser.
+    mode = "local";
+    if (lsGet(LS_KEY) === null) seedDemo();
+    loadLocal();
+    if (!tickets.length && !lsGet(LS_KEY)) { tickets = JSON.parse(JSON.stringify(window.SNAPSHOT.tickets || [])); reports = JSON.parse(JSON.stringify(window.SNAPSHOT.reports || [])); }
+  } else if (location.protocol.startsWith("http")) {
     render();
     try {
       tickets = await api("GET", "api/tickets");
@@ -1095,11 +1104,18 @@ function render() {
   $("#reportBar").hidden = view !== "analysis";
   const canExport = mode !== "starting" && typeof XLSX !== "undefined";
   $("#exportBtn").hidden = !canExport || !tickets.length;
+  $("#demoBtn").hidden = mode !== "server" || view === "reports" || view === "overdue";
   $("#importBtn").hidden = mode === "starting" || typeof XLSX === "undefined";
   if (view === "tickets") renderTable(); else if (view === "analysis") renderChart(); else if (view === "overdue") renderOverdue(od); else renderReports();
 }
 
+function seedDemo() {
+  lsSet(LS_KEY, JSON.stringify(window.SNAPSHOT.tickets || []));
+  lsSet(REP_KEY, JSON.stringify(window.SNAPSHOT.reports || []));
+  lsSet(SET_KEY, JSON.stringify(window.SNAPSHOT.settings || {}));
+}
 function renderBanner() {
+  if (window.SNAPSHOT) return banner(`<b>Demo copy made ${esc(fmtDate(String(window.SNAPSHOT.takenAt || "").slice(0, 10)))}.</b> Click around and try anything: changes stay in this browser and don't affect the real tracker. <button class="btn small" type="button" data-act="demo-reset">Reset demo</button>`);
   if (mode === "starting") return banner("Loading tickets…");
   if (mode === "local") return banner("<b>Opened as a plain file, so tickets save in this browser only.</b> To keep them in the tracker's data folder instead, close this tab and run the start file (start-windows.bat, or start-mac-linux.sh).");
   if (!pull.lost) banner("");
@@ -1230,7 +1246,7 @@ function ageOf(t) { if (!t.detected) return 0; return daysBetween(t.detected, t.
 /* ---------- overdue notifications (8D steps and RCA steps) ---------- */
 // Days allowed for each next step, counted from the last step done (or from detection for the first one).
 const DEFAULT_RULES = { d: [1, 2, 2, 7, 7, 14, 14, 7], approve8D: 14, rca: 14, approveRCA: 14, soon: 2 };
-const SET_KEY = "fxnht-quality-settings-v1";
+const SET_KEY = KEY_PREFIX + "fxnht-quality-settings-v1";
 let rules = JSON.parse(JSON.stringify(DEFAULT_RULES));
 function applyRules(data) {
   const o = (data && data.overdue) || {};
@@ -1717,23 +1733,41 @@ function showChartEmpty(msg) { $("#canvasBox").hidden = true; const e = $("#char
 /* ---------- one-slide PowerPoint export of the dashboard ---------- */
 // Builds a 16:9 slide from the same numbers as the dashboard, with native (editable) PowerPoint charts.
 const SLIDE = {
-  head: "0D3A78", ink: "152027", muted: "5B6872", line: "D7DEE2", bg: "F1F4F6", white: "FFFFFF", blue: "2F6FD1",
+  head: "0D3A78", ink: "152027", muted: "5B6872", line: "D7DEE2", bg: "EEF3F8", white: "FFFFFF", blue: "2F6FD1",
+  // [strong, tint] pairs for tiles, panels and insights
+  c: { blue: ["2F6FD1", "E3ECFB"], red: ["C62F2F", "FBE3E3"], amber: ["B47100", "FCF0D6"], green: ["22855A", "DDF2E7"],
+    teal: ["0B8A8A", "D8F1F1"], purple: ["7350C4", "ECE5FA"], orange: ["D9691A", "FDE7D6"] },
+  statusTint: { OPEN: "FBE3E3", MONITOR: "FCF0D6", CLOSE: "DDF2E7" },
   status: { OPEN: "C62F2F", MONITOR: "B47100", CLOSE: "22855A" },
   series: { Open: "C62F2F", Monitor: "B47100", Closed: "22855A", S0: "C62F2F", S1: "C97A06", S2: "3F6EA8", Raised: "0B6872" },
   steps: [["CFE8FA", "1C7FC4"], ["D4DEFA", "2F5FD1"], ["C8F0EA", "129B8A"], ["D9F2C9", "3F9A2E"], ["FDEEB5", "B98500"], ["FDD9BD", "D9691A"], ["FBCFD3", "CC3344"], ["E2D6F7", "7350C4"]],
   head1: "Bahnschrift SemiCondensed", body: "Segoe UI"
 };
 const clip = (s, n) => { s = String(s || ""); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
+// The insight icons as PNG images (PowerPoint can't use the page's inline SVG directly).
+function iconPng(name, color) {
+  return new Promise(resolve => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24" fill="none" stroke="#${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON[name]}</svg>`;
+    const img = new Image();
+    img.onload = () => { const cv = document.createElement("canvas"); cv.width = cv.height = 96; cv.getContext("2d").drawImage(img, 0, 0, 96, 96); resolve(cv.toDataURL("image/png")); };
+    img.onerror = () => resolve(null);
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  });
+}
+const INSIGHT_COLOR = { bars: "green", calendar: "red", people: "blue", alert: "amber" };
 
 // Adds one slide for the current reportType.
-function addReportSlide(pptx) {
+function addReportSlide(pptx, icons = {}) {
     const rows = filtered({ ignoreStatus: true }), r = REPORT[reportType], is8D = reportType === "SCAR";
     const s = pptx.addSlide();
     s.background = { color: SLIDE.bg };
     const W = 13.333, M = 0.3, inner = W - 2 * M;
-    const panel = (x, y, w, h, title) => {
+    // White panel with a colored band on top and a title in the same color.
+    const panel = (x, y, w, h, title, color = "blue") => {
+      const [strong] = SLIDE.c[color];
       s.addShape(pptx.ShapeType.rect, { x, y, w, h, fill: { color: SLIDE.white }, line: { color: SLIDE.line, width: 0.75 } });
-      if (title) s.addText(title.toUpperCase(), { x: x + 0.1, y: y + 0.04, w: w - 0.2, h: 0.28, fontFace: SLIDE.head1, fontSize: 11, bold: true, color: SLIDE.ink, margin: 0 });
+      s.addShape(pptx.ShapeType.rect, { x, y, w, h: 0.06, fill: { color: strong }, line: { color: strong } });
+      if (title) s.addText(title.toUpperCase(), { x: x + 0.1, y: y + 0.08, w: w - 0.2, h: 0.26, fontFace: SLIDE.head1, fontSize: 11, bold: true, color: strong, margin: 0 });
     };
 
     // Header band
@@ -1750,6 +1784,7 @@ function addReportSlide(pptx) {
     };
     metaBox(W - M - 4.45, 2.75, "Data period", dates.length ? `${dates[0]} — ${dates[dates.length - 1]}` : "—", 12);
     metaBox(W - M - 1.6, 1.6, "Total requests", String(rows.length), 20);
+    SLIDE.steps.forEach(([, strong], i) => s.addShape(pptx.ShapeType.rect, { x: i * W / 8, y: 0.95, w: W / 8 + 0.01, h: 0.06, fill: { color: strong }, line: { color: strong } }));
 
     // D1-D8 strip (SCAR / 8D only)
     let y = 1.07;
@@ -1772,32 +1807,33 @@ function addReportSlide(pptx) {
     const span = rows.length ? monthRange([...rows.map(t => monthKey(t.detected)), now]).length : 0;
     const ages = openOnes.filter(t => t.detected).map(ageOf);
     const tiles = [
-      [`Total ${r.noun}`, rows.length, `${rows.filter(t => (t.detected || "").startsWith(now)).length} this month`, SLIDE.ink],
-      ["Open", c("OPEN"), `${rows.filter(t => t.status === "OPEN" && t.severity === "S0").length} at S0`, SLIDE.status.OPEN],
-      ["Monitor", c("MONITOR"), "pending validation", SLIDE.status.MONITOR],
-      ["Closed", c("CLOSE"), rows.length ? `${Math.round(c("CLOSE") / rows.length * 100)}% of total` : "", SLIDE.status.CLOSE],
-      ["Avg progress", `${openOnes.length ? Math.round(openOnes.reduce((a, t) => a + progressOf(t), 0) / openOnes.length) : 0}%`, "open + monitor", SLIDE.ink],
-      [`Avg ${r.noun} / month`, span ? (Math.round(rows.length / span * 10) / 10).toString() : "0", span ? `over ${span} months` : "", SLIDE.ink],
-      ["Avg age open", `${ages.length ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length) : 0}d`, "open + monitor", SLIDE.ink]
+      [`Total ${r.noun}`, rows.length, `${rows.filter(t => (t.detected || "").startsWith(now)).length} this month`, "blue"],
+      ["Open", c("OPEN"), `${rows.filter(t => t.status === "OPEN" && t.severity === "S0").length} at S0`, "red"],
+      ["Monitor", c("MONITOR"), "pending validation", "amber"],
+      ["Closed", c("CLOSE"), rows.length ? `${Math.round(c("CLOSE") / rows.length * 100)}% of total` : "", "green"],
+      ["Avg progress", `${openOnes.length ? Math.round(openOnes.reduce((a, t) => a + progressOf(t), 0) / openOnes.length) : 0}%`, "open + monitor", "teal"],
+      [`Avg ${r.noun} / month`, span ? (Math.round(rows.length / span * 10) / 10).toString() : "0", span ? `over ${span} months` : "", "purple"],
+      ["Avg age open", `${ages.length ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length) : 0}d`, "open + monitor", "orange"]
     ];
     const gap = 0.08, tw = (inner - gap * (tiles.length - 1)) / tiles.length, th = 0.72;
-    tiles.forEach(([label, value, sub, color], i) => {
-      const x = M + i * (tw + gap);
-      s.addShape(pptx.ShapeType.rect, { x, y, w: tw, h: th, fill: { color: SLIDE.white }, line: { color: SLIDE.line, width: 0.75 } });
+    tiles.forEach(([label, value, sub, tone], i) => {
+      const x = M + i * (tw + gap), [strong, tint] = SLIDE.c[tone];
+      s.addShape(pptx.ShapeType.rect, { x, y, w: tw, h: th, fill: { color: tint }, line: { color: tint } });
+      s.addShape(pptx.ShapeType.rect, { x, y, w: 0.07, h: th, fill: { color: strong }, line: { color: strong } });
       s.addText([
-        { text: label.toUpperCase(), options: { fontSize: 7.5, color: SLIDE.muted, breakLine: true } },
-        { text: String(value), options: { fontSize: 20, bold: true, color, fontFace: SLIDE.head1, breakLine: true } },
+        { text: label.toUpperCase(), options: { fontSize: 7.5, bold: true, color: strong, breakLine: true } },
+        { text: String(value), options: { fontSize: 20, bold: true, color: strong, fontFace: SLIDE.head1, breakLine: true } },
         { text: sub, options: { fontSize: 7.5, color: SLIDE.muted } }
-      ], { x: x + 0.08, y: y + 0.03, w: tw - 0.16, h: th - 0.06, fontFace: SLIDE.body, margin: 0, valign: "middle" });
+      ], { x: x + 0.15, y: y + 0.03, w: tw - 0.2, h: th - 0.06, fontFace: SLIDE.body, margin: 0, valign: "middle" });
     });
     y += th + 0.1;
 
     // Charts row: status donut, requestors, per month
     const ch = is8D ? 2.05 : 2.55;
     const w1 = 3.55, w2 = 4.05, w3 = inner - w1 - w2 - 0.2, x2 = M + w1 + 0.1, x3 = x2 + w2 + 0.1;
-    panel(M, y, w1, ch, "Requests by status");
-    panel(x2, y, w2, ch, "Requests by creator / requestor");
-    panel(x3, y, w3, ch, `${r.noun} per month`);
+    panel(M, y, w1, ch, "Requests by status", "teal");
+    panel(x2, y, w2, ch, "Requests by creator / requestor", "blue");
+    panel(x3, y, w3, ch, `${r.noun} per month`, "purple");
     const noData = (x, w) => s.addText(`No ${r.noun} in this selection.`, { x, y: y + ch / 2 - 0.15, w, h: 0.3, align: "center", fontFace: SLIDE.body, fontSize: 9, color: SLIDE.muted });
     if (rows.length) {
       const buckets = statusBuckets(rows);
@@ -1836,36 +1872,78 @@ function addReportSlide(pptx) {
     const bh = 7.5 - 0.22 - y;
     const wa = 5.25, wb = 4.3, wc = inner - wa - wb - 0.2, xb = M + wa + 0.1, xc = xb + wb + 0.1;
     const { open, closed } = openAndClosed(rows);
-    panel(M, y, wa, bh, `Open & in progress ${r.noun}  ·  top ${Math.min(5, open.length)} of ${open.length}`);
-    panel(xb, y, wb, bh, `Recently closed ${r.noun}  ·  latest ${Math.min(5, closed.length)} of ${closed.length}`);
-    panel(xc, y, wc, bh, "Key insights");
+    panel(M, y, wa, bh, `Open & in progress ${r.noun}  ·  top ${Math.min(5, open.length)} of ${open.length}`, "red");
+    panel(xb, y, wb, bh, `Recently closed ${r.noun}  ·  latest ${Math.min(5, closed.length)} of ${closed.length}`, "green");
+    panel(xc, y, wc, bh, "Key insights", "amber");
     // Rows sized so five fit in the box even when an issue wraps to two lines.
     const rowH = Math.min(0.4, (bh - 0.75) / 5);
-    const hdr = cells => cells.map(t => ({ text: t, options: { bold: true, color: SLIDE.muted, fill: { color: "E4EAEC" }, fontSize: 7.5 } }));
-    const stCell = t => ({ text: STATUS_LABEL[t.status] || t.status, options: { bold: true, color: SLIDE.status[t.status] || SLIDE.ink } });
+    const hdr = cells => cells.map(t => ({ text: t, options: { bold: true, color: SLIDE.white, fill: { color: SLIDE.head }, fontSize: 7.5 } }));
+    const stCell = t => ({ text: STATUS_LABEL[t.status] || t.status, options: { bold: true, color: SLIDE.status[t.status] || SLIDE.ink, fill: { color: SLIDE.statusTint[t.status] || SLIDE.white } } });
+    // Light stripes on every other row (cells that set their own fill keep it).
+    const zebra = rowsOut => rowsOut.map((cells, i) => i % 2 ? cells.map(c => typeof c === "string" ? { text: c, options: { fill: { color: "F4F7FB" } } } : { ...c, options: { fill: { color: "F4F7FB" }, ...c.options } }) : cells);
     const sevCell = t => ({ text: t.severity || "", options: { bold: true, color: SLIDE.series[t.severity] || SLIDE.ink } });
     const tableOpts = (x, w, colW) => ({ x: x + 0.08, y: y + 0.36, w: w - 0.16, colW, fontFace: SLIDE.body, fontSize: 8, color: SLIDE.ink, valign: "middle",
       border: { type: "solid", pt: 0.5, color: SLIDE.line }, rowH: [0.26, ...Array(5).fill(rowH)], margin: [0.02, 0.05, 0.02, 0.05], autoPage: false });
     if (open.length) {
-      s.addTable([hdr(["No.", "Sev", "Issue", "Status", "Progress", "Days"]), ...open.slice(0, 5).map(t => [
+      s.addTable([hdr(["No.", "Sev", "Issue", "Status", "Progress", "Days"]), ...zebra(open.slice(0, 5).map(t => [
         { text: qid(t.no), options: { fontFace: "Consolas" } }, sevCell(t), clip(t.description, 40), stCell(t), `${Math.round(progressOf(t))}%`, String(ageOf(t))
-      ])], tableOpts(M, wa, [0.6, 0.36, 2.35, 0.7, 0.66, 0.42]));
+      ]))], tableOpts(M, wa, [0.6, 0.36, 2.35, 0.7, 0.66, 0.42]));
     } else s.addText(`No open or monitor ${r.noun}.`, { x: M, y: y + 0.5, w: wa, h: 0.3, align: "center", fontFace: SLIDE.body, fontSize: 9, color: SLIDE.muted });
     if (closed.length) {
-      s.addTable([hdr(["No.", "Sev", "Issue", "Closed"]), ...closed.slice(0, 5).map(t => [
+      s.addTable([hdr(["No.", "Sev", "Issue", "Closed"]), ...zebra(closed.slice(0, 5).map(t => [
         { text: qid(t.no), options: { fontFace: "Consolas" } }, sevCell(t), clip(t.description, 38), t.closedDate || "Not set"
-      ])], tableOpts(xb, wb, [0.62, 0.38, 2.29, 0.85]));
+      ]))], tableOpts(xb, wb, [0.62, 0.38, 2.29, 0.85]));
     } else s.addText(`No closed ${r.noun}.`, { x: xb, y: y + 0.5, w: wb, h: 0.3, align: "center", fontFace: SLIDE.body, fontSize: 9, color: SLIDE.muted });
-    const ins = insightsFor(rows);
-    s.addText(ins.length ? ins.flatMap(([, title, sub], i) => [
-      { text: title, options: { bold: true, color: SLIDE.blue, fontSize: 9, breakLine: true } },
-      { text: sub, options: { color: SLIDE.muted, fontSize: 8, breakLine: i < ins.length - 1, paraSpaceAfter: 6 } }
-    ]) : [{ text: `No ${r.noun} in this selection yet.`, options: { color: SLIDE.muted, fontSize: 9 } }],
-    { x: xc + 0.1, y: y + 0.36, w: wc - 0.2, h: bh - 0.42, fontFace: SLIDE.body, valign: "top", margin: 0 });
+    // Key insights: a colored icon tile beside each insight, like the page.
+    // As many insights as fit the box without overlapping (about 0.6 in each).
+    const ins = insightsFor(rows).slice(0, Math.max(1, Math.floor((bh - 0.45) / 0.6)));
+    if (!ins.length) s.addText(`No ${r.noun} in this selection yet.`, { x: xc + 0.1, y: y + 0.4, w: wc - 0.2, h: 0.3, fontFace: SLIDE.body, fontSize: 9, color: SLIDE.muted, margin: 0 });
+    const ih = Math.min(0.7, (bh - 0.45) / Math.max(ins.length, 1));
+    ins.forEach(([ic, title, sub], i) => {
+      const [strong, tint] = SLIDE.c[INSIGHT_COLOR[ic] || "blue"], iy = y + 0.4 + i * ih;
+      s.addShape(pptx.ShapeType.roundRect, { x: xc + 0.12, y: iy, w: 0.4, h: 0.4, fill: { color: tint }, line: { color: tint }, rectRadius: 0.06 });
+      if (icons[ic]) s.addImage({ data: icons[ic], x: xc + 0.17, y: iy + 0.05, w: 0.3, h: 0.3 });
+      s.addText([{ text: title, options: { bold: true, color: strong, fontSize: 8.5, breakLine: true } }, { text: sub, options: { color: SLIDE.muted, fontSize: 7 } }],
+        { x: xc + 0.6, y: iy - 0.03, w: wc - 0.7, h: ih, fontFace: SLIDE.body, valign: "top", margin: 0 });
+    });
 
     // Footer
     s.addText(`FXN HT Quality Tracker · exported ${fmtDate(todayISO())}`, { x: M, y: 7.28, w: inner, h: 0.18, fontFace: SLIDE.body, fontSize: 7, color: SLIDE.muted, align: "right", margin: 0 });
 }
+/* ---------- share a demo copy ---------- */
+// Saves the whole tracker as one HTML file (libraries, fonts and a copy of the tickets built in)
+// that anyone can open and click around in; their changes stay in their own browser.
+async function shareDemo() {
+  const btn = $("#demoBtn"); btn.disabled = true; btn.textContent = "Making demo…";
+  try {
+    const get = async u => { const r = await fetch(u, { cache: "no-store" }); if (!r.ok) throw new Error(`${u} didn't load`); return r; };
+    const b64 = buf => { const a = new Uint8Array(buf); let out = ""; for (let i = 0; i < a.length; i += 0x8000) out += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(out); };
+    let html = await (await get("index.html")).text();
+    for (const lib of ["chart.umd.min.js", "xlsx.full.min.js", "exceljs.min.js", "pptxgen.bundle.js"]) {
+      const code = (await (await get("vendor/" + lib)).text()).replace(/<\/script/gi, "<\\/script");
+      html = html.replace(`<script src="vendor/${lib}"><\/script>`, () => `<script>${code}<\/script>`);
+    }
+    for (const f of [...new Set(html.match(/vendor\/fonts\/[\w.-]+\.woff2/g) || [])]) {
+      const data = b64(await (await get(f)).arrayBuffer());
+      html = html.split(`url("${f}")`).join(`url(data:font/woff2;base64,${data})`);
+    }
+    // Uploaded files stay on this computer; SharePoint and other web links come along.
+    const snap = JSON.stringify({
+      takenAt: new Date().toISOString(),
+      tickets: official().map(t => ({ ...t, attachments: (t.attachments || []).filter(a => a.kind === "link").map(a => ({ kind: a.kind, name: a.name, url: a.url })) })),
+      reports: reports.filter(r => r.link).map(r => ({ ...r, file: null, pdf: null })),
+      settings: { overdue: rules }
+    }).replace(/</g, "\\u003c");
+    html = html.replace("<script>\n(() => {", () => `<script>window.SNAPSHOT = ${snap};<\/script>\n<script>\n(() => {`);
+    const name = `FXN_HT_Quality_Tracker_demo_${todayISO()}.html`;
+    const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: name }); document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast(`Saved ${name}. Send it by email or Teams; it opens in any browser.`, 5000);
+  } catch (err) { toast(`Couldn't make the demo: ${err.message}`, 6000); }
+  finally { btn.disabled = false; btn.textContent = "Share demo (.html)"; }
+}
+
 // One PowerPoint with both reports: slide 1 SCAR / 8D, slide 2 RCA.
 async function downloadSlide() {
   if (typeof PptxGenJS === "undefined") { toast("The PowerPoint library didn't load. Reload the page and try again.", 5000); return; }
@@ -1875,7 +1953,9 @@ async function downloadSlide() {
     const pptx = new PptxGenJS();
     pptx.layout = "LAYOUT_WIDE"; // 13.333 x 7.5 in
     pptx.title = "FXN HT quality dashboards";
-    for (const type of ["SCAR", "RCA"]) { reportType = type; addReportSlide(pptx); }
+    const icons = {};
+    for (const ic of Object.keys(INSIGHT_COLOR)) icons[ic] = await iconPng(ic, SLIDE.c[INSIGHT_COLOR[ic]][0]);
+    for (const type of ["SCAR", "RCA"]) { reportType = type; addReportSlide(pptx, icons); }
     reportType = shown;
     const blob = await pptx.write({ outputType: "blob" });
     const name = `FXN_HT_Quality_Dashboards_${todayISO()}.pptx`;
@@ -2716,6 +2796,7 @@ function bindUI() {
     if (a.dataset.act === "import-replace-yes") runImport("replace");
     if (a.dataset.act === "add-report") openReport(null);
     if (a.dataset.act === "import-ppt") $("#pptInput").click();
+    if (a.dataset.act === "demo-reset") { seedDemo(); loadLocal(); loadSettings().then(() => { render(); toast("Demo reset to the original copy"); }); }
   });
   $("#view-analysis").addEventListener("click", e => {
     const mm = e.target.closest("[data-mm]");
@@ -2743,6 +2824,7 @@ function bindUI() {
   $("#importBtn").addEventListener("click", () => $("#importFile").click());
   $("#importFile").addEventListener("change", e => { const f = e.target.files[0]; if (f) handleImportFile(f); e.target.value = ""; });
   $("#exportBtn").addEventListener("click", exportExcel);
+  $("#demoBtn").addEventListener("click", shareDemo);
   $("#kpis").addEventListener("click", e => { const t = e.target.closest("[data-kpi]"); if (t) pickKPI(t.dataset.kpi); });
 
   // actions editor
