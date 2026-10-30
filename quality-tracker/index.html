@@ -117,6 +117,7 @@ button.kpi[aria-pressed="true"] { background: var(--accent-soft); box-shadow: in
 .kpi .sub { font-size: .75rem; color: var(--muted); }
 .kpi.open .val { color: var(--st-open); }
 .kpi.monitor .val { color: var(--st-monitor); }
+.kpi.progress .val { color: var(--st-progress); }
 .kpi.close .val { color: var(--st-close); }
 
 /* filters */
@@ -289,6 +290,19 @@ table { border-collapse: collapse; width: 100%; min-width: 1080px; }
 .od-tag.update { background: var(--st-progress); }
 .od-dot.update { background: var(--st-progress); }
 .od-late.update { color: var(--st-progress); font-weight: 700; }
+.od-chip.ready, .od-late.ready { color: var(--st-close); font-weight: 700; }
+.od-dot.ready { background: var(--st-close); }
+.mon-rules .rr-num { background: var(--st-monitor); }
+.mon-track { display: flex; flex-direction: column; gap: 3px; margin-top: 5px; font-size: .7rem; color: var(--st-monitor); font-weight: 600; line-height: 1.2; max-width: 150px; }
+.mon-track.ready { color: var(--st-close); }
+.mon-track.unset { color: var(--muted); font-weight: 500; }
+.mon-bar { display: block; height: 5px; border-radius: 99px; background: var(--sunken); overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); }
+.mon-bar span { display: block; height: 100%; background: currentColor; }
+.mon-box .mon-row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.mon-box .mon-since { display: flex; gap: 8px; align-items: center; font-size: .85rem; }
+.mon-box .mon-since input { width: auto; }
+.mon-text { font-size: .88rem; font-weight: 600; color: var(--st-monitor); }
+.mon-text.ready { color: var(--st-close); }
 .tl-note { margin: 6px 14px 8px; font-size: .8rem; color: var(--muted); max-width: 90ch; }
 /* phones: the timeline runs top to bottom */
 @media (max-width: 640px) {
@@ -364,7 +378,7 @@ td.mono { white-space: nowrap; }
 .sev-tag { color: var(--sev); }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 999px; font-size: .74rem; font-weight: 600; letter-spacing: .05em; border: 1px solid currentColor; white-space: nowrap; }
 .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.st-OPEN { color: var(--st-open); } .st-MONITOR { color: var(--st-monitor); } .st-CLOSE { color: var(--st-close); }
+.st-OPEN { color: var(--st-open); } .st-IN_PROGRESS { color: var(--st-progress); } .st-MONITOR { color: var(--st-monitor); } .st-CLOSE { color: var(--st-close); }
 .type { font-size: .72rem; font-weight: 600; letter-spacing: .06em; padding: 1px 6px; border-radius: 3px; background: var(--sunken); color: var(--muted); }
 .type.SCAR { background: var(--accent-soft); color: var(--accent); }
 .muted { color: var(--muted); }
@@ -379,6 +393,8 @@ td.mono { white-space: nowrap; }
 .chart-head { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between; margin-bottom: 10px; }
 .chart-head h2 { margin: 0; font: 600 1.35rem/1.1 var(--font-display); text-transform: uppercase; letter-spacing: .02em; text-wrap: balance; }
 .chart-head p { margin: 2px 0 0; color: var(--muted); font-size: .85rem; max-width: 70ch; }
+.status-field { grid-column: span 2; }
+.status-field .radio-row label { white-space: nowrap; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
 .seg button { border: 0; background: var(--surface); padding: 5px 10px; cursor: pointer; font-size: .82rem; }
 .seg button + button { border-left: 1px solid var(--line); }
@@ -445,7 +461,8 @@ details > summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
 
 /* actions editor */
 .act-list { display: flex; flex-direction: column; gap: 6px; }
-.act-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px 140px 104px auto; gap: 6px; align-items: center; }
+.act-row { display: grid; grid-template-columns: minmax(0, 1fr) 140px 132px 96px 132px auto; gap: 6px; align-items: center; }
+.act-row .act-closed { border-color: var(--st-close); }
 .act-row input, .act-row select { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 8px; width: 100%; min-width: 0; }
 .act-row select[data-status="Open"] { color: var(--st-open); font-weight: 600; }
 .act-row select[data-status="Closed"] { color: var(--st-close); font-weight: 600; }
@@ -542,7 +559,7 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
       <input id="fSearch" type="search" placeholder="Description, SCAR #, PIC, root cause…">
     </label>
     <label id="fStatusWrap">Status
-      <select id="fStatus"><option value="">All</option><option>OPEN</option><option>MONITOR</option><option>CLOSE</option></select>
+      <select id="fStatus"><option value="">All</option><option value="OPEN">Open</option><option value="IN_PROGRESS">In progress</option><option value="MONITOR">Monitor</option><option value="CLOSE">Closed</option></select>
     </label>
     <label>Severity
       <select id="fSev"><option value="">All</option><option>S0</option><option>S1</option><option>S2</option></select>
@@ -649,6 +666,7 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
       <header><h3 id="tlTitle">Overdue rules</h3><span class="muted">When each step is due</span></header>
       <div class="tl-block"><h4>SCAR / 8D</h4><div class="tl-scroll" id="tl8D"></div></div>
       <div class="tl-block"><h4>RCA</h4><div id="tlRCA"></div></div>
+      <div class="tl-block"><h4>Monitor (SCARs and RCAs)</h4><div id="tlMon"></div></div>
       <p class="tl-note" id="tlSoon"></p>
     </section>
     <div class="od-summary" id="odSummary"></div>
@@ -752,14 +770,22 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
             <label class="field"><span>Root cause</span><select id="f_rootCause" name="rootCause"><option value="">Not yet determined</option></select></label>
             <label class="field"><span>Sub-root cause</span><input type="text" id="f_subRootCause" name="subRootCause" list="dl_rc"></label>
             <label class="field wide"><span>Root cause details</span><textarea id="f_rootCauseDetail" name="rootCauseDetail" placeholder="What caused it and how it was verified (5 Why, fishbone…)"></textarea></label>
-            <div class="field"><span>Status</span>
+            <div class="field status-field"><span>Status</span>
               <div class="radio-row" role="radiogroup" aria-label="Status">
                 <label><input type="radio" name="status" value="OPEN">Open</label>
+                <label><input type="radio" name="status" value="IN_PROGRESS">In progress</label>
                 <label><input type="radio" name="status" value="MONITOR">Monitor</label>
                 <label><input type="radio" name="status" value="CLOSE">Close</label>
               </div>
             </div>
             <label class="field" id="closedField"><span>Closed on</span><input type="date" id="f_closedDate" name="closedDate"></label>
+            <div class="field wide mon-box" id="monitorField" hidden><span>Monitoring for a repeat incident (28 days)</span>
+              <div class="mon-row">
+                <label class="mon-since">Since <input type="date" id="f_monitorStart" name="monitorStart" title="Date the permanent corrective actions were closed and in place"></label>
+                <span class="mon-text" id="monText"></span>
+                <button class="btn small" type="button" id="repeatBtn" title="A repeat happened: restart the count from today">Log a repeat incident</button>
+              </div>
+            </div>
             <div class="field wide"><span>Impact &amp; actions</span>
               <div class="flags" id="flagBox"></div>
             </div>
@@ -881,7 +907,9 @@ const FLAGS = [
   ["rework", "L6 PCBA/GPU/CPU rework"], ["shipmentDelay", "NV shipment / milestone delay"], ["safety", "Potential safety issue"],
   ["capa", "CAPA implemented"], ["eightD", "8D issued"], ["repeat", "Repeat issue (same root cause)"]
 ];
-const STATUS_LABEL = { OPEN: "Open", MONITOR: "Monitor", CLOSE: "Closed" };
+const STATUS_LABEL = { OPEN: "Open", IN_PROGRESS: "In progress", MONITOR: "Monitor", CLOSE: "Closed" };
+const STATUSES = ["OPEN", "IN_PROGRESS", "MONITOR", "CLOSE"];
+const STATUS_TOKEN = { OPEN: "--st-open", IN_PROGRESS: "--st-progress", MONITOR: "--st-monitor", CLOSE: "--st-close" };
 // A shared demo copy (window.SNAPSHOT) keeps its own browser storage, apart from any real tracker.
 const KEY_PREFIX = window.SNAPSHOT ? "demo-" : "";
 const LS_KEY = KEY_PREFIX + "fxnht-quality-tickets-v1";
@@ -1188,20 +1216,22 @@ function renderKPIs() {
   $("#kpis").innerHTML = mode === "starting" ? "" : inReport ?
     tile("", `Total ${noun}`, all.length, `${thisMonth} this month`, "all:") +
     tile("open", "Open", c("OPEN"), `${all.filter(t => t.status === "OPEN" && t.severity === "S0").length} at S0`, "status:OPEN") +
-    tile("monitor", "Monitor", c("MONITOR"), "pending validation", "status:MONITOR") +
+    tile("progress", "In progress", c("IN_PROGRESS"), "being worked", "status:IN_PROGRESS") +
+    tile("monitor", "Monitor", c("MONITOR"), `${all.filter(t => (monitorInfo(t) || {}).ready).length} ready to close`, "status:MONITOR") +
     tile("close", "Closed", c("CLOSE"), all.length ? `${Math.round(c("CLOSE") / all.length * 100)}% of total` : "", "status:CLOSE") +
-    tile("", "Avg progress", avgProg + "%", "open + monitor") +
+    tile("", "Avg progress", avgProg + "%", "not closed yet") +
     tile("", `Avg ${noun} / month`, perMonth.toLocaleString(), spanMonths ? `over ${spanMonths} month${spanMonths > 1 ? "s" : ""}` : "") +
-    tile("", "Avg age open", avgAge + "d", "open + monitor")
+    tile("", "Avg age open", avgAge + "d", "not closed yet")
     :
     tile("", "Total tickets", all.length, `${thisMonth} this month`, "all:") +
     tile("open", "Open", c("OPEN"), `${all.filter(t => t.status === "OPEN" && t.severity === "S0").length} at S0`, "status:OPEN") +
-    tile("monitor", "Monitor", c("MONITOR"), "pending validation", "status:MONITOR") +
+    tile("progress", "In progress", c("IN_PROGRESS"), "being worked", "status:IN_PROGRESS") +
+    tile("monitor", "Monitor", c("MONITOR"), `${all.filter(t => (monitorInfo(t) || {}).ready).length} ready to close`, "status:MONITOR") +
     tile("close", "Closed", c("CLOSE"), all.length ? `${Math.round(c("CLOSE") / all.length * 100)}% of total` : "", "status:CLOSE") +
     tile("", "SCARs", typeCount("SCAR"), `${all.filter(t => t.type === "SCAR" && t.status !== "CLOSE").length} not closed`, "type:SCAR") +
     tile("", "RCAs", typeCount("RCA"), `${all.filter(t => t.type === "RCA" && t.status !== "CLOSE").length} not closed`, "type:RCA") +
     tile("", "Avg tickets / month", perMonth.toLocaleString(), spanMonths ? `over ${spanMonths} month${spanMonths > 1 ? "s" : ""}` : "") +
-    tile("", "Avg age open", avgAge + "d", "open + monitor");
+    tile("", "Avg age open", avgAge + "d", "not closed yet");
 }
 // Clicking a tile opens the Tickets list with just that filter; clicking the active tile again clears it.
 function pickKPI(pick) {
@@ -1274,7 +1304,7 @@ function sortVal(t, k) {
   if (k === "units") return unitsNum(t.units);
   if (k === "age") return ageOf(t);
   if (k === "progress") return progressOf(t);
-  if (k === "status") return ({ OPEN: 0, MONITOR: 1, CLOSE: 2 })[t.status] ?? 3;
+  if (k === "status") return STATUSES.indexOf(t.status) >= 0 ? STATUSES.indexOf(t.status) : 9;
   return String(t[k] || "").toLowerCase();
 }
 function actSummary(t) {
@@ -1290,11 +1320,34 @@ function ageOf(t) { if (!t.detected) return 0; return daysBetween(t.detected, t.
 // (or from detection for the first one). Fixed here so everyone works to the same timeline.
 // RCAs: the RCA is due 3 days after detection; after that each ticket has its own close due date,
 // and one without a due date asks for an update after 14 days with no movement.
-const rules = { d: [1, 2, 2, 7, 7, 14, 14, 7], approve8D: 14, rca: 3, nudge: 14, soon: 2 };
+// Monitor: once the permanent corrective actions are closed, a ticket watches 28 days for a repeat.
+const rules = { d: [1, 2, 2, 7, 7, 14, 14, 7], approve8D: 14, rca: 3, nudge: 14, soon: 2, monitor: 28 };
+const plusDays = (iso, n) => new Date(Date.parse(iso) + n * 86400000).toISOString().slice(0, 10);
+// The day the PCAs were all closed (latest close date), if they all are.
+function pcaClosedOn(pca) {
+  if (!pca || !pca.length || pca.some(a => a.status !== "Closed")) return "";
+  return pca.map(a => a.closedOn).filter(Boolean).sort().pop() || "";
+}
+// Days without a repeat for a Monitor ticket, counted from "monitoring since" (or the PCAs' close date).
+function monitorInfo(t) {
+  if (!t || t.status !== "MONITOR") return null;
+  const openPca = (t.pca || []).filter(a => a.status !== "Closed").length;
+  const start = t.monitorStart || pcaClosedOn(t.pca);
+  if (!start) return { start: "", openPca, days: 0, ready: false };
+  const days = daysBetween(start, todayISO());
+  return { start, openPca, days, ready: days >= rules.monitor, repeats: t.repeats || 0 };
+}
+function monitorBadge(t) {
+  const m = monitorInfo(t);
+  if (!m) return "";
+  if (!m.start) return `<span class="mon-track unset" title="Open the ticket and set the monitoring start date">Monitoring start not set</span>`;
+  const pct = Math.min(100, m.days / rules.monitor * 100);
+  return `<span class="mon-track${m.ready ? " ready" : ""}" title="${esc(`No repeat since ${fmtDate(m.start)}${m.repeats ? ` · ${m.repeats} repeat${m.repeats > 1 ? "s" : ""} logged` : ""}`)}"><span class="mon-bar"><span style="width:${pct}%"></span></span>${m.ready ? `${m.days} days, no repeat · ready to close` : `Day ${m.days} of ${rules.monitor} without a repeat`}</span>`;
+}
 const daysFrom = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000); // signed, b - a
 // What an open SCAR / RCA is waiting on, when that clock started, and how late it is.
 function overdueInfo(t) {
-  if (t.draft || t.status === "CLOSE" || !REPORT[t.type]) return null;
+  if (t.draft || t.status === "CLOSE" || t.status === "MONITOR" || !REPORT[t.type]) return null;
   const p = t.progress || {}, who = t.client || "Customer";
   // D's ticked before dates were recorded fall back to the ticket's last save.
   const fallback = (t.updatedAt || "").slice(0, 10) || t.detected;
@@ -1325,24 +1378,31 @@ function overdueInfo(t) {
   const due = new Date(Date.parse(since) + limit * 86400000).toISOString().slice(0, 10);
   return { t, step, since, due, days, over, state: over > 0 ? "overdue" : over > -rules.soon ? "soon" : "ok" };
 }
-const STATE_RANK = { overdue: 0, update: 1, soon: 2 };
-function overdueList() { return official().map(overdueInfo).filter(x => x && x.state !== "ok").sort((a, b) => STATE_RANK[a.state] - STATE_RANK[b.state] || b.over - a.over); }
-const lateText = x => x.state === "update" ? `no update in ${x.days} days`
+const STATE_RANK = { overdue: 0, update: 1, ready: 2, soon: 3 };
+function overdueList() {
+  const items = official().map(overdueInfo).filter(x => x && x.state !== "ok");
+  official().forEach(t => {
+    const m = monitorInfo(t);
+    if (m && m.ready && REPORT[t.type]) items.push({ t, step: "Ready to close", since: m.start, due: plusDays(m.start, rules.monitor), days: m.days, over: m.days - rules.monitor, state: "ready" });
+  });
+  return items.sort((a, b) => STATE_RANK[a.state] - STATE_RANK[b.state] || b.over - a.over);
+}
+const lateText = x => x.state === "update" ? `no update in ${x.days} days` : x.state === "ready" ? `${x.days} days, no repeat`
   : x.over > 0 ? `${x.over} day${x.over > 1 ? "s" : ""} overdue` : x.over === 0 ? "due today" : `due in ${-x.over} day${x.over < -1 ? "s" : ""}`;
 function overdueTag(t) {
-  const x = overdueInfo(t);
+  const x = overdueInfo(t); // Monitor tickets show their own tracker instead
   if (!x || x.state === "ok") return "";
   return `<span class="od-tag ${x.state}" title="${esc(`${x.state === "update" ? "Any updates?" : `Waiting on ${x.step}`}: ${lateText(x)}`)}">${x.state === "overdue" ? `Overdue ${x.over}d` : x.state === "update" ? "Update?" : "Due soon"}</span>`;
 }
 function renderBell(list) {
-  const late = list.filter(x => x.state === "overdue"), nudge = list.filter(x => x.state === "update"), soon = list.filter(x => x.state === "soon");
-  const attention = late.length + nudge.length;
+  const late = list.filter(x => x.state === "overdue"), nudge = list.filter(x => x.state === "update"), soon = list.filter(x => x.state === "soon"), ready = list.filter(x => x.state === "ready");
+  const attention = late.length + nudge.length + ready.length;
   const badge = $("#bellBadge"), tab = $("#overdueBadge");
   badge.hidden = tab.hidden = !attention;
   badge.textContent = tab.textContent = attention > 99 ? "99+" : attention;
   $("#bellBtn").classList.toggle("has-late", !!attention);
   $("#bellBtn").setAttribute("aria-label", attention ? `${late.length} overdue, ${nudge.length} need an update` : "Nothing overdue");
-  $("#bellCount").textContent = [`${late.length} overdue`, nudge.length && `${nudge.length} need an update`, soon.length && `${soon.length} due soon`].filter(Boolean).join(" · ");
+  $("#bellCount").textContent = [`${late.length} overdue`, nudge.length && `${nudge.length} need an update`, ready.length && `${ready.length} ready to close`, soon.length && `${soon.length} due soon`].filter(Boolean).join(" · ");
   $("#bellList").innerHTML = list.length ? list.slice(0, 8).map(x => `<li><button type="button" data-od-open="${esc(x.t.id)}">
       <span class="od-dot ${x.state}"></span>
       <span class="od-txt"><b>${qid(x.t.no)} · ${esc(x.step)}</b><span>${esc(lateText(x))} · ${esc(x.t.type)} · ${esc(clip(x.t.description, 46))}</span></span>
@@ -1363,8 +1423,8 @@ function renderOverdue(list) {
     : `<div class="list-empty">No ${kind} overdue, due soon or waiting on an update.</div>`;
   const by8D = list.filter(x => progressModel(x.t) === "8D"), byRCA = list.filter(x => progressModel(x.t) !== "8D");
   const n = l => l.filter(x => x.state === "overdue").length;
-  const nUpd = list.filter(x => x.state === "update").length, nSoon = list.filter(x => x.state === "soon").length;
-  $("#odSummary").innerHTML = `<span class="od-chip overdue">${n(by8D)} SCAR / 8D overdue</span><span class="od-chip overdue">${n(byRCA)} RCA overdue</span><span class="od-chip update">${nUpd} RCA need an update</span><span class="od-chip soon">${nSoon} due within ${rules.soon} days</span>`;
+  const nUpd = list.filter(x => x.state === "update").length, nSoon = list.filter(x => x.state === "soon").length, nReady = list.filter(x => x.state === "ready").length;
+  $("#odSummary").innerHTML = `<span class="od-chip overdue">${n(by8D)} SCAR / 8D overdue</span><span class="od-chip overdue">${n(byRCA)} RCA overdue</span><span class="od-chip update">${nUpd} RCA need an update</span><span class="od-chip ready">${nReady} ready to close</span><span class="od-chip soon">${nSoon} due within ${rules.soon} days</span>`;
   $("#od8D").innerHTML = table(by8D, "SCAR / 8D tickets");
   $("#odRCA").innerHTML = table(byRCA, "RCA tickets");
   renderTimelines();
@@ -1395,6 +1455,11 @@ function renderTimelines() {
     <li><span class="rr-num">2</span><div><b>Closed by its close due date.</b> Each RCA ticket has its own close due date, set in the ticket under Progress.</div></li>
     <li><span class="rr-num">3</span><div><b>No close due date?</b> After ${rules.nudge} days with no change to the ticket, it asks “Any updates?”. Any edit, status change or step resets the ${rules.nudge} days.</div></li>
   </ol>`;
+  $("#tlMon").innerHTML = `<ol class="rca-rules mon-rules">
+    <li><span class="rr-num">1</span><div><b>Monitor is half closed.</b> It starts once the permanent corrective actions are closed and in place.</div></li>
+    <li><span class="rr-num">2</span><div><b>${rules.monitor} days without a repeat incident</b>, counted from the monitoring start date; then it's flagged “ready to close”.</div></li>
+    <li><span class="rr-num">3</span><div><b>A repeat restarts the count.</b> Use “Log a repeat incident” in the ticket. Monitor tickets don't raise overdue alerts.</div></li>
+  </ol>`;
   $("#tlSoon").textContent = `A deadline shows as “due soon” ${rules.soon} days before it, and “overdue” the day after. For 8Ds, each step's clock starts when the previous step is actually done, so finishing early gives the next step more room.`;
 }
 
@@ -1406,8 +1471,8 @@ function openStatusMenu(btn) {
   if (!t) return;
   if (!m.hidden && statusTarget === t.id) return closeStatusMenu();
   statusTarget = t.id;
-  m.innerHTML = `<p>${qid(t.no)} status</p>` + ["OPEN", "MONITOR", "CLOSE"].map(st => `<button type="button" role="menuitemradio" aria-checked="${t.status === st}" data-set-status="${st}">
-      <span class="dot" style="background: var(${{ OPEN: "--st-open", MONITOR: "--st-monitor", CLOSE: "--st-close" }[st]})"></span>${STATUS_LABEL[st]}${t.status === st ? `<span class="tick">current</span>` : ""}</button>`).join("");
+  m.innerHTML = `<p>${qid(t.no)} status</p>` + STATUSES.map(st => `<button type="button" role="menuitemradio" aria-checked="${t.status === st}" data-set-status="${st}">
+      <span class="dot" style="background: var(${STATUS_TOKEN[st]})"></span>${STATUS_LABEL[st]}${t.status === st ? `<span class="tick">current</span>` : ""}</button>`).join("");
   m.hidden = false;
   statusOpenedAt = performance.now();
   // Below the chip, or above it when there's no room; kept on screen.
@@ -1423,6 +1488,8 @@ async function setStatus(status) {
   if (!t0 || t0.status === status) return;
   // Closing fills in today's closed date (if none yet); reopening clears it.
   const t = { ...t0, status, closedDate: status === "CLOSE" ? (t0.closedDate || todayISO()) : "" };
+  // Entering Monitor starts the 28-day watch from the PCAs' close date, or today.
+  if (status === "MONITOR" && !t.monitorStart) t.monitorStart = pcaClosedOn(t.pca) || todayISO();
   try { await saveTicket(t); toast(`${qid(t.no)} is now ${STATUS_LABEL[status]}`); }
   catch (err) { toast(writeError(err), 6000); }
 }
@@ -1494,7 +1561,7 @@ function renderTable() {
       <td class="mono">${esc(fmtDate(t.detected))}</td>
       <td><span class="type ${esc(t.type)}">${esc(t.type || "—")}</span>${t.ref ? `<div class="mono muted">${esc(t.ref)}</div>` : ""}</td>
       <td class="desc">${esc(t.description)}<div class="sub">${esc([t.product, t.phase, t.client].filter(Boolean).join(" · "))}</div></td>
-      <td>${statusChip(t)}${overdueTag(t)}${actSummary(t)}</td>
+      <td>${statusChip(t)}${overdueTag(t)}${monitorBadge(t)}${actSummary(t)}</td>
       <td>${progressBar(t)}<span class="prog-sub">${esc(progressText(t))}</span></td>
       <td>${esc(t.area)}</td>
       <td>${t.rootCause ? esc(t.rootCause) + (t.subRootCause ? `<div class="sub muted">${esc(t.subRootCause)}</div>` : "") : `<span class="muted">Pending</span>`}</td>
@@ -1581,9 +1648,9 @@ const CHARTS = {
     build(rows) {
       const months = monthRange([...rows.map(t => monthKey(t.detected)), ...rows.map(closeMonth)]);
       if (ocMode === "mix") {
-        const ds = ["OPEN", "MONITOR", "CLOSE"].map(s => ({
+        const ds = STATUSES.map(s => ({
           type: "bar", label: STATUS_LABEL[s], data: months.map(m => rows.filter(t => monthKey(t.detected) === m && t.status === s).length),
-          backgroundColor: css({ OPEN: "--st-open", MONITOR: "--st-monitor", CLOSE: "--st-close" }[s]), borderRadius: 2, maxBarThickness: 46
+          backgroundColor: css(STATUS_TOKEN[s]), borderRadius: 2, maxBarThickness: 46
         }));
         return { months, data: { labels: months.map(monthLabel), datasets: ds }, options: baseOptions({ stacked: true, totals: { show: true, stacked: true } }) };
       }
@@ -1671,7 +1738,8 @@ const monthLong = m => { const [y, mo] = m.split("-"); return new Date(+y, +mo -
 // Donut buckets follow the ticket status: In progress means Monitor.
 const statusBuckets = rows => [
   ["Closed", "--st-close", rows.filter(t => t.status === "CLOSE")],
-  ["In progress", "--st-progress", rows.filter(t => t.status === "MONITOR")],
+  ["Monitor", "--st-monitor", rows.filter(t => t.status === "MONITOR")],
+  ["In progress", "--st-progress", rows.filter(t => t.status === "IN_PROGRESS")],
   ["Open", "--st-open", rows.filter(t => t.status === "OPEN")]
 ];
 
@@ -1751,7 +1819,7 @@ function miniTable(list, last) {
     <td class="sevcell s-${esc(t.severity)}"><span class="stripe"></span><span class="sev-tag">${esc(t.severity)}</span></td>
     <td class="mono">${qid(t.no)}</td>
     <td class="desc">${esc(t.description)}<div class="sub">${esc([t.type, t.ref, t.area].filter(Boolean).join(" · "))}</div></td>
-    <td>${statusChip(t)}</td>
+    <td>${statusChip(t)}${monitorBadge(t)}</td>
     <td>${progressBar(t)}</td>
     <td class="mono">${last.cell(t)}</td></tr>`).join("")}</tbody></table>`;
 }
@@ -1828,9 +1896,10 @@ const SLIDE = {
   // [strong, tint] pairs for tiles, panels and insights
   c: { blue: ["2F6FD1", "E3ECFB"], red: ["C62F2F", "FBE3E3"], amber: ["B47100", "FCF0D6"], green: ["22855A", "DDF2E7"],
     teal: ["0B8A8A", "D8F1F1"], purple: ["7350C4", "ECE5FA"], orange: ["D9691A", "FDE7D6"] },
-  statusTint: { OPEN: "FBE3E3", MONITOR: "FCF0D6", CLOSE: "DDF2E7" },
-  status: { OPEN: "C62F2F", MONITOR: "B47100", CLOSE: "22855A" },
-  series: { Open: "C62F2F", Monitor: "B47100", Closed: "22855A", S0: "C62F2F", S1: "C97A06", S2: "3F6EA8", Raised: "0B6872" },
+  statusTint: { OPEN: "FBE3E3", IN_PROGRESS: "E3ECFB", MONITOR: "FCF0D6", CLOSE: "DDF2E7" },
+  status: { OPEN: "C62F2F", IN_PROGRESS: "2F6FD1", MONITOR: "B47100", CLOSE: "22855A" },
+  token: { "--st-open": "C62F2F", "--st-progress": "2F6FD1", "--st-monitor": "B47100", "--st-close": "22855A" },
+  series: { Open: "C62F2F", "In progress": "2F6FD1", Monitor: "B47100", Closed: "22855A", S0: "C62F2F", S1: "C97A06", S2: "3F6EA8", Raised: "0B6872" },
   steps: [["CFE8FA", "1C7FC4"], ["D4DEFA", "2F5FD1"], ["C8F0EA", "129B8A"], ["D9F2C9", "3F9A2E"], ["FDEEB5", "B98500"], ["FDD9BD", "D9691A"], ["FBCFD3", "CC3344"], ["E2D6F7", "7350C4"]],
   head1: "Bahnschrift SemiCondensed", body: "Segoe UI"
 };
@@ -1900,11 +1969,12 @@ function addReportSlide(pptx, icons = {}) {
     const tiles = [
       [`Total ${r.noun}`, rows.length, `${rows.filter(t => (t.detected || "").startsWith(now)).length} this month`, "blue"],
       ["Open", c("OPEN"), `${rows.filter(t => t.status === "OPEN" && t.severity === "S0").length} at S0`, "red"],
-      ["Monitor", c("MONITOR"), "pending validation", "amber"],
+      ["In progress", c("IN_PROGRESS"), "being worked", "blue"],
+      ["Monitor", c("MONITOR"), `${rows.filter(t => (monitorInfo(t) || {}).ready).length} ready to close`, "amber"],
       ["Closed", c("CLOSE"), rows.length ? `${Math.round(c("CLOSE") / rows.length * 100)}% of total` : "", "green"],
-      ["Avg progress", `${openOnes.length ? Math.round(openOnes.reduce((a, t) => a + progressOf(t), 0) / openOnes.length) : 0}%`, "open + monitor", "teal"],
+      ["Avg progress", `${openOnes.length ? Math.round(openOnes.reduce((a, t) => a + progressOf(t), 0) / openOnes.length) : 0}%`, "not closed yet", "teal"],
       [`Avg ${r.noun} / month`, span ? (Math.round(rows.length / span * 10) / 10).toString() : "0", span ? `over ${span} months` : "", "purple"],
-      ["Avg age open", `${ages.length ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length) : 0}d`, "open + monitor", "orange"]
+      ["Avg age open", `${ages.length ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length) : 0}d`, "not closed yet", "orange"]
     ];
     const gap = 0.08, tw = (inner - gap * (tiles.length - 1)) / tiles.length, th = 0.72;
     tiles.forEach(([label, value, sub, tone], i) => {
@@ -1929,7 +1999,7 @@ function addReportSlide(pptx, icons = {}) {
     if (rows.length) {
       const buckets = statusBuckets(rows);
       s.addChart(pptx.ChartType.doughnut, [{ name: "Requests", labels: buckets.map(b => b[0]), values: buckets.map(b => b[2].length) }], {
-        x: M + 0.05, y: y + 0.3, w: w1 - 0.1, h: ch - 0.35, holeSize: 55, chartColors: [SLIDE.status.CLOSE, SLIDE.blue, SLIDE.status.OPEN],
+        x: M + 0.05, y: y + 0.3, w: w1 - 0.1, h: ch - 0.35, holeSize: 55, chartColors: buckets.map(b => SLIDE.token[b[1]]),
         showLegend: true, legendPos: "r", legendFontSize: 9, legendFontFace: SLIDE.body, showPercent: true, showValue: false,
         dataLabelColor: SLIDE.white, dataLabelFontSize: 8, dataBorder: { pt: 1, color: SLIDE.white }
       });
@@ -1978,7 +2048,7 @@ function addReportSlide(pptx, icons = {}) {
     if (open.length) {
       s.addTable([hdr(["No.", "Sev", "Issue", "Status", "Progress", "Days"]), ...zebra(open.slice(0, 5).map(t => [
         { text: qid(t.no), options: { fontFace: "Consolas" } }, sevCell(t), clip(t.description, 40), stCell(t), `${Math.round(progressOf(t))}%`, String(ageOf(t))
-      ]))], tableOpts(M, wa, [0.6, 0.36, 2.35, 0.7, 0.66, 0.42]));
+      ]))], tableOpts(M, wa, [0.6, 0.36, 2.17, 0.88, 0.66, 0.42]));
     } else s.addText(`No open or monitor ${r.noun}.`, { x: M, y: y + 0.5, w: wa, h: 0.3, align: "center", fontFace: SLIDE.body, fontSize: 9, color: SLIDE.muted });
     if (closed.length) {
       s.addTable([hdr(["No.", "Sev", "Issue", "Closed"]), ...zebra(closed.slice(0, 5).map(t => [
@@ -2251,13 +2321,14 @@ function openTicket(t) {
   const isDraft = !!(t && t.draft);
   $("#dlgTitle").textContent = isDraft ? "Draft ticket" : t ? `${qid(t.no)}` : "New ticket";
   $("#dlgStatusChip").innerHTML = isDraft ? `<span class="chip draft">Draft</span>` : t ? `<span class="chip st-${esc(t.status)}">${esc(STATUS_LABEL[t.status] || t.status)}</span>` : "";
-  for (const k of ["detected", "type", "ref", "description", "product", "client", "reporter", "pic", "units", "area", "rootCause", "subRootCause", "rootCauseDetail", "teamLead", "members", "closedDate", "closeDue", "comments"]) {
+  for (const k of ["detected", "type", "ref", "description", "product", "client", "reporter", "pic", "units", "area", "rootCause", "subRootCause", "rootCauseDetail", "teamLead", "members", "closedDate", "closeDue", "monitorStart", "comments"]) {
     const el = $("#f_" + k); if (!el) continue;
     if (el.tagName === "SELECT" && v[k] && ![...el.options].some(o => o.value === v[k])) el.insertAdjacentHTML("beforeend", `<option>${esc(v[k])}</option>`);
     el.value = v[k] ?? "";
   }
   setRadio("severity", v.severity); setRadio("phase", v.phase); setRadio("status", v.status || "OPEN");
   FLAGS.forEach(([k]) => { $("#flag_" + k).checked = !!(v.flags && v.flags[k]); });
+  formRepeats = v.repeats || 0; formLastRepeat = v.lastRepeat || "";
   draftAttachments = (v.attachments || []).map(a => ({ ...a }));
   renderAttachments();
   renderActions("ca", v.containment || []);
@@ -2285,7 +2356,21 @@ function openTicket(t) {
 }
 function setRadio(name, val) { $$(`input[name="${name}"]`).forEach(r => (r.checked = r.value === val)); }
 function getRadio(name) { const r = $(`input[name="${name}"]:checked`); return r ? r.value : ""; }
+let formRepeats = 0, formLastRepeat = "";
+function syncMonitor() {
+  const on = getRadio("status") === "MONITOR", pca = readActions("pca");
+  $("#monitorField").hidden = !on;
+  if (!on) return;
+  // Starts when the permanent corrective actions were closed; today if they have no close dates.
+  if (!$("#f_monitorStart").value) $("#f_monitorStart").value = pcaClosedOn(pca) || todayISO();
+  const m = monitorInfo({ status: "MONITOR", monitorStart: $("#f_monitorStart").value, pca, repeats: formRepeats });
+  const open = pca.filter(a => a.status !== "Closed").length;
+  $("#monText").className = "mon-text" + (m.ready ? " ready" : "");
+  $("#monText").textContent = (m.ready ? `${m.days} days without a repeat: ready to close.` : `Day ${m.days} of ${rules.monitor} without a repeat.`) +
+    (open ? ` ${open} permanent corrective action${open > 1 ? "s are" : " is"} still open.` : "") + (formRepeats ? ` Repeats logged: ${formRepeats}.` : "");
+}
 function syncClosed() {
+  syncMonitor();
   const closed = getRadio("status") === "CLOSE";
   if ($("#p_d0")) syncProgress();
   $("#closedField").hidden = !closed;
@@ -2303,6 +2388,7 @@ function actionRow(a = {}) {
     <input class="act-owner" type="text" placeholder="Owner" list="dl_people" value="${esc(a.owner)}" aria-label="Owner">
     <input class="act-due" type="date" value="${esc(a.due)}" aria-label="Due date" title="Due date">
     <select class="act-status" data-status="${st}" aria-label="Status"><option${st === "Open" ? " selected" : ""}>Open</option><option${st === "Closed" ? " selected" : ""}>Closed</option></select>
+    <input class="act-closed" type="date" value="${esc(a.closedOn)}" aria-label="Date closed" title="Date closed"${st === "Closed" ? "" : " hidden"}>
     <button type="button" data-rmact aria-label="Remove action">×</button>
   </div>`;
 }
@@ -2313,7 +2399,8 @@ function renderActions(kind, list) {
 function readActions(kind) {
   return $$("#" + kind + "List .act-row").map(r => ({
     text: $(".act-text", r).value.trim(), owner: $(".act-owner", r).value.trim(),
-    due: $(".act-due", r).value, status: $(".act-status", r).value
+    due: $(".act-due", r).value, status: $(".act-status", r).value,
+    closedOn: $(".act-status", r).value === "Closed" ? $(".act-closed", r).value : ""
   })).filter(a => a.text);
 }
 function renderLinkedReports(t) {
@@ -2356,6 +2443,7 @@ function collectForm() {
     closedDate: getRadio("status") === "CLOSE" ? val("f_closedDate") : "", comments: val("f_comments"),
     flags: Object.fromEntries(FLAGS.map(([k]) => [k, $("#flag_" + k).checked]).filter(([, v]) => v)),
     rootCauseDetail: val("f_rootCauseDetail"), teamLead: val("f_teamLead"), closeDue: val("f_closeDue"),
+    monitorStart: getRadio("status") === "MONITOR" ? val("f_monitorStart") : "", repeats: formRepeats, lastRepeat: formLastRepeat,
     members: val("f_members").split(",").map(x => x.trim()).filter(Boolean).join(", "),
     containment: readActions("ca"), pca: readActions("pca"), progress: readProgress(),
     attachments: draftAttachments
@@ -2469,7 +2557,8 @@ function parseWorkbook(buf) {
       const row = grid[r] || [], g = i => (i >= 0 ? row[i] : null), s = i => String(g(i) ?? "").replace(/[​]/g, "").replace(/\s+/g, " ").trim();
       if (!s(C.description) && g(C.detected) == null) continue;
       const { type, ref } = parseType(g(C.scar));
-      const status = (s(C.status).toUpperCase().match(/OPEN|MONITOR|CLOSE/) || ["OPEN"])[0];
+      const rawSt = s(C.status).toUpperCase();
+      const status = /PROGRESS/.test(rawSt) ? "IN_PROGRESS" : (rawSt.match(/OPEN|MONITOR|CLOSE/) || ["OPEN"])[0];
       const linkCell = C.link >= 0 ? ws[XLSX.utils.encode_cell({ r, c: C.link })] : null;
       const href = linkCell && linkCell.l && String(linkCell.l.Target || "").replace(/&amp;/g, "&");
       const flags = {};
@@ -2582,7 +2671,7 @@ const XL = {
   ink: "FF152027", muted: "FF586771", line: "FFD3DCDF", head: "FF0B6872", white: "FFFFFFFF",
   band: { Ticket: "FFD6ECEE", Issue: "FFE4E9EE", "Investigation & closure": "FFF1E8D8" },
   sev: { S0: ["FFC62F2F", "FFFFFFFF"], S1: ["FFFCE4B6", "FF8A5300"], S2: ["FFDCE6F4", "FF2F5A90"] },
-  status: { Open: ["FFFBE0E0", "FFB42727"], Monitor: ["FFFCEFD2", "FF8F5D00"], Closed: ["FFDDF2E7", "FF1B6E48"] }
+  status: { Open: ["FFFBE0E0", "FFB42727"], "In progress": ["FFE3ECFB", "FF2F5FB0"], Monitor: ["FFFCEFD2", "FF8F5D00"], Closed: ["FFDDF2E7", "FF1B6E48"] }
 };
 const xlDate = iso => { if (!/^\d{4}-\d{2}-\d{2}/.test(iso || "")) return null; const [y, m, d] = iso.slice(0, 10).split("-").map(Number); return new Date(Date.UTC(y, m - 1, d)); };
 const xlFill = argb => ({ type: "pattern", pattern: "solid", fgColor: { argb } });
@@ -2697,6 +2786,7 @@ async function exportExcel() {
         { group: G1, header: "Status", key: "status", width: 11, kind: "status" },
         { group: G1, header: "Days open", key: "days", width: 9, kind: "num" },
         { group: G1, header: "Closed on", key: "closed", width: 13, kind: "date" },
+        { group: G1, header: "Monitor: days without a repeat", key: "monitor", width: 16, wrap: true },
         { group: G1, header: "Progress", key: "progress", width: 11, kind: "pct" },
         { group: G1, header: "Progress detail", key: "progressDetail", width: 30, wrap: true },
         { group: G2, header: "Quality issue description", key: "description", width: 46, wrap: true },
@@ -2726,6 +2816,7 @@ async function exportExcel() {
         const days = ageOf(t);
         return {
           no: qid(t.no), detected: t.detected, type: t.type, ref: t.ref, severity: t.severity, status: STATUS_LABEL[t.status] || t.status, days, closed: t.status === "CLOSE" ? t.closedDate : "",
+          monitor: (m => !m ? "" : !m.start ? "Start not set" : m.ready ? `${m.days} days · ready to close` : `${m.days} of ${rules.monitor}`)(monitorInfo(t)),
           progress: Math.round(progressOf(t)) / 100, progressDetail: progressText(t),
           description: t.description, product: t.product, phase: t.phase, client: t.client, area: t.area,
           units: /^\d+$/.test(String(t.units || "").trim()) ? Number(t.units) : t.units, reporter: t.reporter, pic: t.pic,
@@ -2746,15 +2837,16 @@ async function exportExcel() {
     const actRows = [];
     list.forEach(t => [["Containment", t.containment], ["Permanent corrective", t.pca]].forEach(([kind, l]) => (l || []).forEach(a => {
       const overdue = a.status !== "Closed" && a.due && a.due < today;
-      actRows.push({ no: qid(t.no), issue: t.description, tstatus: STATUS_LABEL[t.status] || t.status, kind, text: a.text, owner: a.owner, due: a.due, status: a.status || "Open", overdue: overdue ? "Overdue" : "",
-        _style: row => { if (overdue) row.getCell(9).font = { bold: true, color: { argb: "FFB42727" } }; } });
+      actRows.push({ no: qid(t.no), issue: t.description, tstatus: STATUS_LABEL[t.status] || t.status, kind, text: a.text, owner: a.owner, due: a.due, status: a.status || "Open", closedOn: a.closedOn || "", overdue: overdue ? "Overdue" : "",
+        _style: row => { if (overdue) row.getCell(10).font = { bold: true, color: { argb: "FFB42727" } }; } });
     })));
     xlSheet(wb, "Actions", {
       title: "Containment & permanent corrective actions", subtitle: `${stamp} · ${actRows.length} action${actRows.length === 1 ? "" : "s"}`, tab: "FFC97A06", freezeCols: 1,
       cols: [
         { header: "Ticket", key: "no", width: 9 }, { header: "Issue", key: "issue", width: 40, wrap: true }, { header: "Ticket status", key: "tstatus", width: 11, kind: "status" },
         { header: "Action type", key: "kind", width: 20 }, { header: "Action", key: "text", width: 44, wrap: true }, { header: "Owner", key: "owner", width: 16 },
-        { header: "Due", key: "due", width: 13, kind: "date" }, { header: "Status", key: "status", width: 10, kind: "status" }, { header: "Overdue", key: "overdue", width: 10 }
+        { header: "Due", key: "due", width: 13, kind: "date" }, { header: "Status", key: "status", width: 10, kind: "status" },
+        { header: "Closed on", key: "closedOn", width: 13, kind: "date" }, { header: "Overdue", key: "overdue", width: 10 }
       ],
       rows: actRows
     });
@@ -2819,7 +2911,7 @@ async function exportExcel() {
       return keys.map(k => [k, m.get(k)]);
     };
     let left = 4, right = 4;
-    left = table(left, 1, "Status", by("status", ["OPEN", "MONITOR", "CLOSE"]));
+    left = table(left, 1, "Status", by("status", STATUSES));
     left = table(left, 1, "Severity", by("severity", ["S0", "S1", "S2"]));
     left = table(left, 1, "Type", by("type", ["SCAR", "RCA", "Other"]));
     right = table(right, 5, "Factory area", by("area"));
@@ -2837,6 +2929,13 @@ function bindUI() {
   $$(".tabs button").forEach(b => b.addEventListener("click", () => { view = b.dataset.view; saveUI(); render(); }));
   $("#reportBar").addEventListener("click", e => { const b = e.target.closest("[data-report]"); if (b) { reportType = b.dataset.report; saveUI(); render(); } });
   $("#slideBtn").addEventListener("click", downloadSlide);
+  $("#repeatBtn").addEventListener("click", () => {
+    formRepeats += 1; formLastRepeat = todayISO();
+    $("#f_monitorStart").value = todayISO();
+    $("#flag_repeat").checked = true;
+    syncMonitor();
+    toast("Repeat logged: the 28 days restart today. Save the ticket to keep it.", 4500);
+  });
   // Status menu: choose, or close on outside click / Escape / scroll
   $("#statusMenu").addEventListener("click", e => { const b = e.target.closest("[data-set-status]"); if (b) setStatus(b.dataset.setStatus); });
   // A click outside the open menu only closes it (it doesn't also open the row underneath).
@@ -2941,7 +3040,15 @@ function bindUI() {
     const dateFor = { p_rca: "p_rcaDate", p_approved: "p_approvedDate" }[e.target.id] || (/^p_d\d$/.test(e.target.id) ? "p_dd" + e.target.id.slice(3) : "");
     if (dateFor && e.target.checked && !$("#" + dateFor).value) $("#" + dateFor).value = todayISO();
     if (e.target.name === "pmodel" || e.target.id === "f_type" || /^p_/.test(e.target.id)) syncProgress();
-    if (e.target.classList.contains("act-status")) { e.target.dataset.status = e.target.value; syncClosed(); }
+    if (e.target.classList.contains("act-status")) {
+      e.target.dataset.status = e.target.value;
+      // Closing an action records today's date (editable); it feeds the Monitor start.
+      const d = e.target.closest(".act-row").querySelector(".act-closed");
+      d.hidden = e.target.value !== "Closed";
+      if (e.target.value === "Closed" && !d.value) d.value = todayISO();
+      syncClosed();
+    }
+    if (e.target.id === "f_monitorStart" || e.target.classList.contains("act-closed")) syncMonitor();
   });
 
   // reports

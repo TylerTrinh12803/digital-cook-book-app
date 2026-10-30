@@ -16,8 +16,31 @@ To load them into an empty tracker, click **Import Excel** and pick the workbook
 
 ## Quick status change
 
-Click a ticket's status chip (in the ticket list or the Analysis boxes) to switch it between Open, Monitor and
-Closed without opening the ticket. Closing fills in today's "Closed on" date if none is set; reopening clears it.
+Click a ticket's status chip (in the ticket list or the Analysis boxes) to switch it between Open, In progress,
+Monitor and Closed without opening the ticket. Closing fills in today's "Closed on" date if none is set; reopening
+clears it. Moving a ticket to Monitor starts its 28-day watch (see below).
+
+## Statuses
+
+- **Open**: raised, not being worked yet.
+- **In progress**: being worked (containment, root cause, corrective actions).
+- **Monitor**: half closed. The permanent corrective actions are closed and in place, and the ticket waits
+  **28 days without a repeat incident** before it can be closed.
+- **Closed**.
+
+### Monitor: days without a repeat
+
+- Each containment / permanent corrective action records the **date it was closed** (filled in with today when you set
+  it to Closed; you can change it).
+- When a ticket goes to Monitor, its **monitoring start** ("Since", in the ticket under the status) is set to the date
+  the last permanent corrective action was closed, or today if they have no close dates. You can change it.
+- The ticket list and Analysis boxes show a bar under the status: "Day N of 28 without a repeat". At 28 days it turns
+  green, "ready to close", and appears in the bell and the Overdue tab as **Ready to close**.
+- If the issue happens again, open the ticket and click **Log a repeat incident**: the count restarts today, the
+  ticket's repeat count goes up and "Repeat issue" is ticked. Save the ticket to keep it.
+- Monitor tickets don't raise overdue or "Any updates?" alerts while they're being watched.
+- Monitor tickets from before this update show "Monitoring start not set" until you open them, check the "Since"
+  date and save.
 
 ## Drafts and deleting
 
@@ -38,8 +61,8 @@ blue header (which also shows the data period and total requests). Everything on
 
 - **SCAR / 8D report** ("8D Problem Solving Dashboard"): a D1–D8 strip showing how many SCARs have each D done.
 - **RCA report** ("RCA One-Pager · Quick Fixes"): the same dashboard without a step strip.
-- Summary tiles (total, open, monitor, closed, average progress, average per month, average age open).
-- **Requests by status** (donut by ticket status: closed / in progress (Monitor) / open),
+- Summary tiles (total, open, in progress, monitor with how many are ready to close, closed, average progress, average per month, average age open).
+- **Requests by status** (donut by ticket status: closed / monitor / in progress / open),
   **Requests by creator / requestor** (from the Reporter field) and **per month** (split by status, severity, or raised vs closed).
 - **Open & in progress** (top 5, most urgent first), **Recently closed** (latest 5) and **Key insights** worked out from
   the data (share still open and the oldest item, busiest month, top requestor, overdue actions or open S0/S1 items).
@@ -88,7 +111,7 @@ ticket records the date, which you can edit to backfill; the clock for the next 
 dates (or from the detected date if nothing is done yet).
 
 - The **bell** in the header shows how many tickets are overdue or need an update; click it for the list (red: overdue,
-  blue: needs an update, amber: due soon).
+  blue: needs an update, green: ready to close, amber: due soon).
 - The **Overdue** tab lists every overdue / due-soon SCAR (waiting on the next D) and RCA (waiting on the RCA or the
   customer's closure), with days since the last step, days allowed, and how late it is. Click a row to open the ticket.
 - Overdue tickets get an "Overdue Nd" tag in the ticket list.
@@ -100,7 +123,9 @@ dates (or from the detected date if nothing is done yet).
     asks "Any updates?" after 14 days with no change to the ticket; any edit, status change or step resets that.
   - A deadline shows as "due soon" 2 days before it. The rules are set in the tracker's code (`rules` in index.html),
     so ask for a change rather than editing it in the page.
-- The bell and the Overdue tab count overdue tickets plus RCAs that need an update.
+  - **Monitor**: 28 days without a repeat incident, counted from the monitoring start; then "ready to close".
+- The bell and the Overdue tab count overdue tickets, RCAs that need an update, and Monitor tickets ready to close
+  (green).
 
 D's ticked before dates were recorded count from the ticket's last save; open those tickets and fill in the real dates.
 
@@ -145,8 +170,8 @@ window says which one it found. Restart the tracker after installing one.
 
 | Sheet | What's on it |
 |---|---|
-| Quality Issues | One row per ticket, grouped into Ticket / Issue / Investigation & closure, with filters on every column, frozen headers, color-coded severity and status, and days open in red past 30 days |
-| Actions | One row per containment or permanent corrective action, with owner, due date, status and overdue flag |
+| Quality Issues | One row per ticket, grouped into Ticket / Issue / Investigation & closure, with filters on every column, frozen headers, color-coded severity and status, Monitor days without a repeat, and days open in red past 30 days |
+| Actions | One row per containment or permanent corrective action, with owner, due date, status, date closed and overdue flag |
 | Team | One row per person per ticket (team lead or member), so long member lists stay tidy and you can filter by name |
 | Reports | Every SCAR / RCA report with its link, PowerPoint and PDF |
 | Summary | Counts by status, severity, type, factory area and root cause |
