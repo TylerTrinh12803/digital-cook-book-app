@@ -1,8 +1,8 @@
 """FXN HT Quality Tracker - local server.
 
 Serves the tracker page at http://localhost:8080 and keeps tickets in
-data/tickets.json, the SCAR/RCA report list in data/reports.json and every
-uploaded file in data/uploads/, next to this file. Nothing is sent over the
+data/tickets.json, the SCAR/RCA report list in data/reports.json, meeting notes in
+data/meetings.json and every uploaded file in data/uploads/, next to this file. Nothing is sent over the
 internet. Needs Python 3.8+ and no extra packages.
 
 PowerPoint to PDF conversion uses Microsoft PowerPoint on Windows, or
@@ -36,6 +36,7 @@ BACKUP_DIR = os.path.join(DATA_DIR, "backups")
 COLLECTIONS = {
     "tickets": os.path.join(DATA_DIR, "tickets.json"),
     "reports": os.path.join(DATA_DIR, "reports.json"),
+    "meetings": os.path.join(DATA_DIR, "meetings.json"),
 }
 MAX_UPLOAD = 50 * 1024 * 1024
 MAX_DOC = 2 * 1024 * 1024
@@ -198,7 +199,7 @@ class Handler(SimpleHTTPRequestHandler):
         return urlparse(self.path).path
 
     def doc_route(self):
-        m = re.fullmatch(r"/api/(tickets|reports)/([^/]+)", self.route())
+        m = re.fullmatch(r"/api/(tickets|reports|meetings)/([^/]+)", self.route())
         if not m:
             return None, None
         return m.group(1), unquote(m.group(2))
@@ -215,7 +216,7 @@ class Handler(SimpleHTTPRequestHandler):
     # ---- GET ----
     def do_GET(self):
         path = self.route()
-        if path in ("/api/tickets", "/api/reports"):
+        if path in ("/api/tickets", "/api/reports", "/api/meetings"):
             with lock:
                 docs = load(path.rsplit("/", 1)[1])
             return self.send_json(list(docs.values()))

@@ -80,8 +80,8 @@ The slides follow the current filters. The Pareto stays on the web page only.
 libraries, fonts and a copy of the current tickets built in. Anyone can open it by double-clicking (email, Teams,
 shared drive): no install and no internet. It works like the real tracker, but every change stays in that
 person's browser and never reaches your tracker; **Reset demo** goes back to the original copy. Uploaded
-PowerPoints / PDFs aren't included (SharePoint links are). The file contains your ticket details, so only share it
-with people who may see them.
+PowerPoints / PDFs and meeting-notes files aren't included (SharePoint links are). The file contains your ticket
+details and meeting notes, so only share it with people who may see them.
 
 For others to see and edit the real tickets live instead, run the tracker with `--lan` (see "Let teammates open it").
 
@@ -164,6 +164,33 @@ Conversion turns the PowerPoint into a PDF on this computer. It needs **Microsof
 (Windows) or **LibreOffice** (free, any system) installed on the computer running the tracker; the start
 window says which one it found. Restart the tracker after installing one.
 
+## Meeting notes and action items
+
+The **Meeting notes** tab (next to Overdue) keeps the last meeting's notes and its action items as an FYI, so
+nobody has to search email for them. The tab's badge counts open action items (red when any are past due).
+
+- **+ Add meeting notes**: set the date, then upload the notes or paste them in. A new meeting starts with the
+  last meeting's name and attendees.
+  - **Word (.docx)**: the text goes into Notes; a first line like "Weekly Quality Meeting - Nov 5" becomes the
+    meeting name and date, and an "Attendees:" line fills in the attendees.
+  - **Outlook email**: drag the email out of Outlook onto your desktop (it saves as a `.msg` file) and upload
+    that. The subject, sent date, To / CC names and the body fill in. `.eml` and `.txt` files work too.
+  - **PDF or anything else** is attached as it is (open it from the tab). You can also add a Teams / SharePoint link.
+- **Action items** are picked out of the notes when you upload, or with **Pull from notes** after pasting:
+  - lines starting with `Action:`, `AI:`, `AR:`, `TODO:` or `Follow up:`;
+  - bullets or numbered lines under an "Action items", "Next steps" or "To do" heading;
+  - rows of a table whose header has an "Action" column and an "Owner" / "Due" column.
+
+  Each one gets an owner when the line names someone ("Adrian - update WI", "Si Van: send 8D", "check log -
+  Lalit", "Charles to confirm…", "Owner: …", "@name"), a due date from "by 11/12", "due 11/10" or "ETA Nov 9",
+  and the ticket when it mentions a QI number or a ticket's SCAR / bug number. Check them before saving; you
+  can edit, add or remove any.
+- The tab shows the **last meeting** (notes, files, attendees) beside **all open action items** from every meeting,
+  past-due ones first in red. Click a status to close or reopen an item, a QI number to open the ticket, or a
+  meeting in **All meetings** to read its notes. Filter by owner, or switch to **All** to see closed items too.
+- Meeting notes are saved in `data/meetings.json` and their files in `data/uploads/`. Deleting a meeting keeps a
+  copy in `data/backups/deleted-meetings.json`.
+
 ## Export to Excel
 
 **Export Excel** saves the tickets that match the current filters as a formatted workbook:
@@ -189,8 +216,9 @@ The daily damage trend is a separate app, **FXN HT Incoming Damage**, in its own
 |---|---|
 | Tickets | `data/tickets.json` |
 | SCAR / RCA report list | `data/reports.json` |
-| Uploaded reports, PDFs, images | `data/uploads/` |
-| One copy of tickets and reports per day | `data/backups/` |
+| Meeting notes and action items | `data/meetings.json` |
+| Uploaded reports, PDFs, images, notes files | `data/uploads/` |
+| One copy of tickets, reports and meeting notes per day | `data/backups/` |
 
 To back up or move the tracker, copy the whole folder. **Export Excel** also saves the current list as a spreadsheet.
 

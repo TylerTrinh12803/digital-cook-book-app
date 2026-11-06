@@ -91,6 +91,7 @@ a { color: var(--accent); }
 .brand h1 { margin: 0; font: 700 1.6rem/1 var(--font-display); letter-spacing: .01em; text-transform: uppercase; }
 .brand span { font-size: .78rem; color: var(--muted); letter-spacing: .04em; }
 .tabs { display: flex; gap: 2px; background: var(--sunken); padding: 3px; border-radius: var(--radius); }
+@media (max-width: 640px) { .tabs { max-width: 100%; overflow-x: auto; scrollbar-width: none; } .tabs button { flex: 0 0 auto; white-space: nowrap; padding: 6px 10px; } }
 .tabs button { border: 0; background: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: 500; color: var(--muted); }
 .tabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
 .btn { border: 1px solid var(--line); background: var(--surface); padding: 7px 14px; border-radius: var(--radius); cursor: pointer; font-weight: 500; white-space: nowrap; }
@@ -501,6 +502,41 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
   .kpi .val { font-size: 1.6rem; }
   .canvas-box, .chart-empty { height: 280px; }
 }
+/* meeting notes */
+.tab-badge.neutral { background: var(--accent); color: var(--accent-ink); }
+.mt-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 12px; margin-top: 12px; align-items: start; }
+@media (max-width: 1000px) { .mt-grid { grid-template-columns: minmax(0, 1fr); } }
+.mt-grid > .panel, .mt-past { margin-top: 12px; }
+.mt-grid > .panel { margin-top: 0; }
+.mt-meta { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 10px 14px 0; font-size: .85rem; color: var(--muted); }
+.mt-meta b { color: var(--ink); font-weight: 600; }
+.mt-files { display: flex; flex-wrap: wrap; gap: 6px 10px; padding: 10px 14px 0; font-size: .86rem; align-items: center; }
+.mt-file { display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--line); border-radius: var(--radius); padding: 3px 4px 3px 9px; max-width: 100%; }
+.mt-file a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mt-notes { margin: 12px 14px 14px; padding: 12px 14px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .9rem; line-height: 1.55; max-height: 560px; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); }
+.mt-notes.empty-notes { color: var(--muted); }
+.mt-acts table, .mt-past table { min-width: 0; }
+.mt-acts tbody tr, .mt-latest tbody tr { cursor: default; }
+.mt-acts tbody tr:hover td { background: none; }
+.mt-acts .ai-text { min-width: 200px; }
+.mt-acts td:nth-child(n+4), .mt-past td:first-child { white-space: nowrap; }
+.mt-acts tr.closed .ai-text { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line); }
+.ai-due.late { color: var(--st-open); font-weight: 700; }
+.ai-due small { display: block; font-weight: 600; }
+.chip.ai-Open { color: var(--st-open); } .chip.ai-Closed { color: var(--st-close); }
+.mt-acts header .seg { margin-left: auto; }
+.mt-acts header select { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 4px 6px; font-size: .82rem; color: var(--ink); }
+.mt-past tr.current td { background: var(--sunken); }
+.mt-past td .muted { font-size: .8rem; }
+.mt-tools { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.mt-drop { border: 1px dashed var(--line); border-radius: var(--radius); padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.mt-drop.over { border-color: var(--accent); background: var(--sunken); }
+.mt-drop p { margin: 0; font-size: .8rem; }
+.mt-title-field { grid-column: span 2; }
+textarea.mt-notes-input { min-height: 220px; font-size: .88rem; line-height: 1.5; }
+.mact-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.mact-row { grid-template-columns: minmax(0, 1fr) 140px 132px 170px 96px auto; }
+@media (max-width: 640px) { .mact-row { grid-template-columns: 1fr 1fr; } .mact-row .mact-text { grid-column: 1 / -1; } .mt-title-field { grid-column: auto; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
@@ -517,6 +553,7 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
       <button role="tab" id="tab-analysis" aria-selected="false" data-view="analysis">Analysis</button>
       <button role="tab" id="tab-reports" aria-selected="false" data-view="reports">SCAR / RCA reports</button>
       <button role="tab" id="tab-overdue" aria-selected="false" data-view="overdue">Overdue <span class="tab-badge" id="overdueBadge" hidden>0</span></button>
+      <button role="tab" id="tab-meetings" aria-selected="false" data-view="meetings">Meeting notes <span class="tab-badge neutral" id="meetBadge" hidden>0</span></button>
     </div>
     <div class="bell-wrap">
       <button class="bell" id="bellBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="bellPop" aria-label="Overdue SCARs / RCAs">
@@ -704,6 +741,20 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
     <div class="panel"><div class="table-scroll" id="repWrap"></div></div>
     <div class="count-line" id="repCount"></div>
   </section>
+
+  <!-- Meeting notes view -->
+  <section id="view-meetings" role="tabpanel" aria-labelledby="tab-meetings" hidden>
+    <div class="rep-head">
+      <div>
+        <h2>Meeting notes &amp; action items</h2>
+        <p>The last meeting's notes and its action items, kept here as an FYI so nobody has to search through email. Upload the notes (Word file or saved Outlook email) or paste them in; action items are picked out of the notes and stay listed until they're closed.</p>
+      </div>
+      <div class="controls">
+        <button class="btn primary" type="button" id="addMeetingBtn">+ Add meeting notes</button>
+      </div>
+    </div>
+    <div id="meetWrap"></div>
+  </section>
 </main>
 <footer class="wrap" id="footNote"></footer>
 
@@ -888,6 +939,51 @@ footer { color: var(--muted); font-size: .78rem; padding-block: 0 24px; }
   </form>
 </dialog>
 
+<!-- Meeting notes dialog -->
+<dialog id="mdlg" aria-labelledby="mdlgTitle">
+  <form class="dlg" id="meetForm" novalidate>
+    <div class="dlg-head">
+      <h2 id="mdlgTitle">Add meeting notes</h2>
+      <button class="xbtn" type="button" data-mclose aria-label="Close">×</button>
+    </div>
+    <div class="dlg-body">
+      <fieldset>
+        <legend>Meeting</legend>
+        <div class="grid">
+          <label class="field"><span>Meeting date <i>*</i></span><input type="date" id="m_date"></label>
+          <label class="field mt-title-field"><span>Meeting</span><input type="text" id="m_title" list="dl_meet" placeholder="e.g. Weekly NVIDIA quality review"></label>
+          <label class="field wide"><span>Attendees</span><input type="text" id="m_attendees" placeholder="Names, separated by commas"></label>
+          <div class="field wide"><span>Notes file</span>
+            <div class="mt-drop" id="m_drop">
+              <div class="file-line" id="m_files"></div>
+              <p class="muted">Word (.docx), Outlook email (.msg), .eml and text files fill in the notes and action items below. PDFs and other files are attached as they are. You can also drop a file here.</p>
+            </div>
+          </div>
+          <label class="field wide"><span>Link</span><input type="url" id="m_link" placeholder="Teams, SharePoint or Outlook link to the notes (optional)"></label>
+          <label class="field wide"><span>Notes</span><textarea id="m_notes" class="mt-notes-input" placeholder="Paste the meeting notes or the email here"></textarea></label>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Action items</legend>
+        <div class="act-head">
+          <span>Picked up from the notes: lines starting with “Action”, “AI:” or “TODO”, and lines under an “Action items” heading or table.</span>
+          <span class="mt-tools"><button class="btn small" type="button" id="m_pull">Pull from notes</button><button class="btn small" type="button" id="m_addAct">+ Add action item</button></span>
+        </div>
+        <div class="mact-list" id="m_acts"></div>
+      </fieldset>
+      <input type="file" id="m_fileInput" multiple hidden>
+      <datalist id="dl_meet"></datalist>
+    </div>
+    <div class="dlg-foot">
+      <span id="mDelZone"></span>
+      <span class="grow"></span>
+      <span class="err" id="mErr"></span>
+      <button class="btn" type="button" data-mclose>Cancel</button>
+      <button class="btn primary" type="submit" id="mSave">Save meeting</button>
+    </div>
+  </form>
+</dialog>
+
 <div class="status-menu" id="statusMenu" role="menu" aria-label="Change status" hidden></div>
 <div class="toast" id="toast" role="status" hidden></div>
 
@@ -935,6 +1031,9 @@ const REPORT = { SCAR: { label: "SCAR / 8D", one: "SCAR", noun: "SCARs" }, RCA: 
 let reports = [], repSig = "", converters = [];
 let editingReport = null, draftRFile = null, draftRPdf = null;
 const REP_KEY = KEY_PREFIX + "fxnht-quality-reports-v1";
+// Meeting notes tab: each meeting has its notes, files and action items.
+let meetings = [], meetSig = "", editingMeeting = null, draftMFiles = [], meetShow = "", meetFilter = "open", meetOwner = "";
+const MEET_KEY = KEY_PREFIX + "fxnht-quality-meetings-v1";
 const isPpt = name => /\.pptx?$/i.test(name || "");
 
 const $ = (s, r = document) => r.querySelector(s);
@@ -960,6 +1059,8 @@ function loadLocal() {
   if (!Array.isArray(tickets)) tickets = [];
   try { reports = JSON.parse(lsGet(REP_KEY) || "[]"); } catch { reports = []; }
   if (!Array.isArray(reports)) reports = [];
+  try { meetings = JSON.parse(lsGet(MEET_KEY) || "[]"); } catch { meetings = []; }
+  if (!Array.isArray(meetings)) meetings = [];
 }
 function persistLocal() {
   if (!lsSet(LS_KEY, JSON.stringify(tickets))) toast("This browser refused to save. Free some space or remove large uploaded files.", 5000);
@@ -981,12 +1082,14 @@ async function pull() {
   try {
     const list = await api("GET", "api/tickets");
     const reps = await api("GET", "api/reports");
-    const sig = JSON.stringify(list), rs = JSON.stringify(reps);
+    const mts = await api("GET", "api/meetings").catch(() => meetings);
+    const sig = JSON.stringify(list), rs = JSON.stringify(reps), ms = JSON.stringify(mts);
     let changed = false;
     if (sig !== lastSig) { lastSig = sig; tickets = list; changed = true; }
     if (rs !== repSig) { repSig = rs; reports = reps; changed = true; }
-    if (changed && !$("#dlg").open && !$("#rdlg").open) render();
-    else if (changed) { lastSig = ""; repSig = ""; }
+    if (ms !== meetSig) { meetSig = ms; meetings = mts; changed = true; }
+    if (changed && !$("#dlg").open && !$("#rdlg").open && !$("#mdlg").open) render();
+    else if (changed) { lastSig = ""; repSig = ""; meetSig = ""; }
     if (pull.lost) { pull.lost = false; renderBanner(); }
   } catch {
     if (!pull.lost) { pull.lost = true; banner("<b>Lost contact with the tracker server.</b> Check that the start window is still open. The page reconnects by itself."); }
@@ -1006,6 +1109,22 @@ async function saveReport(r) {
   if (i >= 0) reports[i] = r; else reports.push(r);
   if (mode === "local" && !lsSet(REP_KEY, JSON.stringify(reports))) toast("This browser refused to save. Add big reports as links instead.", 5000);
   repSig = "";
+  render();
+}
+async function saveMeeting(m) {
+  m.updatedAt = new Date().toISOString();
+  if (mode === "server") await api("PUT", "api/meetings/" + encodeURIComponent(m.id), JSON.stringify(m), { "Content-Type": "application/json" });
+  const i = meetings.findIndex(x => x.id === m.id);
+  if (i >= 0) meetings[i] = m; else meetings.push(m);
+  if (mode === "local" && !lsSet(MEET_KEY, JSON.stringify(meetings))) toast("This browser refused to save. Add big notes files as links instead.", 5000);
+  meetSig = "";
+  render();
+}
+async function deleteMeeting(id) {
+  if (mode === "server") await api("DELETE", "api/meetings/" + encodeURIComponent(id));
+  meetings = meetings.filter(m => m.id !== id);
+  if (mode === "local") lsSet(MEET_KEY, JSON.stringify(meetings));
+  meetSig = "";
   render();
 }
 async function deleteReport(id) {
@@ -1075,13 +1194,16 @@ async function boot() {
     mode = "local";
     if (lsGet(LS_KEY) === null) seedDemo();
     loadLocal();
-    if (!tickets.length && !lsGet(LS_KEY)) { tickets = JSON.parse(JSON.stringify(window.SNAPSHOT.tickets || [])); reports = JSON.parse(JSON.stringify(window.SNAPSHOT.reports || [])); }
+    if (!tickets.length && !lsGet(LS_KEY)) { tickets = JSON.parse(JSON.stringify(window.SNAPSHOT.tickets || [])); reports = JSON.parse(JSON.stringify(window.SNAPSHOT.reports || [])); meetings = JSON.parse(JSON.stringify(window.SNAPSHOT.meetings || [])); }
   } else if (location.protocol.startsWith("http")) {
     render();
     try {
       tickets = await api("GET", "api/tickets");
       reports = await api("GET", "api/reports");
       repSig = JSON.stringify(reports);
+      // An older server.py has no meetings list yet; the tab then stays empty instead of failing.
+      meetings = await api("GET", "api/meetings").catch(() => []);
+      meetSig = JSON.stringify(meetings);
       try { converters = (await api("GET", "api/status")).converters || []; } catch {}
       lastSig = JSON.stringify(tickets);
       mode = "server";
@@ -1112,6 +1234,7 @@ function restoreUI() {
   if (location.hash === "#pareto") { view = "analysis"; graphView = "pareto"; }
   if (location.hash === "#reports") view = "reports";
   if (location.hash === "#overdue") view = "overdue";
+  if (location.hash === "#meetings") view = "meetings";
 }
 function saveUI() { lsSet(UI_KEY, JSON.stringify({ view, chartKind, paretoDim, monthMode, sort, reportType, graphView })); }
 
@@ -1164,8 +1287,11 @@ function render() {
   $("#view-analysis").hidden = view !== "analysis";
   $("#view-reports").hidden = view !== "reports";
   $("#view-overdue").hidden = view !== "overdue";
-  $("#kpis").hidden = view === "reports" || view === "overdue";
-  $("#filters").hidden = view === "reports" || view === "overdue";
+  $("#view-meetings").hidden = view !== "meetings";
+  const sideView = view === "reports" || view === "overdue" || view === "meetings";
+  $("#kpis").hidden = sideView;
+  $("#filters").hidden = sideView;
+  renderMeetBadge();
   const od = overdueList();
   renderBell(od);
   $("#fStatusWrap").hidden = view === "analysis";
@@ -1174,14 +1300,15 @@ function render() {
   $("#reportBar").hidden = view !== "analysis";
   const canExport = mode !== "starting" && typeof XLSX !== "undefined";
   $("#exportBtn").hidden = !canExport || !tickets.length;
-  $("#demoBtn").hidden = mode !== "server" || view === "reports" || view === "overdue";
+  $("#demoBtn").hidden = mode !== "server" || sideView;
   $("#importBtn").hidden = mode === "starting" || typeof XLSX === "undefined";
-  if (view === "tickets") renderTable(); else if (view === "analysis") renderChart(); else if (view === "overdue") renderOverdue(od); else renderReports();
+  if (view === "tickets") renderTable(); else if (view === "analysis") renderChart(); else if (view === "overdue") renderOverdue(od); else if (view === "meetings") renderMeetings(); else renderReports();
 }
 
 function seedDemo() {
   lsSet(LS_KEY, JSON.stringify(window.SNAPSHOT.tickets || []));
   lsSet(REP_KEY, JSON.stringify(window.SNAPSHOT.reports || []));
+  lsSet(MEET_KEY, JSON.stringify(window.SNAPSHOT.meetings || []));
 }
 function renderBanner() {
   if (window.SNAPSHOT) return banner(`<b>${window.SNAPSHOT.sample ? "Demo with made-up sample tickets." : `Demo copy made ${esc(fmtDate(String(window.SNAPSHOT.takenAt || "").slice(0, 10)))}.`}</b> Click around and try anything: changes stay in this browser and don't affect the real tracker. <button class="btn small" type="button" data-act="demo-reset">Reset demo</button>`);
@@ -2092,7 +2219,8 @@ async function shareDemo() {
     const snap = JSON.stringify({
       takenAt: new Date().toISOString(),
       tickets: official().map(t => ({ ...t, attachments: (t.attachments || []).filter(a => a.kind === "link").map(a => ({ kind: a.kind, name: a.name, url: a.url })) })),
-      reports: reports.filter(r => r.link).map(r => ({ ...r, file: null, pdf: null }))
+      reports: reports.filter(r => r.link).map(r => ({ ...r, file: null, pdf: null })),
+      meetings: meetings.map(m => ({ ...m, files: [] }))
     }).replace(/</g, "\\u003c");
     html = html.replace("<script>\n(() => {", () => `<script>window.SNAPSHOT = ${snap};<\/script>\n<script>\n(() => {`);
     const name = `FXN_HT_Quality_Tracker_demo_${todayISO()}.html`;
@@ -2308,6 +2436,344 @@ async function submitReport(e) {
   try { await saveReport(r); toast(editingReport ? "Report updated" : "Report added"); $("#rdlg").close(); }
   catch (err) { $("#rErr").textContent = writeError(err); }
   finally { btn.disabled = false; }
+}
+
+/* ---------- meeting notes ---------- */
+const meetSorted = () => meetings.slice().sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.addedAt || "").localeCompare(a.addedAt || ""));
+const aiLate = a => a.status !== "Closed" && !!a.due && a.due < todayISO();
+const linkify = html => html.replace(/https?:\/\/[^\s<]+[^\s<.,;:!?)\]'"]/g, u => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
+function allActionItems() { return meetSorted().flatMap(m => (m.actions || []).map((a, i) => ({ m, a, i }))); }
+function renderMeetBadge() {
+  const open = allActionItems().filter(x => x.a.status !== "Closed"), late = open.filter(x => aiLate(x.a)).length;
+  const b = $("#meetBadge");
+  b.hidden = !open.length; b.textContent = open.length;
+  b.classList.toggle("neutral", !late);
+  b.title = `${open.length} open action item${open.length === 1 ? "" : "s"}${late ? `, ${late} past due` : ""}`;
+}
+function meetFileLinks(files, link) {
+  return (files || []).map(f => `<span class="mt-file"><a href="${esc(attUrl(f))}" target="_blank" rel="noopener" title="${esc(f.name)}">${esc(f.name)}</a><a class="btn small" href="${esc(attUrl(f))}" download="${esc(f.name)}">Download</a></span>`).join("") +
+    (link ? `<span class="mt-file"><a href="${esc(link)}" target="_blank" rel="noopener">Open link</a></span>` : "");
+}
+function renderMeetings() {
+  const wrap = $("#meetWrap"), list = meetSorted();
+  if (!list.length) {
+    wrap.innerHTML = `<div class="panel"><div class="empty"><h2>No meeting notes yet</h2><p>Add the last meeting's notes: upload the Word file or the saved Outlook email, or paste the notes. Its action items are listed here so they're easy to check before the next meeting.</p><div class="row"><button class="btn primary" type="button" data-act="add-meeting">+ Add meeting notes</button></div></div></div>`;
+    return;
+  }
+  const m = list.find(x => x.id === meetShow) || list[0], isLast = m === list[0];
+  const items = allActionItems(), open = items.filter(x => x.a.status !== "Closed"), late = open.filter(x => aiLate(x.a));
+  const owners = [...new Set(items.map(x => (x.a.owner || "").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  if (meetOwner && !owners.includes(meetOwner)) meetOwner = "";
+  const shown = items.filter(x => (meetFilter === "all" || x.a.status !== "Closed") && (!meetOwner || (x.a.owner || "").trim() === meetOwner))
+    .sort((x, y) => (x.a.status === "Closed") - (y.a.status === "Closed") || aiLate(y.a) - aiLate(x.a) || (x.a.due || "9999").localeCompare(y.a.due || "9999") || (y.m.date || "").localeCompare(x.m.date || ""));
+  const mine = m.actions || [], mineOpen = mine.filter(a => a.status !== "Closed").length;
+  const ticketLink = id => { const t = id && tickets.find(x => x.id === id); return t ? `<a href="#" data-openticket="${esc(t.id)}" title="${esc(t.description)}">${qid(t.no)}</a>` : ""; };
+  const aiRow = ({ m: mm, a, i }) => {
+    const st = a.status === "Closed" ? "Closed" : "Open", lt = aiLate(a);
+    return `<tr class="${st === "Closed" ? "closed" : ""}">
+      <td><button class="chip-btn" type="button" data-aitoggle="${esc(mm.id)}:${i}" title="${st === "Closed" ? "Reopen" : "Mark closed"}"><span class="chip ai-${st}">${st}</span></button></td>
+      <td class="ai-text">${linkify(esc(a.text))}</td>
+      <td>${esc(a.owner) || `<span class="muted">Not set</span>`}</td>
+      <td class="ai-due${lt ? " late" : ""}">${a.due ? esc(fmtDate(a.due)) : `<span class="muted">No date</span>`}${lt ? `<small>${daysBetween(a.due, todayISO())}d past due</small>` : ""}${st === "Closed" && a.closedOn ? `<small class="muted">closed ${esc(fmtDate(a.closedOn))}</small>` : ""}</td>
+      <td>${ticketLink(a.ticketId)}</td>
+      <td><a href="#" data-showmeet="${esc(mm.id)}">${esc(fmtDate(mm.date))}</a></td>
+    </tr>`;
+  };
+  wrap.innerHTML = `<div class="od-summary">
+      <span class="od-chip overdue">${open.length} open action item${open.length === 1 ? "" : "s"}</span>
+      <span class="od-chip soon">${late.length} past due</span>
+      <span class="od-chip ready">${items.length - open.length} closed</span>
+    </div>
+    <div class="mt-grid">
+      <section class="panel list-box mt-latest" aria-labelledby="mtTitle">
+        <header><h3 id="mtTitle">${isLast ? "Last meeting" : "Meeting"} · ${esc(fmtDate(m.date))}</h3><span class="muted">${esc(m.title || "")}</span>
+          ${isLast ? "" : `<button class="btn small" type="button" data-showmeet="">Back to last meeting</button>`}
+          <button class="btn small" type="button" data-editmeet="${esc(m.id)}">Edit</button></header>
+        <div class="mt-meta">${m.attendees ? `<span><b>Attendees:</b> ${esc(m.attendees)}</span>` : ""}<span><b>Action items:</b> ${mine.length ? `${mine.length} · ${mineOpen} open` : "none"}</span></div>
+        ${(m.files || []).length || m.link ? `<div class="mt-files">${meetFileLinks(m.files, m.link)}</div>` : ""}
+        <div class="mt-notes${m.notes ? "" : " empty-notes"}">${m.notes ? linkify(esc(m.notes)) : "No notes typed in. Open the attached file or link above."}</div>
+      </section>
+      <section class="panel list-box mt-acts" aria-labelledby="aiTitle">
+        <header><h3 id="aiTitle">Action items</h3><span class="muted">From all meetings · click a status to change it</span>
+          <div class="seg mini" role="group" aria-label="Show"><button type="button" data-mfilter="open" aria-pressed="${meetFilter === "open"}">Open</button><button type="button" data-mfilter="all" aria-pressed="${meetFilter === "all"}">All</button></div>
+          ${owners.length ? `<select id="meetOwner" aria-label="Owner"><option value="">All owners</option>${owners.map(o => `<option${o === meetOwner ? " selected" : ""}>${esc(o)}</option>`).join("")}</select>` : ""}
+        </header>
+        <div class="table-scroll">${shown.length ? `<table><thead><tr><th>Status</th><th>Action item</th><th>Owner</th><th>Due</th><th>Ticket</th><th>Meeting</th></tr></thead><tbody>${shown.map(aiRow).join("")}</tbody></table>`
+          : `<div class="list-empty">${items.length ? (meetFilter === "open" ? "No open action items. Nice." : "No action items for this owner.") : "No action items yet. Add them in a meeting, or let the tracker pull them from the notes."}</div>`}</div>
+      </section>
+    </div>
+    ${list.length > 1 ? `<section class="panel list-box mt-past" aria-labelledby="pastTitle">
+      <header><h3 id="pastTitle">All meetings</h3><span class="muted">${list.length} meetings · click one to read its notes</span></header>
+      <div class="table-scroll"><table><thead><tr><th>Date</th><th>Meeting</th><th>Attendees</th><th>Action items</th><th>Files</th></tr></thead><tbody>
+      ${list.map(x => { const n = (x.actions || []).length, o = (x.actions || []).filter(a => a.status !== "Closed").length;
+        return `<tr data-showmeet="${esc(x.id)}" class="${x === m ? "current" : ""}"><td>${esc(fmtDate(x.date))}</td><td>${esc(x.title || "Meeting")}</td><td class="desc">${esc(String(x.attendees || "").slice(0, 80))}</td>
+          <td>${n ? `${n} · <span class="${o ? "" : "muted"}">${o} open</span>` : `<span class="muted">None</span>`}</td><td>${(x.files || []).length ? (x.files || []).length + " file" + ((x.files || []).length > 1 ? "s" : "") : x.link ? "Link" : `<span class="muted">None</span>`}</td></tr>`; }).join("")}
+      </tbody></table></div></section>` : ""}`;
+}
+async function toggleAction(mid, idx) {
+  const m0 = meetings.find(x => x.id === mid); if (!m0) return;
+  const m = JSON.parse(JSON.stringify(m0)), a = (m.actions || [])[idx]; if (!a) return;
+  a.status = a.status === "Closed" ? "Open" : "Closed";
+  a.closedOn = a.status === "Closed" ? todayISO() : "";
+  try { await saveMeeting(m); toast(`Action item ${a.status === "Closed" ? "closed" : "reopened"}`); } catch (err) { toast(writeError(err), 6000); }
+}
+
+// --- dialog ---
+function meetActRow(a = {}) {
+  const st = a.status === "Closed" ? "Closed" : "Open";
+  const opts = tickets.filter(t => !t.draft).slice().sort((x, y) => (y.no || 0) - (x.no || 0))
+    .map(t => `<option value="${esc(t.id)}"${t.id === a.ticketId ? " selected" : ""}>${qid(t.no)} · ${esc(String(t.description || "").slice(0, 40))}</option>`).join("");
+  return `<div class="act-row mact-row" data-closed="${esc(a.closedOn || "")}">
+    <input class="mact-text" type="text" placeholder="Action item" value="${esc(a.text)}" aria-label="Action item">
+    <input class="mact-owner" type="text" placeholder="Owner" list="dl_people" value="${esc(a.owner)}" aria-label="Owner">
+    <input class="mact-due" type="date" value="${esc(a.due)}" aria-label="Due date" title="Due date">
+    <select class="mact-ticket" aria-label="Ticket"><option value="">No ticket</option>${opts}</select>
+    <select class="mact-status" data-status="${st}" aria-label="Status"><option${st === "Open" ? " selected" : ""}>Open</option><option${st === "Closed" ? " selected" : ""}>Closed</option></select>
+    <button type="button" data-rmmact aria-label="Remove action item">×</button>
+  </div>`;
+}
+function readMeetActs() {
+  return $$("#m_acts .mact-row").map(r => {
+    const status = $(".mact-status", r).value;
+    return { text: $(".mact-text", r).value.trim(), owner: $(".mact-owner", r).value.trim(), due: $(".mact-due", r).value,
+      ticketId: $(".mact-ticket", r).value, status, closedOn: status === "Closed" ? (r.dataset.closed || todayISO()) : "" };
+  }).filter(a => a.text);
+}
+function syncMeetActs() {
+  if (!$("#m_acts .mact-row")) $("#m_acts").innerHTML = `<div class="act-empty" id="m_actsEmpty">None yet.</div>`;
+}
+function addMeetActs(list) {
+  $("#m_actsEmpty")?.remove();
+  $("#m_acts").insertAdjacentHTML("beforeend", list.map(meetActRow).join(""));
+}
+function openMeeting(m) {
+  editingMeeting = m ? JSON.parse(JSON.stringify(m)) : null;
+  $("#meetForm").reset(); $("#mErr").textContent = "";
+  $("#m_date").closest(".field").classList.remove("invalid");
+  $("#mdlgTitle").textContent = m ? "Edit meeting notes" : "Add meeting notes";
+  $("#mSave").textContent = m ? "Save changes" : "Save meeting";
+  // A new meeting starts with the last meeting's name and attendees; they usually repeat.
+  const last = meetSorted()[0] || {};
+  const v = m || { date: todayISO(), title: last.title || "", attendees: last.attendees || "" };
+  $("#m_date").value = v.date || ""; $("#m_title").value = v.title || ""; $("#m_attendees").value = v.attendees || "";
+  $("#m_link").value = v.link || ""; $("#m_notes").value = v.notes || "";
+  $("#m_title").dataset.prefill = m ? "" : v.title; $("#m_attendees").dataset.prefill = m ? "" : v.attendees;
+  $("#dl_meet").innerHTML = [...new Set(meetings.map(x => x.title).filter(Boolean))].map(t => `<option value="${esc(t)}"></option>`).join("");
+  draftMFiles = (v.files || []).map(f => ({ ...f }));
+  renderMeetFiles();
+  $("#m_acts").innerHTML = (v.actions || []).map(meetActRow).join("");
+  syncMeetActs();
+  $("#mDelZone").innerHTML = m ? `<button class="btn danger small" type="button" id="mDel">Delete</button>` : "";
+  $("#mdlg").showModal();
+  $("#m_date").focus();
+}
+function renderMeetFiles() {
+  $("#m_files").innerHTML = draftMFiles.map((f, i) => `<span class="mt-file"><a href="${esc(attUrl(f))}" target="_blank" rel="noopener" title="${esc(f.name)}">${esc(f.name)}</a><button class="btn small" type="button" data-rmmfile="${i}" aria-label="Remove ${esc(f.name)}">Remove</button></span>`).join("") +
+    `<button class="btn small" type="button" id="m_pick">Upload notes file</button><span class="muted">${mode === "server" ? "up to 50 MB each" : "up to 1.5 MB each in this browser"}</span>`;
+}
+// Fills a field from the file unless the person already typed something of their own there.
+function fillIfUntouched(el, value) {
+  if (!value) return;
+  if (!el.value.trim() || el.value === el.dataset.prefill) { el.value = value; el.dataset.prefill = value; }
+}
+async function addMeetFiles(files) {
+  let filled = 0, found = 0;
+  for (const file of files) {
+    toast(`Adding ${file.name}…`, 60000);
+    let info = null;
+    try { info = await notesFromFile(file); } catch { info = null; }
+    try { draftMFiles.push(await storeFile(file, file.name)); }
+    catch (err) { $("#mErr").textContent = err.code === "too_big_local" ? err.message : `Couldn't upload ${file.name}: ${err.message || "unknown error"}`; }
+    if (info && info.text) {
+      const lines = info.text.split("\n").map(l => l.trim()).filter(Boolean);
+      if (!info.attendees) info.attendees = ((info.text.match(/^(?:attendees|participants|present|attendance)\s*:\s*(.+)$/im) || [])[1] || "").replace(/\s*;\s*/g, ", ").trim();
+      if (!info.subject && lines[0] && lines[0].length < 90 && /meeting|review|sync|notes|minutes|stand-?up|huddle/i.test(lines[0]))
+        info.subject = lines[0].replace(/\s*[-–—|,:]?\s*(?:\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{1,2}-\d{1,2}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:,?\s+\d{4})?)\s*$/i, "").trim();
+      const cur = $("#m_notes").value.trim();
+      $("#m_notes").value = cur ? cur + "\n\n" + info.text : info.text;
+      fillIfUntouched($("#m_title"), info.subject);
+      fillIfUntouched($("#m_attendees"), info.attendees);
+      const d = info.date || looseDate(info.text.split("\n").slice(0, 4).join(" ") + " " + (info.subject || ""));
+      if (d && !editingMeeting && $("#m_date").value === todayISO()) $("#m_date").value = d;
+      found += pullMeetActs();
+      filled++;
+    }
+  }
+  renderMeetFiles();
+  toast(filled ? `Notes filled in from the file${found ? ` · ${found} action item${found === 1 ? "" : "s"} found` : ""}. Check them, then save.` : `${files.length === 1 ? files[0].name : files.length + " files"} attached`, 4500);
+}
+// Adds action items found in the notes that aren't listed yet. Returns how many were added.
+function pullMeetActs() {
+  const have = new Set(readMeetActs().map(a => a.text.toLowerCase()));
+  const add = findActions($("#m_notes").value).filter(a => !have.has(a.text.toLowerCase()) && have.add(a.text.toLowerCase()));
+  if (add.length) addMeetActs(add);
+  return add.length;
+}
+async function submitMeeting(e) {
+  e.preventDefault();
+  const date = $("#m_date").value;
+  $("#m_date").closest(".field").classList.toggle("invalid", !date);
+  if (!date) { $("#mErr").textContent = "Set the meeting date."; return; }
+  const notes = $("#m_notes").value.trim(), link = $("#m_link").value.trim(), actions = readMeetActs();
+  if (!notes && !link && !draftMFiles.length && !actions.length) { $("#mErr").textContent = "Add the notes, a file, a link or an action item."; return; }
+  const m = {
+    ...(editingMeeting || { id: newId(), addedAt: new Date().toISOString() }),
+    date, title: $("#m_title").value.trim(), attendees: $("#m_attendees").value.trim(),
+    link: link && !/^https?:\/\//i.test(link) ? "https://" + link : link, notes, files: draftMFiles, actions
+  };
+  const btn = $("#mSave"); btn.disabled = true;
+  try { await saveMeeting(m); meetShow = m.id === (meetSorted()[0] || {}).id ? "" : meetShow; toast(editingMeeting ? "Meeting notes updated" : "Meeting notes saved"); $("#mdlg").close(); }
+  catch (err) { $("#mErr").textContent = writeError(err); }
+  finally { btn.disabled = false; }
+}
+
+// --- reading notes out of files ---
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+// Finds a date written like 11/12, 11/12/2026, 2026-11-12, Nov 12 or 12 Nov. Returns yyyy-mm-dd or "".
+function looseDate(s, year = new Date().getFullYear()) {
+  const ok = (y, m, d) => { y = +y < 100 ? 2000 + +y : +y; const dt = new Date(y, m - 1, d); return dt.getMonth() === m - 1 && dt.getDate() === +d ? `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}` : ""; };
+  let x = String(s || "").match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/); if (x) return ok(x[1], +x[2], +x[3]);
+  x = String(s || "").match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2}|\d{4}))?\b/); if (x) return ok(x[3] || year, +x[1], +x[2]);
+  const mon = "(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\\.?";
+  x = String(s || "").match(new RegExp(`\\b${mon}\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(\\d{4}))?\\b`, "i")); if (x) return ok(x[3] || year, MONTHS.indexOf(x[1].toLowerCase()) + 1, +x[2]);
+  x = String(s || "").match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+${mon}(?:,?\\s+(\\d{4}))?\\b`, "i")); if (x) return ok(x[3] || year, MONTHS.indexOf(x[2].toLowerCase()) + 1, +x[1]);
+  return "";
+}
+const decodeEntities = s => s.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos|nbsp);/gi, (_, e) =>
+  e[0] === "#" ? String.fromCodePoint(e[1].toLowerCase() === "x" ? parseInt(e.slice(2), 16) : +e.slice(1)) : ({ amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " })[e.toLowerCase()]);
+const tidyText = s => s.replace(/\r\n?/g, "\n").replace(/[ \t ]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+function htmlText(html) {
+  const doc = new DOMParser().parseFromString(html.replace(/<li[^>]*>/gi, "$&• ").replace(/<(br|\/p|\/div|\/li|\/tr|\/h\d|\/table)\b[^>]*>/gi, "$&\n").replace(/<\/t[dh]>/gi, " | $&"), "text/html");
+  doc.querySelectorAll("style, script, head, title").forEach(n => n.remove());
+  return tidyText((doc.body ? doc.body.textContent : "").replace(/ \| \n/g, "\n"));
+}
+// Word: one line per paragraph, "• " in front of list items, table rows as "cell | cell | cell".
+function docxText(xml) {
+  const runs = p => { let out = ""; p.replace(/<w:t(?:\s[^>]*)?>([^<]*)<\/w:t>|<w:tab\/>|<w:(?:br|cr)\b[^>]*\/>/g, (all, t) => { out += t !== undefined ? decodeEntities(t) : all.startsWith("<w:tab") ? "\t" : "\n"; return ""; }); return out; };
+  xml = xml.replace(/<w:tr[\s>][\s\S]*?<\/w:tr>/g, tr => {
+    const cells = tr.split(/<\/w:tc>/).slice(0, -1).map(c => c.split(/<\/w:p>/).map(runs).join(" ").replace(/\s+/g, " ").trim());
+    return `<w:p><w:r><w:t>${esc(cells.join(" | "))}</w:t></w:r></w:p>`;
+  });
+  return tidyText(xml.split(/<\/w:p>/).map(p => (/<w:numPr>|<w:pStyle w:val="List/.test(p) ? "• " : "") + runs(p)).join("\n"));
+}
+function cfbEntry(c, re) { const i = c.FullPaths.findIndex(p => re.test(p)); return i >= 0 && c.FileIndex[i].content ? new Uint8Array(c.FileIndex[i].content) : null; }
+// Outlook .msg: subject, To / CC names, sent date and the plain-text body (or the HTML body).
+function msgNotes(c) {
+  const u16 = id => { const b = cfbEntry(c, new RegExp(`^Root Entry/__substg1\\.0_${id}001F$`, "i")); return b ? new TextDecoder("utf-16le").decode(b).replace(/\0+$/, "") : ""; };
+  const ansi = id => { const b = cfbEntry(c, new RegExp(`^Root Entry/__substg1\\.0_${id}001E$`, "i")); return b ? new TextDecoder("windows-1252").decode(b).replace(/\0+$/, "") : ""; };
+  const get = id => u16(id) || ansi(id);
+  let text = get("1000");
+  if (!text) { const h = cfbEntry(c, /^Root Entry\/__substg1\.0_10130102$/i); if (h) text = htmlText(new TextDecoder().decode(h)); }
+  const sent = (get("007D").match(/^Date:\s*(.+)$/mi) || [])[1];
+  const names = [get("0E04"), get("0E03")].join(";").split(";").map(n => n.replace(/['"]/g, "").trim()).filter(Boolean);
+  return { text: tidyText(text), subject: get("0037").replace(/^((re|fw|fwd)\s*:\s*)+/i, "").trim(), attendees: [...new Set(names)].join(", "), date: sent ? isoOf(sent) : "" };
+}
+const isoOf = s => { const d = new Date(s); return isNaN(d) ? "" : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+// .eml: headers, then the text/plain part (or text/html), decoding base64 and quoted-printable.
+function emlNotes(raw) {
+  raw = raw.replace(/\r\n/g, "\n");
+  const split = src => {
+    const i = src.indexOf("\n\n"), h = {};
+    (i < 0 ? src : src.slice(0, i)).replace(/\n[ \t]+/g, " ").split("\n").forEach(l => { const m = l.match(/^([\w-]+):\s*(.*)$/); if (m) h[m[1].toLowerCase()] = m[2]; });
+    return { h, body: i < 0 ? "" : src.slice(i + 2) };
+  };
+  const bytesText = (bin, cs) => { try { return new TextDecoder(cs || "utf-8").decode(Uint8Array.from(bin, ch => ch.charCodeAt(0) & 255)); } catch { return bin; } };
+  const words = s => (s || "").replace(/=\?([^?]+)\?([bq])\?([^?]*)\?=/gi, (_, cs, enc, t) =>
+    bytesText(enc.toLowerCase() === "b" ? atob(t) : t.replace(/_/g, " ").replace(/=([\da-f]{2})/gi, (__, h) => String.fromCharCode(parseInt(h, 16))), cs));
+  const decode = p => {
+    const enc = (p.h["content-transfer-encoding"] || "").toLowerCase(), cs = ((p.h["content-type"] || "").match(/charset="?([\w-]+)/i) || [])[1];
+    let b = p.body;
+    if (enc === "base64") { try { b = bytesText(atob(b.replace(/\s+/g, "")), cs); } catch {} }
+    else if (enc === "quoted-printable") b = bytesText(b.replace(/=\n/g, "").replace(/=([\da-f]{2})/gi, (_, h) => String.fromCharCode(parseInt(h, 16))), cs);
+    return /text\/html/i.test(p.h["content-type"] || "") ? htmlText(b) : b;
+  };
+  const top = split(raw);
+  const find = (p, type) => {
+    const ct = p.h["content-type"] || "text/plain", bd = (ct.match(/boundary="?([^";]+)"?/i) || [])[1];
+    if (/multipart\//i.test(ct) && bd) { for (const s of p.body.split("--" + bd).slice(1)) { if (s.startsWith("--")) break; const r = find(split(s.replace(/^\n/, "")), type); if (r) return r; } return null; }
+    return new RegExp(type, "i").test(ct) && !/attachment/i.test(p.h["content-disposition"] || "") ? p : null;
+  };
+  const part = find(top, "text/plain") || find(top, "text/html");
+  const names = words(top.h.to || "").split(",").concat(words(top.h.cc || "").split(",")).map(n => n.replace(/<[^>]*>/g, "").replace(/["']/g, "").trim()).filter(Boolean);
+  return { text: part ? tidyText(decode(part)) : "", subject: words(top.h.subject || "").replace(/^((re|fw|fwd)\s*:\s*)+/i, "").trim(), attendees: names.join(", "), date: top.h.date ? isoOf(top.h.date) : "" };
+}
+async function notesFromFile(file) {
+  const name = file.name.toLowerCase();
+  if (/\.(txt|md|csv)$/.test(name)) return { text: tidyText(await file.text()) };
+  if (/\.eml$/.test(name)) return emlNotes(await file.text());
+  if (!/\.(docx|msg)$/.test(name) || typeof XLSX === "undefined" || !XLSX.CFB) return null;
+  const c = XLSX.CFB.read(new Uint8Array(await file.arrayBuffer()), { type: "array" });
+  if (name.endsWith(".msg")) return msgNotes(c);
+  const xml = cfbEntry(c, /word\/document\.xml$/);
+  return xml ? { text: docxText(new TextDecoder().decode(xml)) } : null;
+}
+
+// --- finding action items in the notes ---
+const BULLET = /^(?:[-*•·▪◦‣–]|\[\s?[xX]?\s?\]|\(?\d{1,2}[.)])\s+/;
+const AI_PREFIX = /^(?:[-*•·▪◦‣–]\s*)?(?:\[\s?\]\s*)?(?:action(?:\s*items?)?|AI|A\/I|AR|TODO|to-?do|follow[- ]?up)\s*#?\d*\s*[:\-–—)]\s*(.+)$/i;
+function findActions(text) {
+  const out = [];
+  const names = [...new Set([...$$("#dl_people option").map(o => o.value), ...$("#m_attendees").value.split(/[,;]/)]
+    .flatMap(n => n.split(/\s*(?:\/|&|\band\b)\s*/)).map(n => n.replace(/\s+/g, " ").trim()).filter(n => n.length > 2))];
+  const first = {};
+  names.forEach(n => { const f = n.split(" ")[0]; if (f !== n && f.length > 2) first[f] = first[f] === undefined ? n : null; });
+  // [what's written, who it is]: full names first, then first names that only one person has
+  const people = [...names.map(n => [n, n]), ...Object.entries(first).filter(([, n]) => n)].sort((a, b) => b[0].length - a[0].length);
+  let section = false, cols = null, items = 0, bulleted = false;
+  for (const raw of String(text || "").split("\n")) {
+    const line = raw.trim();
+    if (!line) { if (section && items && !cols) section = false; continue; }
+    const cells = line.includes(" | ") ? line.split(" | ").map(c => c.trim()) : null;
+    // A table whose header row has "Action" and "Owner" / "Due" columns.
+    if (cells && cells.some(c => /^(action|action items?|item|task|description)$/i.test(c)) && cells.some(c => /owner|who|responsible|due|eta|date/i.test(c))) {
+      const at = re => cells.findIndex(c => re.test(c));
+      cols = { text: at(/action|item|task|description/i), owner: at(/owner|who|responsible|assign/i), due: at(/due|eta|date|when/i), status: at(/status/i) };
+      section = true; continue;
+    }
+    if (/^(?:#+\s*)?(?:open\s+|new\s+)?(?:action\s*items?|actions|next\s+steps|to-?dos?|follow[- ]?ups?)\s*:?$/i.test(line)) { section = true; cols = null; items = 0; bulleted = false; continue; }
+    if (cells && cols && section) {
+      const g = k => (cols[k] >= 0 ? cells[cols[k]] || "" : "");
+      if (g("text")) { out.push(actionFrom(g("text"), people, { owner: g("owner"), due: looseDate(g("due")), closed: /closed|done|complete/i.test(g("status")) })); items++; }
+      continue;
+    }
+    cols = null;
+    const pre = line.match(AI_PREFIX);
+    if (pre) { out.push(actionFrom(pre[1], people)); continue; }
+    if (section) {
+      // The list ends at a heading, a "Next meeting: …" style line, or plain text after a bulleted list.
+      const bullet = BULLET.test(line);
+      const heading = !bullet && ((/:$/.test(line) || /^#+\s/.test(line)) && line.length < 50 ||
+        /^(?:next\s+meeting|attendees|agenda|notes|date|time|location|thanks|thank you|regards|best)\b/i.test(line) || (bulleted && items));
+      if (heading) { section = false; continue; }
+      if (bullet && !items) bulleted = true;
+      out.push(actionFrom(line.replace(BULLET, ""), people)); items++;
+    }
+  }
+  return out.filter(a => a.text.length > 2);
+}
+// Splits "Adrian - update WI by 11/12" into the action, its owner and its due date.
+function actionFrom(s, people, known = {}) {
+  let text = s.replace(/\s+/g, " ").trim(), owner = known.owner || "", due = known.due || "";
+  const cut = re => { const m = text.match(re); if (m) text = (text.slice(0, m.index) + " " + text.slice(m.index + m[0].length)).replace(/\s+/g, " ").replace(/\s+([,.;)])/g, "$1").replace(/[(\s,;–—-]+$/, "").replace(/^[\s,;:–—-]+/, "").trim(); return m; };
+  if (!due) { const m = cut(/[(\[]?\s*\b(?:due|by|eta|before|target)\b\s*(?:date)?\s*[:\-]?\s*([^()\[\],;]*?\d[^()\[\],;]*?|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2})\s*[)\]]?(?=$|[,;.]|\s)/i); if (m) due = looseDate(m[1]); }
+  if (!owner) { const m = cut(/[(\[]?\b(?:owner|assigned to|responsible|who)\s*[:\-]\s*([^()\[\],;]+?)\s*[)\]]?(?=$|[,;])/i); if (m) owner = m[1].trim(); }
+  if (!owner) { const m = cut(/(?:^|\s)@([A-Z][\w.]*(?:\s[A-Z][\w.]*)?)/); if (m) owner = m[1]; }
+  if (!owner) {
+    for (const [alias, who] of people) {
+      const a = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      if (cut(new RegExp(`^${a}\\s*(?:[:\\-–—]\\s*|\\s+(?:to|will|shall|needs? to)\\s+|\\s+(?=[a-z]))|\\s*[\\-–—(]\\s*${a}\\s*\\)?$`, "i"))) { owner = who; break; }
+    }
+  }
+  if (!owner) { const m = cut(/^([A-Z][a-z]+(?:\s[A-Z][a-z]+){0,2})\s*(?::|\s[-–—])\s+/); if (m) owner = m[1]; }
+  if (!owner) { const m = cut(/\s[-–—]\s*([A-Z][a-z]+(?:\s[A-Z][a-z]+){0,2})\)?$|\s\(([A-Z][a-z]+(?:\s[A-Z][a-z]+){0,2})\)$/); if (m) owner = m[1] || m[2]; }
+  const ticket = guessTicket(s);
+  return { text: text.replace(/^[a-z]/, ch => ch.toUpperCase()), owner, due, ticketId: ticket ? ticket.id : "", status: known.closed ? "Closed" : "Open", closedOn: known.closed ? todayISO() : "" };
+}
+function guessTicket(s) {
+  let m = s.match(/\bQI-?0*(\d+)\b/i); if (m) return tickets.find(t => t.no === +m[1] && !t.draft);
+  const norm = v => String(v || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+  m = s.match(/\b(SCAR[\s#-]*\d{3,}|BUG\s*#?\s*\d{4,})\b/i);
+  return m ? tickets.find(t => !t.draft && t.ref && norm(t.ref).includes(norm(m[1]))) : null;
 }
 
 /* ---------- dialog ---------- */
@@ -2979,6 +3445,7 @@ function bindUI() {
     if (a.dataset.act === "import-back") showImportOptions();
     if (a.dataset.act === "import-replace-yes") runImport("replace");
     if (a.dataset.act === "add-report") openReport(null);
+    if (a.dataset.act === "add-meeting") openMeeting(null);
     if (a.dataset.act === "import-ppt") $("#pptInput").click();
     if (a.dataset.act === "demo-reset") { seedDemo(); loadLocal(); render(); toast("Demo reset to the original copy"); }
   });
@@ -3093,6 +3560,52 @@ function bindUI() {
     } catch (err) { $("#rErr").textContent = err.code === "too_big_local" ? err.message : `Couldn't upload: ${err.message || "unknown error"}`; }
     renderReportFiles();
   });
+
+  // meeting notes
+  $("#addMeetingBtn").addEventListener("click", () => openMeeting(null));
+  $("#meetWrap").addEventListener("click", e => {
+    const tg = e.target.closest("[data-aitoggle]");
+    if (tg) { const [mid, i] = tg.dataset.aitoggle.split(":"); return toggleAction(mid, +i); }
+    const ot = e.target.closest("[data-openticket]");
+    if (ot) { e.preventDefault(); const t = tickets.find(x => x.id === ot.dataset.openticket); if (t) openTicket(t); return; }
+    const ed = e.target.closest("[data-editmeet]"); if (ed) return openMeeting(meetings.find(m => m.id === ed.dataset.editmeet));
+    const fl = e.target.closest("[data-mfilter]"); if (fl) { meetFilter = fl.dataset.mfilter; return renderMeetings(); }
+    const sm = e.target.closest("[data-showmeet]");
+    if (sm) { e.preventDefault(); meetShow = sm.dataset.showmeet; renderMeetings(); $("#mtTitle").scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+  });
+  $("#meetWrap").addEventListener("change", e => { if (e.target.id === "meetOwner") { meetOwner = e.target.value; renderMeetings(); } });
+  $("#meetForm").addEventListener("submit", submitMeeting);
+  $("#meetForm").addEventListener("click", async e => {
+    if (e.target.closest("[data-mclose]")) { $("#mdlg").close(); return; }
+    if (e.target.id === "m_pick") return $("#m_fileInput").click();
+    const rf = e.target.closest("[data-rmmfile]"); if (rf) { draftMFiles.splice(+rf.dataset.rmmfile, 1); return renderMeetFiles(); }
+    if (e.target.id === "m_addAct") { addMeetActs([{}]); $("#m_acts .mact-row:last-child .mact-text").focus(); return; }
+    const rm = e.target.closest("[data-rmmact]"); if (rm) { rm.closest(".mact-row").remove(); return syncMeetActs(); }
+    if (e.target.id === "m_pull") {
+      const n = pullMeetActs();
+      toast(n ? `${n} action item${n === 1 ? "" : "s"} added from the notes` : "No new action items found in the notes. Add them with + Add action item.", 4000);
+      return;
+    }
+    if (e.target.id === "mDel") {
+      const ok = await askConfirm({ title: "Delete these meeting notes?", confirmText: "Delete meeting",
+        message: `<b>${esc(editingMeeting.title || "Meeting")} · ${esc(fmtDate(editingMeeting.date))}</b><br>The notes, files and ${(editingMeeting.actions || []).length} action item(s) are removed.${mode === "server" ? " A copy is kept in the tracker's data/backups folder." : ""}` });
+      if (!ok) return;
+      try { await deleteMeeting(editingMeeting.id); meetShow = ""; toast("Meeting notes deleted"); $("#mdlg").close(); } catch (err) { $("#mErr").textContent = writeError(err); }
+    }
+  });
+  $("#meetForm").addEventListener("change", e => {
+    if (e.target.classList.contains("mact-status")) {
+      e.target.dataset.status = e.target.value;
+      const row = e.target.closest(".mact-row"); row.dataset.closed = e.target.value === "Closed" ? (row.dataset.closed || todayISO()) : "";
+    }
+  });
+  $("#m_fileInput").addEventListener("change", e => { const f = [...e.target.files]; e.target.value = ""; if (f.length) addMeetFiles(f); });
+  const drop = $("#m_drop");
+  drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("over"); const f = [...(e.dataTransfer.files || [])]; if (f.length) addMeetFiles(f); });
+  $("#mdlg").addEventListener("cancel", () => { editingMeeting = null; });
+  $("#mdlg").addEventListener("close", () => { editingMeeting = null; });
 
   $("#ticketForm").addEventListener("submit", submitForm);
   $("#dlgClose").addEventListener("click", closeDialog);
