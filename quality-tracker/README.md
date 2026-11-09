@@ -74,6 +74,10 @@ dashboard, slide 2 the RCA one-pager. Each slide has the header, D1–D8 strip (
 requestor / per-month charts as editable PowerPoint charts, top-5 open and recently closed tables, and key insights.
 The slides follow the current filters. The Pareto stays on the web page only.
 
+The slides use a blue banner header, colored D1–D8 arrows, icon tiles, colored title bars on each box and a striped
+footer. For company logos in the footer, put `logo-1.png` and `logo-2.png` (transparent PNGs from your brand files)
+in the tracker's `logos` folder; see `logos/README.txt`. Without them the footer shows the company names as text.
+
 ## Share a demo copy
 
 **Share demo (.html)** (next to Export Excel) saves the whole tracker as one HTML file, about 3 MB, with the
